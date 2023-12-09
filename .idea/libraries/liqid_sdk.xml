@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="liqid-sdk">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/liqid-sdk.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
