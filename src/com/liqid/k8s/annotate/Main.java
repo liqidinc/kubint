@@ -12,6 +12,7 @@ import com.liqid.k8s.Constants;
 
 import java.util.List;
 
+import static com.liqid.k8s.annotate.Application.AUTO_COMMAND;
 import static com.liqid.k8s.annotate.Application.LABEL_COMMAND;
 import static com.liqid.k8s.annotate.Application.LINK_COMMAND;
 import static com.liqid.k8s.annotate.Application.LOG_FILE_NAME;
@@ -23,6 +24,11 @@ import static com.liqid.k8s.annotate.Application.UNLINK_COMMAND;
 public class Main {
 
     /*
+    annotate auto
+        -px,--proxy-url={proxy_url}
+        -fd,--from-descriptions (reads worker node name from device user descriptions and labels accordingly)
+        -f,--force
+
     annotate link
         -px,--proxy-url={proxy_url}
         -ip,--liqid-ip-address={ip_address}
@@ -37,8 +43,6 @@ public class Main {
 
     annotate label
         -px,--proxy-url={proxy_url}
-        -a,--auto (reads worker node name from compute devices, auto-spreads all the other devices across workers)
-        -fd,--from-descriptions (reads worker node name from device user descriptions and labels accordingly)
         -n,--worker-node={worker_node_name}
         -m,--liqid-machine={liqid_machine}
         [ -fc,--fpga-count={number}[,{model}] ]
@@ -47,8 +51,6 @@ public class Main {
         [ -mc,--mem-count={number}[,{model}] ]
         [ -sc,--ssd-count={number}[,{model}] ]
         -f,--force
-        (-fd is mutex with all of -a -n -m -fc -gc -lc -mc -sc)
-        (-a is mutex with all of -fd -n -m -fc -gc -lc -mc -sc)
 
     annotate unlabel
         -px,--proxy-url={proxy_url}
@@ -61,6 +63,7 @@ public class Main {
         -px,--proxy-url={proxy_url}
      */
 
+    private static final CommandValue CV_AUTO = new CommandValue(AUTO_COMMAND);
     private static final CommandValue CV_LABEL = new CommandValue(LABEL_COMMAND);
     private static final CommandValue CV_LINK = new CommandValue(LINK_COMMAND);
     private static final CommandValue CV_NODES = new CommandValue(NODES_COMMAND);
@@ -70,18 +73,13 @@ public class Main {
 
     private static final Switch FORCE_SWITCH;
     private static final Switch K8S_NODE_NAME_SWITCH;
+    private static final Switch K8S_PROXY_URL_SWITCH;
     private static final Switch LIQID_ADDRESS_SWITCH;
     private static final Switch LIQID_GROUP_SWITCH;
     private static final Switch LIQID_MACHINE_SWITCH;
     private static final Switch LIQID_PASSWORD_SWITCH;
     private static final Switch LIQID_USERNAME_SWITCH;
-//    private static final Switch LIQID_FPGA_SWITCH;
-//    private static final Switch LIQID_GPU_SWITCH;
-//    private static final Switch LIQID_LINK_SWITCH;
-//    private static final Switch LIQID_MEM_SWITCH;
-//    private static final Switch LIQID_SSD_SWITCH;
     private static final Switch LOGGING_SWITCH;
-    private static final Switch PROXY_URL_SWITCH;
     private static final Switch TIMEOUT_SWITCH;
     private static final CommandArgument COMMAND_ARG;
 
@@ -93,11 +91,19 @@ public class Main {
             K8S_NODE_NAME_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("n")
                                             .setLongName("worker-node")
-                                            .setIsRequired(true)
+                                            .setIsRequired(false)
                                             .addAffinity(CV_LABEL).addAffinity(CV_UNLABEL)
                                             .setValueName("worker_node_name")
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the node name of the Kubernetes node to be labeled or unlabeled.")
+                                            .build();
+            K8S_PROXY_URL_SWITCH =
+                new ArgumentSwitch.Builder().setShortName("px")
+                                            .setLongName("proxy-url")
+                                            .setIsRequired(true)
+                                            .setValueName("k8x_proxy_url")
+                                            .setValueType(ValueType.STRING)
+                                            .addDescription("Specifies the URL for the kubectl proxy server.")
                                             .build();
             LIQID_ADDRESS_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("ip")
@@ -151,28 +157,12 @@ public class Main {
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the username credential for the Liqid Directory.")
                                             .build();
-//            LIQID_FPGA_SWITCH =
-//                new SimpleSwitch.Builder().setShortName("-fc")
-//                                          .setLongName("--fpga-count")
-//                                          .addDescription("Indicates the number of FPGA resources to assign to this worker node,")
-//                                          .addDescription("and optionally the particular model desired.")
-//                                          //TODO what to do here?
-//                                          .addDescription("Information will be written to " + LOG_FILE_NAME)
-//                                          .build();
             LOGGING_SWITCH =
                 new SimpleSwitch.Builder().setShortName("l")
                                           .setLongName("logging")
                                           .addDescription("Enables logging for error diagnostics.")
                                           .addDescription("Information will be written to " + LOG_FILE_NAME)
                                           .build();
-            PROXY_URL_SWITCH =
-                new ArgumentSwitch.Builder().setShortName("px")
-                                            .setLongName("proxy-url")
-                                            .setIsRequired(true)
-                                            .setValueName("k8x_proxy_url")
-                                            .setValueType(ValueType.STRING)
-                                            .addDescription("Specifies the URL for the kubectl proxy server.")
-                                            .build();
             TIMEOUT_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("t")
                                             .setLongName("timeout")
@@ -184,12 +174,22 @@ public class Main {
             FORCE_SWITCH =
                 new SimpleSwitch.Builder().setShortName("f")
                                           .setLongName("force")
-                                          .addAffinity(CV_LINK).addAffinity(CV_UNLINK).addAffinity(CV_LABEL)
+                                          .addAffinity(CV_AUTO).addAffinity(CV_LINK).addAffinity(CV_UNLINK).addAffinity(CV_LABEL)
                                           .addDescription("Forces command to be executed in spite of certain (not all) detected problems.")
                                           .addDescription("In these cases, the detected problems are flagged as warnings rather than errors.")
                                           .build();
             COMMAND_ARG =
-                new CommandArgument.Builder().addDescription(LINK_COMMAND)
+                new CommandArgument.Builder().addDescription(AUTO_COMMAND)
+                                             .addDescription("  Automatically annotates Kubernetes worker nodes according to Kubernetes worker node names")
+                                             .addDescription("  referenced by the user description fields of the various Liqid Cluster resources.")
+                                             .addDescription("  Only resources which are attached to the linked Liqid Cluster group, or to machines within")
+                                             .addDescription("  that group will be considered.")
+                                             .addDescription("  Each worker node referenced by a compute resource will be annotated to refer to that resource.")
+                                             .addDescription("  Then all the other resources will be allocated evenly (as possible) across the various")
+                                             .addDescription("  worker nodes via subsequent annotations on those nodes.")
+                                             .addDescription("  If any worker nodes are already annotated the process will not proceed unless -f,--force is specified,")
+                                             .addDescription("  in which case all Liqid annotations will be cleared before proceeding.")
+                                             .addDescription(LINK_COMMAND)
                                              .addDescription("  Links a particular Liqid Cluster to the targeted Kubernetes Cluster.")
                                              .addDescription("  Linking consists of storing certain Liqid Cluster information in the Kubernetes etcd database.")
                                              .addDescription("  Such information includes:")
@@ -203,15 +203,16 @@ public class Main {
                                              .addDescription("  Removes the Liqid Cluster information provided via the " + LINK_COMMAND + " command (listed above).")
                                              .addDescription("  Cannot be invoked so long as there are any existing node->machine labels.")
                                              .addDescription(LABEL_COMMAND)
-                                             .addDescription("  Creates labels for a particular Kubernetes worker node which identify, for that node, the following:")
+                                             .addDescription("  Creates annotations for a particular Kubernetes worker node which identify, for that node, the following:")
                                              .addDescription("    The Liqid Cluster machine which is associated with the Kubernetes worker node")
                                              .addDescription("    The number (and optionally the model) of various resources to be assigned to the node")
                                              .addDescription(UNLABEL_COMMAND)
-                                             .addDescription("  Removes labels from a particular Kubernetes worker node, previously set by the " + LABEL_COMMAND + " command (listed above).")
+                                             .addDescription("  Removes annotations from a particular Kubernetes worker node, previously set by the " + LABEL_COMMAND + " command (listed above).")
                                              .addDescription(NODES_COMMAND)
                                              .addDescription("  Displays existing Liqid-related configMap information and node annotations.")
                                              .addDescription(RESOURCES_COMMAND)
                                              .addDescription("  Displays Liqid Cluster resources associated with the linked Liqid Cluster group.")
+                                             .addCommandValue(CV_AUTO)
                                              .addCommandValue(CV_LINK)
                                              .addCommandValue(CV_UNLINK)
                                              .addCommandValue(CV_LABEL)
@@ -256,7 +257,7 @@ public class Main {
                .addSwitch(LIQID_USERNAME_SWITCH)
                .addSwitch(LIQID_PASSWORD_SWITCH)
                .addSwitch(LOGGING_SWITCH)
-               .addSwitch(PROXY_URL_SWITCH)
+               .addSwitch(K8S_PROXY_URL_SWITCH)
                .addSwitch(FORCE_SWITCH)
                .addSwitch(TIMEOUT_SWITCH)
                .addCommandArgument(COMMAND_ARG);
@@ -284,8 +285,9 @@ public class Main {
                        .setLiqidGroupName(getSingleStringValue(result._switchSpecifications.get(LIQID_GROUP_SWITCH)))
                        .setLiqidPassword(getSingleStringValue(result._switchSpecifications.get(LIQID_PASSWORD_SWITCH)))
                        .setLiqidUsername(getSingleStringValue(result._switchSpecifications.get(LIQID_USERNAME_SWITCH)))
-                       .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH))
-                       .setProxyURL(getSingleStringValue(result._switchSpecifications.get(PROXY_URL_SWITCH)));
+                       .setK8SNodeName(getSingleStringValue(result._switchSpecifications.get(K8S_NODE_NAME_SWITCH)))
+                       .setProxyURL(getSingleStringValue(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)))
+                       .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH));
 
             var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
             if ((values != null) && !values.isEmpty()) {
@@ -305,9 +307,13 @@ public class Main {
 
     //  TODO testing
     public static final String[] testArgs = {
-        "nodes",
+        "auto",
         "-px", "http://192.168.1.220:8001",
         "-l",
+
+//        "nodes",
+//        "-px", "http://192.168.1.220:8001",
+//        "-l",
 
 //        "link",
 //        "-px", "http://192.168.1.220:8001",

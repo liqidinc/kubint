@@ -8,6 +8,9 @@ package com.liqid.k8s.exceptions;
 import com.bearsnake.k8sclient.K8SException;
 import com.liqid.sdk.LiqidException;
 
+/**
+ * TODO Not sure we need this anymore...
+ */
 public class ProcessingException extends ScriptException {
 
     public ProcessingException(final String message) {

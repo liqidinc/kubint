@@ -7,31 +7,12 @@ package com.liqid.k8s.config;
 
 import com.bearsnake.klog.FileWriter;
 import com.bearsnake.klog.Level;
-import com.bearsnake.klog.LevelMask;
 import com.bearsnake.klog.Logger;
 import com.bearsnake.klog.PrefixEntity;
-import com.bearsnake.klog.StdErrWriter;
 import com.bearsnake.klog.StdOutWriter;
-import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.k8s.exceptions.ScriptException;
-import com.liqid.k8s.exceptions.SetupException;
-import com.bearsnake.k8sclient.K8SClient;
-import com.bearsnake.k8sclient.K8SException;
-import com.liqid.k8s.plan.Plan;
-import com.liqid.sdk.DeviceStatus;
-import com.liqid.sdk.LiqidClient;
-import com.liqid.sdk.LiqidClientBuilder;
-import com.liqid.sdk.LiqidException;
-import com.liqid.sdk.Machine;
-import com.liqid.sdk.PreDevice;
 
 import java.io.IOException;
-import java.io.ObjectInputFilter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-//import static com.liqid.k8s.config.Main.LIQID_K8S_GROUP_NAME;
 
 public class Application {
 
@@ -871,11 +852,11 @@ public class Application {
     }
 
     public void process() throws ScriptException {
-        try {
-            initLogging();
-        } catch (IOException ex) {
-            throw new SetupException("Logging failed:" + ex);
-        }
+//        try {
+//            initLogging();
+//        } catch (IOException ex) {
+//            throw new SetupException("Logging failed:" + ex);
+//        }
 
         _logger.trace("Entering");
 

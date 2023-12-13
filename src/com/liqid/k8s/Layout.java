@@ -5,7 +5,6 @@
 
 package com.liqid.k8s;
 
-import com.liqid.k8s.exceptions.SetupException;
 import com.liqid.sdk.DeviceStatus;
 import com.liqid.sdk.PreDeviceType;
 

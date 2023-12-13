@@ -7,7 +7,8 @@ package com.liqid.k8s.exceptions;
 
 /**
  * Base class for all ScriptException entities
- * TODO I'm not sure we really need this
+ * There is no immediate need for the KubInt exception classes to have this base class,
+ * but it is here in case the need eventually arises.
  */
 public abstract class ScriptException extends Exception {
 
