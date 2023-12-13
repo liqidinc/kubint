@@ -17,6 +17,7 @@ import com.liqid.sdk.LiqidException;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 import static com.liqid.k8s.Constants.K8S_CONFIG_NAME;
 import static com.liqid.k8s.Constants.K8S_CONFIG_NAMESPACE;
+import static com.liqid.k8s.annotate.CommandType.NODES;
 
 class NodesCommand extends Command {
 
@@ -30,19 +31,19 @@ class NodesCommand extends Command {
     }
 
     @Override
-    public void process(
+    public boolean process(
     ) throws ConfigurationException,
              ConfigurationDataException,
              K8SHTTPError,
              K8SJSONError,
              K8SRequestError,
              LiqidException {
-        var fn = "process";
+        var fn = NODES.getToken() + ":process";
         _logger.trace("Entering %s", fn);
 
         if (!initK8sClient()) {
-            _logger.trace("Exiting %s", fn);
-            return;
+            _logger.trace("Exiting %s false", fn);
+            return false;
         }
 
         try {
@@ -77,6 +78,7 @@ class NodesCommand extends Command {
             }
         }
 
-        _logger.trace("Exiting %s", fn);
+        _logger.trace("Exiting %s true", fn);
+        return true;
     }
 }

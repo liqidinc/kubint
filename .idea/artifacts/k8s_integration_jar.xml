@@ -1,6 +1,6 @@
 <component name="ArtifactManager">
   <artifact build-on-make="true" name="k8s-integration:jar">
-    <output-path>$PROJECT_DIR$/out/artifacts/k8s_integration_jar</output-path>
+    <output-path>$PROJECT_DIR$/artifacts/</output-path>
     <root id="root">
       <element id="archive" name="k8s-integration.jar">
         <element id="module-output" name="k8s-integration" />

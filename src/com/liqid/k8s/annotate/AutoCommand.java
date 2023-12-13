@@ -13,7 +13,7 @@ import com.liqid.k8s.Command;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 
-import static com.liqid.k8s.annotate.Application.AUTO_COMMAND;
+import static com.liqid.k8s.annotate.CommandType.AUTO;
 
 class AutoCommand extends Command {
 
@@ -27,18 +27,18 @@ class AutoCommand extends Command {
     }
 
     @Override
-    public void process(
+    public boolean process(
     ) throws ConfigurationException,
              ConfigurationDataException,
              K8SHTTPError,
              K8SJSONError,
              K8SRequestError {
-        var fn = "process";
+        var fn = AUTO.getToken() + ":process";
         _logger.trace("Entering %s", fn);
 
         if (!initK8sClient()) {
-            _logger.trace("Exiting %s", fn);
-            return;
+            _logger.trace("Exiting %s false", fn);
+            return false;
         }
 
         if (!getLiqidLinkage()) {
@@ -47,19 +47,20 @@ class AutoCommand extends Command {
 
         if (!initLiqidClient()) {
             System.err.println("ERROR:Cannot connect to the Liqid Cluster");
-            _logger.trace("Exiting %s", fn);
-            return;
+            _logger.trace("Exiting %s false", fn);
+            return false;
         }
 
-        if (!checkForExistingAnnotations(AUTO_COMMAND)) {
-            _logger.trace("Exiting %s", fn);
-            return;
+        if (!checkForExistingAnnotations(AUTO.getToken())) {
+            _logger.trace("Exiting %s false", fn);
+            return false;
         }
 
         //  TODO
 
         // All done
         logoutFromLiqidCluster();
-        _logger.trace("Exiting %s", fn);
+        _logger.trace("Exiting %s true", fn);
+        return true;
     }
 }

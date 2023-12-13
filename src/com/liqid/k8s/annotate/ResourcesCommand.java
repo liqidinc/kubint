@@ -23,6 +23,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.stream.Collectors;
 
+import static com.liqid.k8s.annotate.CommandType.RESOURCES;
+
 class ResourcesCommand extends Command {
 
     ResourcesCommand(
@@ -35,19 +37,19 @@ class ResourcesCommand extends Command {
     }
 
     @Override
-    public void process(
+    public boolean process(
     ) throws ConfigurationException,
              ConfigurationDataException,
              K8SHTTPError,
              K8SJSONError,
              K8SRequestError,
              LiqidException {
-        var fn = "process";
+        var fn = RESOURCES.getToken() + ":process";
         _logger.trace("Entering %s", fn);
 
         if (!initK8sClient()) {
-            _logger.trace("Exiting %s", fn);
-            return;
+            _logger.trace("Exiting %s false", fn);
+            return false;
         }
 
         if (!getLiqidLinkage()) {
@@ -56,8 +58,8 @@ class ResourcesCommand extends Command {
 
         if (!initLiqidClient()) {
             System.err.println("ERROR:Cannot connect to the Liqid Cluster");
-            _logger.trace("Exiting %s", fn);
-            return;
+            _logger.trace("Exiting %s false", fn);
+            return false;
         }
 
         Integer groupId = null;
@@ -69,7 +71,8 @@ class ResourcesCommand extends Command {
         } catch (LiqidException ex) {
             // If we end up here, it's probably because the group does not exist
             System.err.println("ERROR:Liqid group '" + _liqidGroupName + "' does not exist");
-            _logger.trace("Exiting %s", fn);
+            _logger.trace("Exiting %s false", fn);
+            return false;
         }
 
         // Create a map of all devices in the cluster, by device name.
@@ -142,6 +145,7 @@ class ResourcesCommand extends Command {
 
         // All done
         logoutFromLiqidCluster();
-        _logger.trace("Exiting %s", fn);
+        _logger.trace("Exiting %s true", fn);
+        return true;
     }
 }

@@ -23,20 +23,13 @@ import java.io.IOException;
 
 public class Application {
 
-    static final String AUTO_COMMAND = "auto";
-    static final String LABEL_COMMAND = "label";
-    static final String LINK_COMMAND = "link";
-    static final String NODES_COMMAND = "nodes";
-    static final String RESOURCES_COMMAND = "resources";
-    static final String UNLABEL_COMMAND = "unlabel";
-    static final String UNLINK_COMMAND = "unlink";
     public static final String LOGGER_NAME = "Annotate";
     public static final String LOG_FILE_NAME = "liq-annotation.log";
 
     // If _logging is true, we do extensive logging to a log file. If false, only errors to stdout.
     private boolean _logging = false;
 
-    private String _command;
+    private CommandType _commandType;
     private int _timeoutInSeconds = 300;
 
     private String _liqidAddress;
@@ -47,10 +40,11 @@ public class Application {
     private String _proxyURL;
     private boolean _force = false;
     private Logger _logger;
+    private Logger _subLogger; // for libraries which we'd like not to log to StdErr or StdOut
 
     Application() {}
 
-    Application setCommand(final String value) { _command = value; return this; }
+    Application setCommandType(final CommandType value) { _commandType = value; return this; }
     Application setLiqidAddress(final String value) { _liqidAddress = value; return this; }
     Application setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
     Application setLiqidPassword(final String value) { _liqidPassword = value; return this; }
@@ -82,33 +76,34 @@ public class Application {
 
     void process() {
         var fn = "process";
+        boolean result = false;
         try {
             initLogging();
             _logger.trace("Entering %s", fn);
 
-            switch (_command) {
-                case AUTO_COMMAND ->
+            result = switch (_commandType) {
+                case AUTO ->
                     new AutoCommand(_logger, _proxyURL, _force, _timeoutInSeconds).process();
-                case LABEL_COMMAND ->
+                case LABEL ->
                     new LabelCommand(_logger, _proxyURL, _force, _timeoutInSeconds).process();
-                case LINK_COMMAND ->
+                case LINK ->
                     new LinkCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
                         .setLiqidAddress(_liqidAddress)
                         .setLiqidGroupName(_liqidGroupName)
                         .setLiqidPassword(_liqidPassword)
                         .setLiqidUsername(_liqidUsername)
                         .process();
-                case NODES_COMMAND ->
+                case NODES ->
                     new NodesCommand(_logger, _proxyURL, _force, _timeoutInSeconds).process();
-                case RESOURCES_COMMAND ->
+                case RESOURCES ->
                     new ResourcesCommand(_logger, _proxyURL, _force, _timeoutInSeconds).process();
-                case UNLABEL_COMMAND ->
+                case UNLABEL ->
                     new UnlabelCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
                         .setNodeName(_k8sNodeName)
                         .process();
-                case UNLINK_COMMAND ->
+                case UNLINK ->
                     new UnlinkCommand(_logger, _proxyURL, _force, _timeoutInSeconds).process();
-            }
+            };
         } catch (ConfigurationDataException ex) {
             _logger.catching(ex);
             System.err.println("Configuration Data inconsistency(ies) prevent further processing.");
@@ -145,6 +140,11 @@ public class Application {
             System.err.println("and that the API server (or proxy server) is up and running.");
         }
 
+        if (result) {
+            System.out.printf("--- %s command completed successfully ---\n", _commandType.getToken());
+        } else {
+            System.err.printf("--- %s command failed ---\n", _commandType.getToken());
+        }
         _logger.trace("Exiting %s", fn);
     }
 }

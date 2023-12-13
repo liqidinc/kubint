@@ -11,6 +11,8 @@ import com.bearsnake.k8sclient.K8SJSONError;
 import com.bearsnake.k8sclient.K8SRequestError;
 import com.bearsnake.k8sclient.Node;
 import com.bearsnake.klog.Logger;
+import com.bearsnake.klog.StdErrWriter;
+import com.bearsnake.klog.StdOutWriter;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
@@ -32,6 +34,7 @@ import static com.liqid.k8s.Constants.K8S_SECRET_CREDENTIALS_KEY;
 import static com.liqid.k8s.Constants.K8S_SECRET_NAME;
 import static com.liqid.k8s.Constants.K8S_SECRET_NAMESPACE;
 import static com.liqid.k8s.Constants.LIQID_SDK_LABEL;
+import static com.liqid.k8s.annotate.Application.LOGGER_NAME;
 
 /**
  * Abstract class for all command handlers
@@ -63,7 +66,22 @@ public abstract class Command {
         _timeoutInSeconds = timeoutInSeconds;
     }
 
-    public abstract void process(
+    /**
+     * Instructs the subclass to process itself given sufficient information
+     * @return true if the command processed successfully, false if it did not
+     * @throws ConfigurationException Indicates an inconsistency in the general configuration of the Liqid Cluster
+     *                                  or the Kubernetes Cluster
+     * @throws ConfigurationDataException Indicates a problem in the actual liqid-supplied data stored in the
+     *                                      Liqid Cluster or the Kubernetes Cluster
+     * @throws InternalErrorException Indicates that some error has been detected which is likely caused by an error
+     *                                  in programming
+     * @throws K8SHTTPError Indicates that the Kubernetes API returned an HTTP status which we did not expect
+     * @throws K8SJSONError Indicates that the Kubernetes API returned information in a format which we did not expect
+     * @throws K8SRequestError Indicates some problem was encountered by the Kubernetes API library - this could be
+     *                          a programming problem, or it could be something wrong in the Kubernetes API.
+     * @throws LiqidException Indicates that a general error occurred while interacting with the Liqid Director API.
+     */
+    public abstract boolean process(
     ) throws ConfigurationException,
              ConfigurationDataException,
              InternalErrorException,
@@ -130,6 +148,21 @@ public abstract class Command {
 
         _logger.trace("Exiting %s with %s", fn, result);
         return result;
+    }
+
+    /**
+     * Creates a new Logger based on our current logger, which does NOT log to stdout or stderr.
+     */
+    private Logger createSubLogger(
+        final String name
+    ) {
+        var newLogger = new Logger(name, _logger);
+        for (var w : newLogger.getWriters()) {
+            if ((w instanceof StdOutWriter) || (w instanceof StdErrWriter)) {
+                newLogger.removeWriter(w);
+            }
+        }
+        return newLogger;
     }
 
     /**
@@ -212,7 +245,7 @@ public abstract class Command {
 
         var result = true;
         try {
-            _k8sClient = new K8SClient(_proxyURL, _logger);
+            _k8sClient = new K8SClient(_proxyURL, createSubLogger(LOGGER_NAME));
         } catch (IOException ex) {
             _logger.catching(ex);
             System.err.println("ERROR:An error occurred while setting up communication with the Kubernetes cluster");
@@ -237,7 +270,7 @@ public abstract class Command {
             _liqidClient = new LiqidClientBuilder().setHostAddress(_liqidAddress)
                                                    .setTimeoutInSeconds(_timeoutInSeconds)
                                                    .build();
-            _liqidClient.setLogger(_logger);
+            _liqidClient.setLogger(createSubLogger("LiqidSDK"));
             if (_liqidUsername != null) {
                 _liqidClient.login(LIQID_SDK_LABEL, _liqidUsername, _liqidPassword);
             }

@@ -11,6 +11,8 @@ import com.bearsnake.k8sclient.K8SRequestError;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
 
+import static com.liqid.k8s.annotate.CommandType.UNLABEL;
+
 class UnlabelCommand extends Command {
 
     private String _nodeName;
@@ -27,13 +29,13 @@ class UnlabelCommand extends Command {
     UnlabelCommand setNodeName(final String value) { _nodeName = value; return this; }
 
     @Override
-    public void process() throws K8SHTTPError, K8SJSONError, K8SRequestError {
-        var fn = "process";
+    public boolean process() throws K8SHTTPError, K8SJSONError, K8SRequestError {
+        var fn = UNLABEL.getToken() + ":process";
         _logger.trace("Entering %s", fn);
 
         if (!initK8sClient()) {
-            _logger.trace("Exiting %s", fn);
-            return;
+            _logger.trace("Exiting %s false", fn);
+            return false;
         }
 
         try {
@@ -41,13 +43,14 @@ class UnlabelCommand extends Command {
         } catch (K8SHTTPError ex) {
             if (ex.getResponseCode() == 404) {
                 System.err.println("ERROR:No Kubernetes worker node found with the name '" + _nodeName + "'");
-                _logger.trace("Exiting %s", fn);
-                return;
+                _logger.trace("Exiting %s false", fn);
+                return false;
             }
         }
 
         // TODO
 
-        _logger.trace("Exiting %s", fn);
+        _logger.trace("Exiting %s true", fn);
+        return true;
     }
 }

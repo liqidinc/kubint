@@ -12,14 +12,14 @@ import com.liqid.k8s.Constants;
 
 import java.util.List;
 
-import static com.liqid.k8s.annotate.Application.AUTO_COMMAND;
-import static com.liqid.k8s.annotate.Application.LABEL_COMMAND;
-import static com.liqid.k8s.annotate.Application.LINK_COMMAND;
 import static com.liqid.k8s.annotate.Application.LOG_FILE_NAME;
-import static com.liqid.k8s.annotate.Application.NODES_COMMAND;
-import static com.liqid.k8s.annotate.Application.RESOURCES_COMMAND;
-import static com.liqid.k8s.annotate.Application.UNLABEL_COMMAND;
-import static com.liqid.k8s.annotate.Application.UNLINK_COMMAND;
+import static com.liqid.k8s.annotate.CommandType.AUTO;
+import static com.liqid.k8s.annotate.CommandType.LABEL;
+import static com.liqid.k8s.annotate.CommandType.LINK;
+import static com.liqid.k8s.annotate.CommandType.NODES;
+import static com.liqid.k8s.annotate.CommandType.RESOURCES;
+import static com.liqid.k8s.annotate.CommandType.UNLABEL;
+import static com.liqid.k8s.annotate.CommandType.UNLINK;
 
 public class Main {
 
@@ -63,13 +63,13 @@ public class Main {
         -px,--proxy-url={proxy_url}
      */
 
-    private static final CommandValue CV_AUTO = new CommandValue(AUTO_COMMAND);
-    private static final CommandValue CV_LABEL = new CommandValue(LABEL_COMMAND);
-    private static final CommandValue CV_LINK = new CommandValue(LINK_COMMAND);
-    private static final CommandValue CV_NODES = new CommandValue(NODES_COMMAND);
-    private static final CommandValue CV_RESOURCES = new CommandValue(RESOURCES_COMMAND);
-    private static final CommandValue CV_UNLABEL = new CommandValue(UNLABEL_COMMAND);
-    private static final CommandValue CV_UNLINK = new CommandValue(UNLINK_COMMAND);
+    private static final CommandValue CV_AUTO = new CommandValue(AUTO.getToken());
+    private static final CommandValue CV_LABEL = new CommandValue(CommandType.LABEL.getToken());
+    private static final CommandValue CV_LINK = new CommandValue(LINK.getToken());
+    private static final CommandValue CV_NODES = new CommandValue(CommandType.NODES.getToken());
+    private static final CommandValue CV_RESOURCES = new CommandValue(CommandType.RESOURCES.getToken());
+    private static final CommandValue CV_UNLABEL = new CommandValue(CommandType.UNLABEL.getToken());
+    private static final CommandValue CV_UNLINK = new CommandValue(CommandType.UNLINK.getToken());
 
     private static final Switch FORCE_SWITCH;
     private static final Switch K8S_NODE_NAME_SWITCH;
@@ -82,9 +82,6 @@ public class Main {
     private static final Switch LOGGING_SWITCH;
     private static final Switch TIMEOUT_SWITCH;
     private static final CommandArgument COMMAND_ARG;
-
-    private static final String[] COMMAND_LIST =
-        { LINK_COMMAND, UNLINK_COMMAND, LABEL_COMMAND, UNLABEL_COMMAND, NODES_COMMAND};
 
     static {
         try {
@@ -179,7 +176,7 @@ public class Main {
                                           .addDescription("In these cases, the detected problems are flagged as warnings rather than errors.")
                                           .build();
             COMMAND_ARG =
-                new CommandArgument.Builder().addDescription(AUTO_COMMAND)
+                new CommandArgument.Builder().addDescription(AUTO.getToken())
                                              .addDescription("  Automatically annotates Kubernetes worker nodes according to Kubernetes worker node names")
                                              .addDescription("  referenced by the user description fields of the various Liqid Cluster resources.")
                                              .addDescription("  Only resources which are attached to the linked Liqid Cluster group, or to machines within")
@@ -189,7 +186,7 @@ public class Main {
                                              .addDescription("  worker nodes via subsequent annotations on those nodes.")
                                              .addDescription("  If any worker nodes are already annotated the process will not proceed unless -f,--force is specified,")
                                              .addDescription("  in which case all Liqid annotations will be cleared before proceeding.")
-                                             .addDescription(LINK_COMMAND)
+                                             .addDescription(LINK.getToken())
                                              .addDescription("  Links a particular Liqid Cluster to the targeted Kubernetes Cluster.")
                                              .addDescription("  Linking consists of storing certain Liqid Cluster information in the Kubernetes etcd database.")
                                              .addDescription("  Such information includes:")
@@ -198,19 +195,19 @@ public class Main {
                                              .addDescription("    Username credential for the Liqid Cluster Directory")
                                              .addDescription("    Password credential for the Liqid Cluster Directory")
                                              .addDescription("    Liqid Cluster resource group name identifying the resource group which is assigned to this Kubernetes cluster")
-                                             .addDescription(UNLINK_COMMAND)
+                                             .addDescription(UNLINK.getToken())
                                              .addDescription("  Unlinks a particular Liqid Cluster from the targeted Kubernetes Cluster.")
-                                             .addDescription("  Removes the Liqid Cluster information provided via the " + LINK_COMMAND + " command (listed above).")
+                                             .addDescription("  Removes the Liqid Cluster information provided via the " + LINK.getToken() + " command (listed above).")
                                              .addDescription("  Cannot be invoked so long as there are any existing node->machine labels.")
-                                             .addDescription(LABEL_COMMAND)
+                                             .addDescription(LABEL.getToken())
                                              .addDescription("  Creates annotations for a particular Kubernetes worker node which identify, for that node, the following:")
                                              .addDescription("    The Liqid Cluster machine which is associated with the Kubernetes worker node")
                                              .addDescription("    The number (and optionally the model) of various resources to be assigned to the node")
-                                             .addDescription(UNLABEL_COMMAND)
-                                             .addDescription("  Removes annotations from a particular Kubernetes worker node, previously set by the " + LABEL_COMMAND + " command (listed above).")
-                                             .addDescription(NODES_COMMAND)
+                                             .addDescription(UNLABEL.getToken())
+                                             .addDescription("  Removes annotations from a particular Kubernetes worker node, previously set by the " + LABEL.getToken() + " command (listed above).")
+                                             .addDescription(NODES.getToken())
                                              .addDescription("  Displays existing Liqid-related configMap information and node annotations.")
-                                             .addDescription(RESOURCES_COMMAND)
+                                             .addDescription(RESOURCES.getToken())
                                              .addDescription("  Displays Liqid Cluster resources associated with the linked Liqid Cluster group.")
                                              .addCommandValue(CV_AUTO)
                                              .addCommandValue(CV_LINK)
@@ -280,7 +277,7 @@ public class Main {
             }
 
             application.setLogging(result._switchSpecifications.containsKey(LOGGING_SWITCH))
-                       .setCommand(result._commandValue.getValue())
+                       .setCommandType(CommandType.get(result._commandValue.getValue()))
                        .setLiqidAddress(getSingleStringValue(result._switchSpecifications.get(LIQID_ADDRESS_SWITCH)))
                        .setLiqidGroupName(getSingleStringValue(result._switchSpecifications.get(LIQID_GROUP_SWITCH)))
                        .setLiqidPassword(getSingleStringValue(result._switchSpecifications.get(LIQID_PASSWORD_SWITCH)))
@@ -307,22 +304,22 @@ public class Main {
 
     //  TODO testing
     public static final String[] testArgs = {
-        "auto",
-        "-px", "http://192.168.1.220:8001",
-        "-l",
+//        "auto",
+//        "-px", "http://192.168.1.220:8001",
+//        "-l",
 
 //        "nodes",
 //        "-px", "http://192.168.1.220:8001",
 //        "-l",
 
-//        "link",
-//        "-px", "http://192.168.1.220:8001",
-//        "-ip", "10.10.14.236",
-//        "--liqid-username", "jose",
-//        "--liqid-password", "jose",
-//        "-g", "k8s_group",
-//        "--force",
-//        "-l",
+        "link",
+        "-px", "http://192.168.1.220:8001",
+        "-ip", "10.10.14.236",
+        "--liqid-username", "jose",
+        "--liqid-password", "jose",
+        "-g", "k8s_group",
+        "--force",
+        "-l",
 
 //        "unlink",
 //        "-px", "http://192.168.1.220:8001",

@@ -15,7 +15,7 @@ import static com.liqid.k8s.Constants.K8S_CONFIG_NAME;
 import static com.liqid.k8s.Constants.K8S_CONFIG_NAMESPACE;
 import static com.liqid.k8s.Constants.K8S_SECRET_NAME;
 import static com.liqid.k8s.Constants.K8S_SECRET_NAMESPACE;
-import static com.liqid.k8s.annotate.Application.UNLINK_COMMAND;
+import static com.liqid.k8s.annotate.CommandType.UNLINK;
 
 class UnlinkCommand extends Command {
 
@@ -29,13 +29,13 @@ class UnlinkCommand extends Command {
     }
 
     @Override
-    public void process() throws K8SHTTPError, K8SJSONError, K8SRequestError {
-        var fn = "process";
+    public boolean process() throws K8SHTTPError, K8SJSONError, K8SRequestError {
+        var fn = UNLINK.getToken() + ":process";
         _logger.trace("Entering %s", fn);
 
         if (!initK8sClient()) {
-            _logger.trace("Exiting %s", fn);
-            return;
+            _logger.trace("Exiting %s false", fn);
+            return false;
         }
 
         // If there is no configMap for this cluster-name, tell the user and stop
@@ -44,15 +44,16 @@ class UnlinkCommand extends Command {
         } catch (K8SHTTPError ex) {
             if (ex.getResponseCode() == 404) {
                 System.err.println("ERROR:No linkage exists from this Kubernetes Cluster to the Liqid Cluster.");
-                return;
+                _logger.trace("Exiting %s false", fn);
+                return false;
             } else {
                 throw ex;
             }
         }
 
-        if (!checkForExistingAnnotations(UNLINK_COMMAND)) {
-            _logger.trace("Exiting %s", fn);
-            return;
+        if (!checkForExistingAnnotations(UNLINK.getToken())) {
+            _logger.trace("Exiting %s false", fn);
+            return false;
         }
 
         // delete the configMap and secret
@@ -67,6 +68,7 @@ class UnlinkCommand extends Command {
             }
         }
 
-        _logger.trace("Exiting %s", fn);
+        _logger.trace("Exiting %s true", fn);
+        return true;
     }
 }
