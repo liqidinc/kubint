@@ -16,6 +16,37 @@ import static com.liqid.k8s.config.Application.LOG_FILE_NAME;
 
 public class Main {
 
+    /*
+    config [ plan | execute ]
+        -px,--proxy-url={proxy_url}
+
+    config validate
+        -px,--proxy-url={proxy_url}
+
+    config resources
+        -ip,--liqid-ip-address={ip_address}
+        [ -u,--liqid-username={user_name} ]
+        [ -p,--liqid-password={password} ]
+
+    config nodes
+        -px,--proxy-url={proxy_url}
+
+    config initialize
+        -ip,--liqid-ip-address={ip_address}
+        [ -u,--liqid-username={user_name} ]
+        [ -p,--liqid-password={password} ]
+        -g,--liqid-group={group_name}
+        -r,--resources {resource_name}[,...]
+        -f,--force
+
+    config cleanup
+        -ip,--liqid-ip-address={ip_address}
+        [ -u,--liqid-username={user_name} ]
+        [ -p,--liqid-password={password} ]
+        -g,--liqid-group={group_name}
+        -f,--force
+    */
+
     public static final String VERSION = "3.0";
 //    public static final String LIQID_K8S_GROUP_NAME = "Kubernetes";
 //    public static final String LIQID_MACHINE_NAME_PREFIX = "Kubernetes-";
