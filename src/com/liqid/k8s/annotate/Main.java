@@ -88,7 +88,7 @@ public class Main {
             K8S_NODE_NAME_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("n")
                                             .setLongName("worker-node")
-                                            .setIsRequired(false)
+                                            .setIsRequired(true)
                                             .addAffinity(CV_LABEL).addAffinity(CV_UNLABEL)
                                             .setValueName("worker_node_name")
                                             .setValueType(ValueType.STRING)
@@ -312,14 +312,14 @@ public class Main {
 //        "-px", "http://192.168.1.220:8001",
 //        "-l",
 
-        "link",
-        "-px", "http://192.168.1.220:8001",
-        "-ip", "10.10.14.236",
-        "--liqid-username", "jose",
-        "--liqid-password", "jose",
-        "-g", "k8s_group",
-        "--force",
-        "-l",
+//        "link",
+//        "-px", "http://192.168.1.220:8001",
+//        "-ip", "10.10.14.236",
+//        "--liqid-username", "jose",
+//        "--liqid-password", "jose",
+//        "-g", "k8s_group",
+//        "--force",
+//        "-l",
 
 //        "unlink",
 //        "-px", "http://192.168.1.220:8001",
@@ -331,9 +331,17 @@ public class Main {
 //        "-n", "kub4",
 //        "-l",
 
+        "unlabel",
+        "-px", "http://192.168.1.220:8001",
+        "-n", "kub4",
+        "-l",
+
 //        "resources",
 //        "-px", "http://192.168.1.220:8001",
 //        "-f",
+//        "-l",
+
+//        "snoopy",
 //        "-l",
     };
 

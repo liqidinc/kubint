@@ -11,6 +11,8 @@ import com.bearsnake.k8sclient.K8SRequestError;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
 
+import static com.liqid.k8s.Constants.K8S_ANNOTATION_KEYS;
+import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 import static com.liqid.k8s.annotate.CommandType.UNLABEL;
 
 class UnlabelCommand extends Command {
@@ -39,7 +41,22 @@ class UnlabelCommand extends Command {
         }
 
         try {
+            // Note that we do NOT effect removal of an annotation key by simply removing it from the container.
+            // Instead, we have to keep the key, but set the value to null, and pass it all back for PATCH to work.
             var annotations = _k8sClient.getAnnotationsForNode(_nodeName);
+            var changed = false;
+            for (java.util.Map.Entry<String, String> entry : annotations.entrySet()) {
+                if (entry.getKey().startsWith(K8S_ANNOTATION_PREFIX)) {
+                    annotations.put(entry.getKey(), null);
+                    changed = true;
+                }
+            }
+            if (changed) {
+                System.out.println("Removing annotations for worker '" + _nodeName + "'...");
+                _k8sClient.updateAnnotationsForNode(_nodeName, annotations);
+            } else {
+                System.out.println("No Liqid annotations exist for worker '" + _nodeName + "'");
+            }
         } catch (K8SHTTPError ex) {
             if (ex.getResponseCode() == 404) {
                 System.err.println("ERROR:No Kubernetes worker node found with the name '" + _nodeName + "'");
@@ -47,8 +64,6 @@ class UnlabelCommand extends Command {
                 return false;
             }
         }
-
-        // TODO
 
         _logger.trace("Exiting %s true", fn);
         return true;
