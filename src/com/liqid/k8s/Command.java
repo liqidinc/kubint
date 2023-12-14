@@ -18,11 +18,11 @@ import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.sdk.DeviceInfo;
 import com.liqid.sdk.DeviceStatus;
+import com.liqid.sdk.Group;
 import com.liqid.sdk.LiqidClient;
 import com.liqid.sdk.LiqidClientBuilder;
 import com.liqid.sdk.LiqidException;
 import com.liqid.sdk.Machine;
-import com.liqid.sdk.ManagedEntity;
 
 import java.io.IOException;
 import java.util.Base64;
@@ -60,12 +60,34 @@ public abstract class Command {
     protected K8SClient _k8sClient;
     protected LiqidClient _liqidClient;
 
+    protected static class DeviceRelation {
+        public Integer _deviceId;
+        public Integer _groupId;
+        public Integer _machineId;
+
+        public DeviceRelation(
+            final Integer deviceId,
+            final Integer groupId,
+            final Integer machineId
+        ) {
+            _deviceId = deviceId;
+            _groupId = (groupId != null) && (groupId.equals(0)) ? null : groupId;
+            _machineId = (machineId != null) && (machineId.equals(0)) ? null : machineId;
+        }
+    }
+
     protected Map<Integer, DeviceInfo> _deviceInfoById = new HashMap<>();
     protected Map<String, DeviceInfo> _deviceInfoByName = new HashMap<>();
+    protected Map<Integer, DeviceRelation> _deviceRelationsByDeviceId = new HashMap<>();
+    protected Map<Integer, DeviceRelation> _deviceRelationsByGroupId = new HashMap<>();
+    protected Map<Integer, DeviceRelation> _deviceRelationsByMachineId = new HashMap<>();
+    protected Map<Integer, LinkedList<DeviceStatus>> _deviceStatusByGroupId = new HashMap<>();
     protected Map<Integer, DeviceStatus> _deviceStatusById = new HashMap<>();
+    protected Map<Integer, LinkedList<DeviceStatus>> _deviceStatusByMachineId = new HashMap<>();
     protected Map<String, DeviceStatus> _deviceStatusByName = new HashMap<>();
+    protected Map<Integer, Group> _groupsById = new HashMap<>();
+    protected Map<String, Group> _groupsByName = new HashMap<>();
     protected Map<Integer, Machine> _machinesById = new HashMap<>();
-    protected Map<String, ManagedEntity> _managedEntitiesByCompositeIds = new HashMap<>();
 
     protected Command(
         final Logger logger,
@@ -108,6 +130,16 @@ public abstract class Command {
      * @throws LiqidException if we cannot communicate with the Liqid Cluster
      */
     protected void getLiqidInventory() throws LiqidException {
+        var fn = "getLiqidInventory";
+        _logger.trace("Entering %s", fn);
+
+        var devStats = _liqidClient.getAllDevicesStatus();
+        for (var ds : devStats) {
+            _deviceStatusById.put(ds.getDeviceId(), ds);
+            _deviceStatusByName.put(ds.getName(), ds);
+            _deviceRelationsByDeviceId.put(ds.getDeviceId(), new DeviceRelation(ds.getDeviceId(), null, null));
+        }
+
         var devInfos = new LinkedList<DeviceInfo>();
         devInfos.addAll(_liqidClient.getComputeDeviceInfo());
         devInfos.addAll(_liqidClient.getFPGADeviceInfo());
@@ -116,32 +148,39 @@ public abstract class Command {
         devInfos.addAll(_liqidClient.getNetworkDeviceInfo());
         devInfos.addAll(_liqidClient.getStorageDeviceInfo());
 
-        _deviceInfoById.clear();
-        _deviceInfoByName.clear();
-        _deviceStatusById.clear();
-        _deviceStatusByName.clear();
-        _machinesById.clear();
-        _managedEntitiesByCompositeIds.clear();
-
         for (var di : devInfos) {
             _deviceInfoById.put(di.getDeviceIdentifier(), di);
             _deviceInfoByName.put(di.getName(), di);
         }
 
-        var devStats = _liqidClient.getAllDevicesStatus();
-        for (var ds : devStats) {
-            _deviceStatusById.put(ds.getDeviceId(), ds);
-            _deviceStatusByName.put(ds.getName(), ds);
-        }
-
         var machines = _liqidClient.getMachines();
-        machines.forEach(mach -> _machinesById.put(mach.getMachineId(), mach));
-
-        var mes = _liqidClient.getManagedEntities();
-        for (var me : mes) {
-            var key = me.getPCIVendorId() + ":" + me.getPCIDeviceId();
-            _managedEntitiesByCompositeIds.put(key, me);
+        for (Machine mach : machines) {
+            _machinesById.put(mach.getMachineId(), mach);
+            _deviceStatusByMachineId.put(mach.getMachineId(), new LinkedList<>());
         }
+
+        var groups = _liqidClient.getGroups();
+        for (Group group : groups) {
+            _groupsById.put(group.getGroupId(), group);
+            _groupsByName.put(group.getGroupName(), group);
+            _deviceStatusByGroupId.put(group.getGroupId(), new LinkedList<>());
+
+            var preDevs = _liqidClient.getDevices(null, group.getGroupId(), null);
+            for (var preDev : preDevs) {
+                var devStat = _deviceStatusByName.get(preDev.getDeviceName());
+                _deviceStatusByGroupId.get(group.getGroupId()).add(devStat);
+                var devRel = new DeviceRelation(devStat.getDeviceId(), preDev.getGroupId(), preDev.getMachineId());
+                _deviceRelationsByDeviceId.put(devRel._deviceId, devRel);
+                _deviceRelationsByGroupId.put(devRel._groupId, devRel);
+
+                if (devRel._machineId != null) {
+                    _deviceStatusByMachineId.get(devRel._machineId).add(devStat);
+                    _deviceRelationsByMachineId.put(devRel._machineId, devRel);
+                }
+            }
+        }
+
+        _logger.trace("Exiting %s", fn);
     }
 
     /**

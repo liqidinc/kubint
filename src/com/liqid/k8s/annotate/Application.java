@@ -37,13 +37,15 @@ public class Application {
     private String _liqidPassword;
     private String _liqidUsername;
     private String _k8sNodeName;
-    private String _proxyURL;
+
+    private boolean _all = false;
     private boolean _force = false;
     private Logger _logger;
-    private Logger _subLogger; // for libraries which we'd like not to log to StdErr or StdOut
+    private String _proxyURL;
 
     Application() {}
 
+    Application setAll(final boolean flag) { _all = flag; return this; }
     Application setCommandType(final CommandType value) { _commandType = value; return this; }
     Application setLiqidAddress(final String value) { _liqidAddress = value; return this; }
     Application setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
@@ -96,7 +98,9 @@ public class Application {
                 case NODES ->
                     new NodesCommand(_logger, _proxyURL, _force, _timeoutInSeconds).process();
                 case RESOURCES ->
-                    new ResourcesCommand(_logger, _proxyURL, _force, _timeoutInSeconds).process();
+                    new ResourcesCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+                        .setAll(_all)
+                        .process();
                 case UNLABEL ->
                     new UnlabelCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
                         .setNodeName(_k8sNodeName)

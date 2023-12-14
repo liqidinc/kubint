@@ -12,20 +12,18 @@ import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
-import com.liqid.sdk.DeviceInfo;
 import com.liqid.sdk.DeviceStatus;
 import com.liqid.sdk.Group;
 import com.liqid.sdk.LiqidException;
-import com.liqid.sdk.Machine;
-import com.liqid.sdk.ManagedEntity;
 
-import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static com.liqid.k8s.annotate.CommandType.RESOURCES;
 
 class ResourcesCommand extends Command {
+
+    private boolean _allFlag = false;
 
     ResourcesCommand(
         final Logger logger,
@@ -34,6 +32,92 @@ class ResourcesCommand extends Command {
         final Integer timeoutInSeconds
     ) {
         super(logger, proxyURL, force, timeoutInSeconds);
+    }
+
+    public ResourcesCommand setAll(final Boolean flag) { _allFlag = flag; return this; }
+
+    /**
+     * Displays devices
+     * @param group Reference to Group if we want to limit the display to resources in that group, else null
+     * @throws LiqidException If we have trouble talking to the Liqid Director
+     */
+    private void displayDevices(
+        final Group group
+    ) throws LiqidException {
+        System.out.println();
+        if (group == null) {
+            System.out.println("All Resources:");
+            System.out.println("  ---TYPE---  --NAME--  ----ID----  --------VENDOR--------  -----MODEL------  "
+                                   + "-------MACHINE--------  -------------GROUP--------------  --DESCRIPTION--");
+        } else {
+            System.out.printf("Resources for group '%s':\n", group.getGroupName());
+            System.out.println("  ---TYPE---  --NAME--  ----ID----  --------VENDOR--------  -----MODEL------  "
+                                   + "-------MACHINE--------  --DESCRIPTION--");
+        }
+
+        for (var ds : _deviceStatusByName.values()) {
+            var di = _deviceInfoById.get(ds.getDeviceId());
+            var str1 = String.format("%-10s  %-8s  0x%08x  %-22s  %-16s",
+                                     ds.getDeviceType(),
+                                     ds.getName(),
+                                     ds.getDeviceId(),
+                                     di.getVendor(),
+                                     di.getModel());
+
+            var dr = _deviceRelationsByDeviceId.get(ds.getDeviceId());
+            var machStr = "<none>";
+            if (dr._machineId != null) {
+                machStr = _machinesById.get(dr._machineId).getMachineName();
+            }
+
+            var grpStr = "";
+            if (group == null) {
+                var temp = (dr._groupId == null) ? "<none>" : _groupsById.get(dr._groupId).getGroupName();
+                grpStr = String.format("  %-32s", temp);
+            }
+
+            System.out.printf("  %s  %-22s%s  %s\n", str1, machStr, grpStr, di.getUserDescription());
+        }
+    }
+
+    /**
+     * Displays machines
+     * @param group Reference to Group if we want to limit the display to machines in that group, else null
+     * @throws LiqidException If we have trouble talking to the Liqid Director
+     */
+    private void displayMachines(
+        final Group group
+    ) throws LiqidException {
+        System.out.println();
+        if (group == null) {
+            System.out.println("All Machines:");
+            System.out.println("  -------------GROUP--------------  -------MACHINE--------  ----ID----  --------DEVICES---------");
+        } else {
+            System.out.printf("Machines for group '%s':\n", group.getGroupName());
+            System.out.println("  -------MACHINE--------  ----ID----  --------DEVICES---------");
+        }
+
+        for (var mach : _machinesById.values()) {
+            var devNames = _deviceStatusByMachineId.get(mach.getMachineId())
+                                                   .stream()
+                                                   .map(DeviceStatus::getName)
+                                                   .collect(Collectors.toCollection(TreeSet::new));
+            var devNamesStr = String.join(" ", devNames);
+
+            if (group == null) {
+                var grp = _groupsById.get(mach.getGroupId());
+                System.out.printf("  %-32s  %-22s  0x%08x  %s\n",
+                                  grp.getGroupName(),
+                                  mach.getMachineName(),
+                                  mach.getMachineId(),
+                                  devNamesStr);
+            } else {
+                System.out.printf("  %-22s  0x%08x  %s\n",
+                                  mach.getMachineName(),
+                                  mach.getMachineId(),
+                                  devNamesStr);
+            }
+        }
     }
 
     @Override
@@ -62,54 +146,10 @@ class ResourcesCommand extends Command {
             return false;
         }
 
-        Integer groupId = null;
-        Group group = null;
-        try {
-            groupId = _liqidClient.getGroupIdByName(_liqidGroupName);
-            group = _liqidClient.getGroup(groupId);
-            System.out.printf("Found Liqid Cluster group ID=%d Name=%s\n", group.getGroupId(), group.getGroupName());
-        } catch (LiqidException ex) {
-            // If we end up here, it's probably because the group does not exist
-            System.err.println("ERROR:Liqid group '" + _liqidGroupName + "' does not exist");
-            _logger.trace("Exiting %s false", fn);
-            return false;
-        }
-
         getLiqidInventory();
-
-        System.out.println("Resource within the group:");
-        var preDevices = _liqidClient.getDevices(null, groupId, null);
-        System.out.println("  ---TYPE---  --NAME--  ----ID----  --VENDOR--  --MODEL---  -------MACHINE--------  --DESCRIPTION--");
-        for (var preDev : preDevices) {
-            var ds = _deviceStatusByName.get(preDev.getDeviceName());
-            var pciKey = ds.getPCIVendorId() + ":" + ds.getPCIDeviceId();
-            var me = _managedEntitiesByCompositeIds.get(pciKey);
-            var info = _deviceInfoByName.get(preDev.getDeviceName());
-
-            var machStr = "<none>";
-            var machId = preDev.getMachineId();
-            if (machId != 0) {
-                var mach = _machinesById.get(machId);
-                machStr = mach.getMachineName();
-            }
-
-            System.out.printf("  %-10s  %-8s  0x%08x  %-10s  %-10s  %-22s  %s\n",
-                              ds.getDeviceType(),
-                              ds.getName(),
-                              ds.getDeviceId(),
-                              me.getManufacturer(),
-                              me.getModel(),
-                              machStr,
-                              info.getUserDescription());
-        }
-
-        System.out.println("Machines within the group:");
-        System.out.println("  ----------------------  ----ID----  --CPU--");
-        for (var mach : _machinesById.values()) {
-            if (mach.getGroupId().equals(groupId)) {
-                System.out.printf("  %-22s  0x%08x  %s\n", mach.getMachineName(), mach.getMachineId(), mach.getComputeName());
-            }
-        }
+        var groupParam = _allFlag ? null : _groupsByName.get(_liqidGroupName);
+        displayDevices(groupParam);
+        displayMachines(groupParam);
 
         // All done
         logoutFromLiqidCluster();

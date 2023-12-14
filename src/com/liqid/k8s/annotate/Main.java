@@ -71,6 +71,7 @@ public class Main {
     private static final CommandValue CV_UNLABEL = new CommandValue(CommandType.UNLABEL.getToken());
     private static final CommandValue CV_UNLINK = new CommandValue(CommandType.UNLINK.getToken());
 
+    private static final Switch ALL_SWITCH;
     private static final Switch FORCE_SWITCH;
     private static final Switch K8S_NODE_NAME_SWITCH;
     private static final Switch K8S_PROXY_URL_SWITCH;
@@ -168,6 +169,13 @@ public class Main {
                                             .setValueType(ValueType.FIXED_POINT)
                                             .addDescription("Timeout value for back-end network communication in seconds.")
                                             .build();
+            ALL_SWITCH =
+                new SimpleSwitch.Builder().setShortName("a")
+                                          .setLongName("all")
+                                          .addAffinity(CV_RESOURCES)
+                                          .addDescription("Displays or processes all information, not just that which is normally processed.")
+                                          .addDescription("See the related command(s) for more specific information.")
+                                          .build();
             FORCE_SWITCH =
                 new SimpleSwitch.Builder().setShortName("f")
                                           .setLongName("force")
@@ -209,6 +217,7 @@ public class Main {
                                              .addDescription("  Displays existing Liqid-related configMap information and node annotations.")
                                              .addDescription(RESOURCES.getToken())
                                              .addDescription("  Displays Liqid Cluster resources associated with the linked Liqid Cluster group.")
+                                             .addDescription("  If -a,-all is specified, all resources in the Liqid CLuster are displayed.")
                                              .addCommandValue(CV_AUTO)
                                              .addCommandValue(CV_LINK)
                                              .addCommandValue(CV_UNLINK)
@@ -255,6 +264,7 @@ public class Main {
                .addSwitch(LIQID_PASSWORD_SWITCH)
                .addSwitch(LOGGING_SWITCH)
                .addSwitch(K8S_PROXY_URL_SWITCH)
+               .addSwitch(ALL_SWITCH)
                .addSwitch(FORCE_SWITCH)
                .addSwitch(TIMEOUT_SWITCH)
                .addCommandArgument(COMMAND_ARG);
@@ -284,6 +294,7 @@ public class Main {
                        .setLiqidUsername(getSingleStringValue(result._switchSpecifications.get(LIQID_USERNAME_SWITCH)))
                        .setK8SNodeName(getSingleStringValue(result._switchSpecifications.get(K8S_NODE_NAME_SWITCH)))
                        .setProxyURL(getSingleStringValue(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)))
+                       .setAll(result._switchSpecifications.containsKey(ALL_SWITCH))
                        .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH));
 
             var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
@@ -304,9 +315,9 @@ public class Main {
 
     //  TODO testing
     public static final String[] testArgs = {
-        "auto",
-        "-px", "http://192.168.1.220:8001",
-        "-l",
+//        "auto",
+//        "-px", "http://192.168.1.220:8001",
+//        "-l",
 
 //        "nodes",
 //        "-px", "http://192.168.1.220:8001",
@@ -336,10 +347,11 @@ public class Main {
 //        "-n", "kub4",
 //        "-l",
 
-//        "resources",
-//        "-px", "http://192.168.1.220:8001",
-//        "-f",
-//        "-l",
+        "resources",
+        "-px", "http://192.168.1.220:8001",
+        "-f",
+        "-a",
+        "-l",
 
 //        "snoopy",
 //        "-l",

@@ -40,7 +40,8 @@ class AutoCommand extends Command {
              ConfigurationDataException,
              K8SHTTPError,
              K8SJSONError,
-             K8SRequestError {
+             K8SRequestError,
+             LiqidException {
         var fn = AUTO.getToken() + ":process";
         _logger.trace("Entering %s", fn);
 
@@ -58,6 +59,8 @@ class AutoCommand extends Command {
             _logger.trace("Exiting %s false", fn);
             return false;
         }
+
+        getLiqidInventory();
 
         if (!checkForExistingAnnotations(AUTO.getToken())) {
             _logger.trace("Exiting %s false", fn);
