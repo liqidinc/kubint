@@ -16,13 +16,19 @@ import com.bearsnake.klog.StdOutWriter;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.sdk.DeviceInfo;
+import com.liqid.sdk.DeviceStatus;
 import com.liqid.sdk.LiqidClient;
 import com.liqid.sdk.LiqidClientBuilder;
 import com.liqid.sdk.LiqidException;
+import com.liqid.sdk.Machine;
+import com.liqid.sdk.ManagedEntity;
 
 import java.io.IOException;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
@@ -53,6 +59,13 @@ public abstract class Command {
 
     protected K8SClient _k8sClient;
     protected LiqidClient _liqidClient;
+
+    protected Map<Integer, DeviceInfo> _deviceInfoById = new HashMap<>();
+    protected Map<String, DeviceInfo> _deviceInfoByName = new HashMap<>();
+    protected Map<Integer, DeviceStatus> _deviceStatusById = new HashMap<>();
+    protected Map<String, DeviceStatus> _deviceStatusByName = new HashMap<>();
+    protected Map<Integer, Machine> _machinesById = new HashMap<>();
+    protected Map<String, ManagedEntity> _managedEntitiesByCompositeIds = new HashMap<>();
 
     protected Command(
         final Logger logger,
@@ -89,6 +102,47 @@ public abstract class Command {
              K8SJSONError,
              K8SRequestError,
              LiqidException;
+
+    /**
+     * Loads the resource maps so we can do some auto-analysis
+     * @throws LiqidException if we cannot communicate with the Liqid Cluster
+     */
+    protected void getLiqidInventory() throws LiqidException {
+        var devInfos = new LinkedList<DeviceInfo>();
+        devInfos.addAll(_liqidClient.getComputeDeviceInfo());
+        devInfos.addAll(_liqidClient.getFPGADeviceInfo());
+        devInfos.addAll(_liqidClient.getGPUDeviceInfo());
+        devInfos.addAll(_liqidClient.getMemoryDeviceInfo());
+        devInfos.addAll(_liqidClient.getNetworkDeviceInfo());
+        devInfos.addAll(_liqidClient.getStorageDeviceInfo());
+
+        _deviceInfoById.clear();
+        _deviceInfoByName.clear();
+        _deviceStatusById.clear();
+        _deviceStatusByName.clear();
+        _machinesById.clear();
+        _managedEntitiesByCompositeIds.clear();
+
+        for (var di : devInfos) {
+            _deviceInfoById.put(di.getDeviceIdentifier(), di);
+            _deviceInfoByName.put(di.getName(), di);
+        }
+
+        var devStats = _liqidClient.getAllDevicesStatus();
+        for (var ds : devStats) {
+            _deviceStatusById.put(ds.getDeviceId(), ds);
+            _deviceStatusByName.put(ds.getName(), ds);
+        }
+
+        var machines = _liqidClient.getMachines();
+        machines.forEach(mach -> _machinesById.put(mach.getMachineId(), mach));
+
+        var mes = _liqidClient.getManagedEntities();
+        for (var me : mes) {
+            var key = me.getPCIVendorId() + ":" + me.getPCIDeviceId();
+            _managedEntitiesByCompositeIds.put(key, me);
+        }
+    }
 
     /**
      * Removes all liqid-related annotations from a particular node.

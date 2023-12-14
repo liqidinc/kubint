@@ -12,6 +12,7 @@ import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
+import com.liqid.sdk.LiqidException;
 
 import static com.liqid.k8s.annotate.CommandType.AUTO;
 
@@ -24,6 +25,13 @@ class AutoCommand extends Command {
         final Integer timeoutInSeconds
     ) {
         super(logger, proxyURL, force, timeoutInSeconds);
+    }
+
+    private void checkComputeNodeDescriptions() throws LiqidException {
+        var devInfos = _liqidClient.getComputeDeviceInfo();
+        for (var di : devInfos) {
+            var devStat = _liqidClient.getComputeDeviceStatus(di.getDeviceIdentifier());
+        }
     }
 
     @Override
