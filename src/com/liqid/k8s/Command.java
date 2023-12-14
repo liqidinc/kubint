@@ -18,6 +18,7 @@ import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.sdk.DeviceInfo;
 import com.liqid.sdk.DeviceStatus;
+import com.liqid.sdk.DeviceType;
 import com.liqid.sdk.Group;
 import com.liqid.sdk.LiqidClient;
 import com.liqid.sdk.LiqidClientBuilder;
@@ -76,11 +77,34 @@ public abstract class Command {
         }
     }
 
+    protected static enum GeneralType {
+        FPGA,
+        GPU,
+        LINK,
+        MEMORY,
+        SSD,
+    }
+
+    // The following map is necessary because we want to effectively treat all LINK devices the same...
+    // Well, not really, but really. We're not so much advocating treating fibre-channel HBAs the same as
+    // ethernet HBAs, although that will be the practical outcome.  We just don't want to have to have to deal with
+    // all the various sub-types of resources separately, nor do we wish to subject our users to that.
+    // It's very unlikely we will run into configurations with different types of links, and if we do we can
+    // let the user play games with vendors and models to sort things out.
+    protected static final Map<DeviceType, GeneralType> TYPE_CONVERSION_MAP = new HashMap<>();
+    static {
+        TYPE_CONVERSION_MAP.put(DeviceType.FPGA, GeneralType.FPGA);
+        TYPE_CONVERSION_MAP.put(DeviceType.GPU, GeneralType.GPU);
+        TYPE_CONVERSION_MAP.put(DeviceType.ETHERNET_LINK, GeneralType.LINK);
+        TYPE_CONVERSION_MAP.put(DeviceType.FIBER_CHANNEL_LINK, GeneralType.LINK);
+        TYPE_CONVERSION_MAP.put(DeviceType.INFINIBAND_LINK, GeneralType.LINK);
+        TYPE_CONVERSION_MAP.put(DeviceType.MEMORY, GeneralType.MEMORY);
+        TYPE_CONVERSION_MAP.put(DeviceType.SSD, GeneralType.SSD);
+    }
+
     protected Map<Integer, DeviceInfo> _deviceInfoById = new HashMap<>();
     protected Map<String, DeviceInfo> _deviceInfoByName = new HashMap<>();
     protected Map<Integer, DeviceRelation> _deviceRelationsByDeviceId = new HashMap<>();
-    protected Map<Integer, DeviceRelation> _deviceRelationsByGroupId = new HashMap<>();
-    protected Map<Integer, DeviceRelation> _deviceRelationsByMachineId = new HashMap<>();
     protected Map<Integer, LinkedList<DeviceStatus>> _deviceStatusByGroupId = new HashMap<>();
     protected Map<Integer, DeviceStatus> _deviceStatusById = new HashMap<>();
     protected Map<Integer, LinkedList<DeviceStatus>> _deviceStatusByMachineId = new HashMap<>();
@@ -171,11 +195,9 @@ public abstract class Command {
                 _deviceStatusByGroupId.get(group.getGroupId()).add(devStat);
                 var devRel = new DeviceRelation(devStat.getDeviceId(), preDev.getGroupId(), preDev.getMachineId());
                 _deviceRelationsByDeviceId.put(devRel._deviceId, devRel);
-                _deviceRelationsByGroupId.put(devRel._groupId, devRel);
 
                 if (devRel._machineId != null) {
                     _deviceStatusByMachineId.get(devRel._machineId).add(devStat);
-                    _deviceRelationsByMachineId.put(devRel._machineId, devRel);
                 }
             }
         }
@@ -257,7 +279,7 @@ public abstract class Command {
                 System.err.printf("%s:%s command will not be performed unless forced.\n", prefix2, command);
                 result = false;
             } else {
-                System.err.println("%s:The nodes will be un-annotated.");
+                System.err.printf("%s:The nodes will be un-annotated.\n", prefix2);
                 for (var node : workersWithAnnotations) {
                     removeAnnotationsFromNode(node.getName());
                 }
