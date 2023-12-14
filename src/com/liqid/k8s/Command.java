@@ -25,7 +25,7 @@ import java.util.Base64;
 import java.util.LinkedList;
 import java.util.stream.Collectors;
 
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_KEYS;
+import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 import static com.liqid.k8s.Constants.K8S_CONFIG_MAP_GROUP_NAME_KEY;
 import static com.liqid.k8s.Constants.K8S_CONFIG_MAP_IP_ADDRESS_KEY;
 import static com.liqid.k8s.Constants.K8S_CONFIG_NAME;
@@ -91,6 +91,34 @@ public abstract class Command {
              LiqidException;
 
     /**
+     * Removes all liqid-related annotations from a particular node.
+     * @param nodeName name of the worker node
+     * @return true if we removed any annotations, else false
+     */
+    protected boolean removeAnnotationsFromNode(
+        final String nodeName
+    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
+        var fn = "removeAnnotationsFromNode";
+        _logger.trace("Entering %s", fn);
+
+        var annotations = _k8sClient.getAnnotationsForNode(nodeName);
+        var changed = false;
+        for (java.util.Map.Entry<String, String> entry : annotations.entrySet()) {
+            if (entry.getKey().startsWith(K8S_ANNOTATION_PREFIX)) {
+                annotations.put(entry.getKey(), null);
+                changed = true;
+            }
+        }
+        if (changed) {
+            System.out.println("Removing annotations for worker '" + nodeName + "'...");
+            _k8sClient.updateAnnotationsForNode(nodeName, annotations);
+        }
+
+        _logger.trace("Exiting %s with %s", fn, changed);
+        return changed;
+    }
+
+    /**
      * This is invoked in situations where such annotations should not exist.
      * We checks all the worker nodes in the k8s cluster to see if any of them have any liqid-related annotations.
      * If any annotations exist, we do the following:
@@ -117,8 +145,8 @@ public abstract class Command {
         var nodeEntities = _k8sClient.getNodes();
         for (var node : nodeEntities) {
             var annos = _k8sClient.getAnnotationsForNode(node.getName());
-            for (var key : K8S_ANNOTATION_KEYS) {
-                if (annos.containsKey(key)) {
+            for (var key : annos.keySet()) {
+                if (key.startsWith(K8S_ANNOTATION_PREFIX)) {
                     workersWithAnnotations.add(node);
                     break;
                 }
@@ -138,10 +166,7 @@ public abstract class Command {
             } else {
                 System.err.println("%s:The nodes will be un-annotated.");
                 for (var node : workersWithAnnotations) {
-                    for (var key : K8S_ANNOTATION_KEYS) {
-                        node.metadata.annotations.remove(key);
-                    }
-                    _k8sClient.updateAnnotationsForNode(node.getName(), node.metadata.annotations);
+                    removeAnnotationsFromNode(node.getName());
                 }
             }
         }

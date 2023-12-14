@@ -304,9 +304,9 @@ public class Main {
 
     //  TODO testing
     public static final String[] testArgs = {
-//        "auto",
-//        "-px", "http://192.168.1.220:8001",
-//        "-l",
+        "auto",
+        "-px", "http://192.168.1.220:8001",
+        "-l",
 
 //        "nodes",
 //        "-px", "http://192.168.1.220:8001",
@@ -331,10 +331,10 @@ public class Main {
 //        "-n", "kub4",
 //        "-l",
 
-        "unlabel",
-        "-px", "http://192.168.1.220:8001",
-        "-n", "kub4",
-        "-l",
+//        "unlabel",
+//        "-px", "http://192.168.1.220:8001",
+//        "-n", "kub4",
+//        "-l",
 
 //        "resources",
 //        "-px", "http://192.168.1.220:8001",
