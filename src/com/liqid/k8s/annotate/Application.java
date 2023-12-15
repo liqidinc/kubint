@@ -40,7 +40,6 @@ public class Application {
 
     private boolean _all = false;
     private boolean _force = false;
-    private boolean _fromDescription = false;
     private Logger _logger;
     private boolean _noUpdate = false;
     private String _proxyURL;
@@ -54,7 +53,6 @@ public class Application {
     Application setLiqidPassword(final String value) { _liqidPassword = value; return this; }
     Application setLiqidUsername(final String value) { _liqidUsername = value; return this; }
     Application setForce(final boolean value) { _force = value; return this; }
-    Application setFromDescription(final boolean value) { _fromDescription = value; return this; }
     Application setLogging(final boolean flag) { _logging = flag; return this; }
     Application setNoUpdate(final boolean flag) { _noUpdate = flag; return this; }
     Application setK8SNodeName(final String value) { _k8sNodeName = value; return this; }
@@ -90,7 +88,6 @@ public class Application {
             result = switch (_commandType) {
                 case AUTO ->
                     new AutoCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
-                        .setFromDescription(_fromDescription)
                         .setNoUpdate(_noUpdate)
                         .process();
                 case LABEL ->

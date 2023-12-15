@@ -34,7 +34,6 @@ import static com.liqid.k8s.annotate.CommandType.AUTO;
 
 class AutoCommand extends Command {
 
-    private Boolean _fromDescription = false;
     private Boolean _noUpdate = false;
 
     private static final Map<GeneralType, String> ANNOTATION_KEY_FOR_DEVICE_TYPE = new HashMap<>();
@@ -55,7 +54,6 @@ class AutoCommand extends Command {
         super(logger, proxyURL, force, timeoutInSeconds);
     }
 
-    AutoCommand setFromDescription(final Boolean value) { _fromDescription = value; return this; }
     AutoCommand setNoUpdate(final Boolean value) { _noUpdate = value; return this; }
 
     private boolean annotateAllocationsEqually(
@@ -101,19 +99,6 @@ class AutoCommand extends Command {
                 }
             }
         }
-
-        _logger.trace("Exiting %s true", fn);
-        return true;
-    }
-
-    private boolean annotateAllocationsFromDescription(
-        final Group group,
-        final HashMap<Node, HashMap<String, String>> annotations
-    ) {
-        var fn = "annotateAllocationsFromDescription";
-        _logger.trace("Entering %s with group=%s annotations=%s", fn, group, annotations);
-
-        //TODO
 
         _logger.trace("Exiting %s true", fn);
         return true;
@@ -198,7 +183,7 @@ class AutoCommand extends Command {
             var di = _deviceInfoById.get(ds.getDeviceId());
             if (ds.getDeviceType() == DeviceType.COMPUTE) {
                 var workerName = di.getUserDescription();
-                if (workerName.equals("n/a")) {
+                if (workerName.isEmpty() || workerName.equals("n/a")) {
                     System.err.printf("%s:CPU Resource '%s' has no description\n", errPrefix, ds.getName());
                     if (!_force) {
                         errors = true;
@@ -244,10 +229,7 @@ class AutoCommand extends Command {
         }
 
         // Decide how to allocate resources
-        var ok = _fromDescription
-            ? annotateAllocationsFromDescription(group, annotations)
-            : annotateAllocationsEqually(group, annotations);
-        if (!ok) {
+        if (!annotateAllocationsEqually(group, annotations)) {
             System.err.println("Errors prevent further processing.");
             _logger.trace("Exiting %s false", fn);
             return false;

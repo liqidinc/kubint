@@ -26,7 +26,6 @@ public class Main {
     /*
     annotate auto
         -px,--proxy-url={proxy_url}
-        -fd,--from-descriptions (reads worker node name from device user descriptions and labels accordingly)
         -no,--no-update
         -f,--force
 
@@ -74,7 +73,6 @@ public class Main {
 
     private static final Switch ALL_SWITCH;
     private static final Switch FORCE_SWITCH;
-    private static final Switch FROM_DESCRIPTION_SWITCH;
     private static final Switch K8S_NODE_NAME_SWITCH;
     private static final Switch K8S_PROXY_URL_SWITCH;
     private static final Switch LIQID_ADDRESS_SWITCH;
@@ -186,14 +184,6 @@ public class Main {
                                           .addDescription("Forces command to be executed in spite of certain (not all) detected problems.")
                                           .addDescription("In these cases, the detected problems are flagged as warnings rather than errors.")
                                           .build();
-            FROM_DESCRIPTION_SWITCH =
-                new SimpleSwitch.Builder().setShortName("fd")
-                                          .setLongName("from-description")
-                                          .addAffinity(CV_AUTO)
-                                          .addDescription("Directs the " + AUTO.getToken() + " command to use Liqid resource device descriptions")
-                                          .addDescription("to determine how to allocate resources among the worker nodes.")
-                                          .addDescription("If not specified, devices are allocated as equally as possible.")
-                                          .build();
             NO_UPDATE_SWITCH =
                 new SimpleSwitch.Builder().setShortName("no")
                                           .setLongName("no-update")
@@ -284,7 +274,6 @@ public class Main {
                .addSwitch(K8S_PROXY_URL_SWITCH)
                .addSwitch(ALL_SWITCH)
                .addSwitch(FORCE_SWITCH)
-               .addSwitch(FROM_DESCRIPTION_SWITCH)
                .addSwitch(NO_UPDATE_SWITCH)
                .addSwitch(TIMEOUT_SWITCH)
                .addMutualExclusion(NO_UPDATE_SWITCH, FORCE_SWITCH)
@@ -317,8 +306,7 @@ public class Main {
                        .setProxyURL(getSingleStringValue(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)))
                        .setAll(result._switchSpecifications.containsKey(ALL_SWITCH))
                        .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH))
-                       .setNoUpdate(result._switchSpecifications.containsKey(NO_UPDATE_SWITCH))
-                       .setFromDescription(result._switchSpecifications.containsKey(FROM_DESCRIPTION_SWITCH));
+                       .setNoUpdate(result._switchSpecifications.containsKey(NO_UPDATE_SWITCH));
 
             var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
             if ((values != null) && !values.isEmpty()) {
