@@ -20,6 +20,7 @@ import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.sdk.LiqidException;
 
 import java.io.IOException;
+import java.util.Collection;
 
 public class Application {
 
@@ -34,8 +35,16 @@ public class Application {
 
     private String _liqidAddress;
     private String _liqidGroupName;
+    private String _liqidMachineName;
     private String _liqidPassword;
     private String _liqidUsername;
+
+    private Collection<String> _liqidFPGASpecs;
+    private Collection<String> _liqidGPUSpecs;
+    private Collection<String> _liqidLinkSpecs;
+    private Collection<String> _liqidMemorySpecs;
+    private Collection<String> _liqidSSDSpecs;
+
     private String _k8sNodeName;
 
     private boolean _all = false;
@@ -49,8 +58,14 @@ public class Application {
     Application setAll(final boolean flag) { _all = flag; return this; }
     Application setCommandType(final CommandType value) { _commandType = value; return this; }
     Application setLiqidAddress(final String value) { _liqidAddress = value; return this; }
+    Application setLiqidFPGASpecifications(final Collection<String> list) { _liqidFPGASpecs = list; return this; }
+    Application setLiqidGPUSpecifications(final Collection<String> list) { _liqidGPUSpecs = list; return this; }
     Application setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
+    Application setLiqidLinkSpecifications(final Collection<String> list) { _liqidLinkSpecs = list; return this; }
+    Application setLiqidMachineName(final String value) { _liqidMachineName = value; return this; }
+    Application setLiqidMemorySpecifications(final Collection<String> list) { _liqidMemorySpecs = list; return this; }
     Application setLiqidPassword(final String value) { _liqidPassword = value; return this; }
+    Application setLiqidSSDSpecifications(final Collection<String> list) { _liqidSSDSpecs = list; return this; }
     Application setLiqidUsername(final String value) { _liqidUsername = value; return this; }
     Application setForce(final boolean value) { _force = value; return this; }
     Application setLogging(final boolean flag) { _logging = flag; return this; }
@@ -91,7 +106,16 @@ public class Application {
                         .setNoUpdate(_noUpdate)
                         .process();
                 case LABEL ->
-                    new LabelCommand(_logger, _proxyURL, _force, _timeoutInSeconds).process();
+                    new LabelCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+                        .setFPGASpecifications(_liqidFPGASpecs)
+                        .setGPUSpecifications(_liqidGPUSpecs)
+                        .setLinkSpecifications(_liqidLinkSpecs)
+                        .setMachineName(_liqidMachineName)
+                        .setMemorySpecifications(_liqidMemorySpecs)
+                        .setNodeName(_k8sNodeName)
+                        .setNoUpdate(_noUpdate)
+                        .setSSDSpecifications(_liqidSSDSpecs)
+                        .process();
                 case LINK ->
                     new LinkCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
                         .setLiqidAddress(_liqidAddress)

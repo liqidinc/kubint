@@ -10,7 +10,10 @@ import com.bearsnake.komando.exceptions.*;
 import com.bearsnake.komando.values.*;
 import com.liqid.k8s.Constants;
 
+import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.liqid.k8s.annotate.Application.LOG_FILE_NAME;
 import static com.liqid.k8s.annotate.CommandType.AUTO;
@@ -45,11 +48,11 @@ public class Main {
         -px,--proxy-url={proxy_url}
         -n,--worker-node={worker_node_name}
         -m,--liqid-machine={liqid_machine}
-        [ -fc,--fpga-count={number}[,{model}] ]
-        [ -gc,--gpu-count={number}[,{model}] ]
-        [ -lc,--link-count={number}[,{model}] ]
-        [ -mc,--mem-count={number}[,{model}] ]
-        [ -sc,--ssd-count={number}[,{model}] ]
+        [ -fs,--fpga-spec={spec}[,...] ]
+        [ -gs,--gpu-spec={spec}[,...] ]
+        [ -ls,--link-spec={spec}[,...] ]
+        [ -ms,--mem-spec={spec}[,...] ]
+        [ -ss,--ssd-spec={spec}[,...] ]
         -f,--force
 
     annotate unlabel
@@ -79,6 +82,11 @@ public class Main {
     private static final Switch LIQID_GROUP_SWITCH;
     private static final Switch LIQID_MACHINE_SWITCH;
     private static final Switch LIQID_PASSWORD_SWITCH;
+    private static final Switch LIQID_RESOURCE_FPGA_SWITCH;
+    private static final Switch LIQID_RESOURCE_GPU_SWITCH;
+    private static final Switch LIQID_RESOURCE_LINK_SWITCH;
+    private static final Switch LIQID_RESOURCE_MEM_SWITCH;
+    private static final Switch LIQID_RESOURCE_SSD_SWITCH;
     private static final Switch LIQID_USERNAME_SWITCH;
     private static final Switch LOGGING_SWITCH;
     private static final Switch NO_UPDATE_SWITCH;
@@ -128,7 +136,7 @@ public class Main {
                                             .addDescription("must be a part of this group.")
                                             .build();
             LIQID_MACHINE_SWITCH =
-                new ArgumentSwitch.Builder().setShortName("g")
+                new ArgumentSwitch.Builder().setShortName("m")
                                             .setLongName("liqid-machine")
                                             .setIsRequired(true)
                                             .addAffinity(CV_LABEL)
@@ -146,6 +154,71 @@ public class Main {
                                             .setValueName("password")
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the password credential for the Liqid Directory.")
+                                            .build();
+            LIQID_RESOURCE_FPGA_SWITCH =
+                new ArgumentSwitch.Builder().setShortName("fs")
+                                            .setLongName("fpga-spec")
+                                            .setIsRequired(false)
+                                            .setIsMultiple(true)
+                                            .addAffinity(CV_LABEL)
+                                            .setValueName("specification")
+                                            .setValueType(ValueType.STRING)
+                                            .addDescription("Specifies how many resources of this type should be assigned to the indicated worker node.")
+                                            .addDescription("If there is no need to specify a particular vendor and model, the specification is simply an integer.")
+                                            .addDescription("However, if the Liqid Cluster has multiple vendors or models of a particular resource type,")
+                                            .addDescription("it is better to be specific regarding *which* models of that resource type are to be assigned")
+                                            .addDescription("to the worker node. In this case, the specification format is:")
+                                            .addDescription("  {vendor-name}:{model}:{count}")
+                                            .addDescription("The vendor-name and model must exactly match what is reported by the " + RESOURCES.getToken() + " command.")
+                                            .addDescription("If more than one specification is provided, the resources are additive. That is, one may enter")
+                                            .addDescription("  -fs=acme:ft1000:2,acme:ft2000:1,5")
+                                            .addDescription("which assigned 2 model ft1000 FPGA, 1 model ft2000 FPGA, and 5 other FPGAs of any model.")
+                                            .addDescription("If not specified, no change is made to the relevant annotation.")
+                                            .addDescription("To clear this value, enter '0' for the specification.")
+                                            .build();
+            LIQID_RESOURCE_GPU_SWITCH =
+                new ArgumentSwitch.Builder().setShortName("gs")
+                                            .setLongName("gpu-spec")
+                                            .setIsRequired(false)
+                                            .setIsMultiple(true)
+                                            .addAffinity(CV_LABEL)
+                                            .setValueName("specification")
+                                            .setValueType(ValueType.STRING)
+                                            .addDescription("Specifies how many resources of this type should be assigned to the indicated worker node.")
+                                            .addDescription("(see the documentation for the -fs,--fpga-spec switch.")
+                                            .build();
+            LIQID_RESOURCE_LINK_SWITCH =
+                new ArgumentSwitch.Builder().setShortName("ls")
+                                            .setLongName("link-spec")
+                                            .setIsRequired(false)
+                                            .setIsMultiple(true)
+                                            .addAffinity(CV_LABEL)
+                                            .setValueName("specification")
+                                            .setValueType(ValueType.STRING)
+                                            .addDescription("Specifies how many resources of this type should be assigned to the indicated worker node.")
+                                            .addDescription("(see the documentation for the -fs,--fpga-spec switch.")
+                                            .build();
+            LIQID_RESOURCE_MEM_SWITCH =
+                new ArgumentSwitch.Builder().setShortName("ms")
+                                            .setLongName("memory-spec")
+                                            .setIsRequired(false)
+                                            .setIsMultiple(true)
+                                            .addAffinity(CV_LABEL)
+                                            .setValueName("specification")
+                                            .setValueType(ValueType.STRING)
+                                            .addDescription("Specifies how many resources of this type should be assigned to the indicated worker node.")
+                                            .addDescription("(see the documentation for the -fs,--fpga-spec switch.")
+                                            .build();
+            LIQID_RESOURCE_SSD_SWITCH =
+                new ArgumentSwitch.Builder().setShortName("ss")
+                                            .setLongName("ssd-spec")
+                                            .setIsRequired(false)
+                                            .setIsMultiple(true)
+                                            .addAffinity(CV_LABEL)
+                                            .setValueName("specification")
+                                            .setValueType(ValueType.STRING)
+                                            .addDescription("Specifies how many resources of this type should be assigned to the indicated worker node.")
+                                            .addDescription("(see the documentation for the -fs,--fpga-spec switch.")
                                             .build();
             LIQID_USERNAME_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("u")
@@ -187,7 +260,7 @@ public class Main {
             NO_UPDATE_SWITCH =
                 new SimpleSwitch.Builder().setShortName("no")
                                           .setLongName("no-update")
-                                          .addAffinity(CV_AUTO)
+                                          .addAffinity(CV_AUTO).addAffinity(CV_LABEL)
                                           .addDescription("Indicates that no action should be taken; however, the script will display what action")
                                           .addDescription("/would/ be taken in the absence of this switch.")
                                           .build();
@@ -243,7 +316,9 @@ public class Main {
     // helper functions
     // ------------------------------------------------------------------------
 
-    private static String getSingleStringValue(
+    // Takes the *first* Value object which caller promises is a StringValue, and returns the extracted String.
+    // If the value is not a StringValue, we return null.
+    private static String getSingleString(
         final List<Value> valueList
     ) {
         String result = null;
@@ -251,6 +326,23 @@ public class Main {
             result = ((StringValue)valueList.get(0)).getValue();
         }
         return result;
+    }
+
+    // Presuming we have a collection of StringValue entities (but presented as String entities)
+    // we convert that to a collection of String values extracted from the StringValue entities.
+    // Any value which is not a string value is ignored.
+    private static Collection<String> getStringCollection(
+        final List<Value> valueList
+    ) {
+        LinkedList<String> strings = null;
+        if (valueList != null) {
+            strings = valueList.stream()
+                               .filter(v -> v instanceof StringValue)
+                               .map(v -> (StringValue) v)
+                               .map(StringValue::getValue)
+                               .collect(Collectors.toCollection(LinkedList::new));
+        }
+        return strings;
     }
 
     /**
@@ -270,6 +362,11 @@ public class Main {
                .addSwitch(LIQID_MACHINE_SWITCH)
                .addSwitch(LIQID_USERNAME_SWITCH)
                .addSwitch(LIQID_PASSWORD_SWITCH)
+               .addSwitch(LIQID_RESOURCE_FPGA_SWITCH)
+               .addSwitch(LIQID_RESOURCE_GPU_SWITCH)
+               .addSwitch(LIQID_RESOURCE_LINK_SWITCH)
+               .addSwitch(LIQID_RESOURCE_MEM_SWITCH)
+               .addSwitch(LIQID_RESOURCE_SSD_SWITCH)
                .addSwitch(LOGGING_SWITCH)
                .addSwitch(K8S_PROXY_URL_SWITCH)
                .addSwitch(ALL_SWITCH)
@@ -298,17 +395,23 @@ public class Main {
 
             application.setLogging(result._switchSpecifications.containsKey(LOGGING_SWITCH))
                        .setCommandType(CommandType.get(result._commandValue.getValue()))
-                       .setLiqidAddress(getSingleStringValue(result._switchSpecifications.get(LIQID_ADDRESS_SWITCH)))
-                       .setLiqidGroupName(getSingleStringValue(result._switchSpecifications.get(LIQID_GROUP_SWITCH)))
-                       .setLiqidPassword(getSingleStringValue(result._switchSpecifications.get(LIQID_PASSWORD_SWITCH)))
-                       .setLiqidUsername(getSingleStringValue(result._switchSpecifications.get(LIQID_USERNAME_SWITCH)))
-                       .setK8SNodeName(getSingleStringValue(result._switchSpecifications.get(K8S_NODE_NAME_SWITCH)))
-                       .setProxyURL(getSingleStringValue(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)))
+                       .setLiqidAddress(getSingleString(result._switchSpecifications.get(LIQID_ADDRESS_SWITCH)))
+                       .setLiqidFPGASpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_FPGA_SWITCH)))
+                       .setLiqidGPUSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_GPU_SWITCH)))
+                       .setLiqidGroupName(getSingleString(result._switchSpecifications.get(LIQID_GROUP_SWITCH)))
+                       .setLiqidLinkSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_LINK_SWITCH)))
+                       .setLiqidMachineName(getSingleString(result._switchSpecifications.get(LIQID_MACHINE_SWITCH)))
+                       .setLiqidMemorySpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_MEM_SWITCH)))
+                       .setLiqidPassword(getSingleString(result._switchSpecifications.get(LIQID_PASSWORD_SWITCH)))
+                       .setLiqidSSDSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_SSD_SWITCH)))
+                       .setLiqidUsername(getSingleString(result._switchSpecifications.get(LIQID_USERNAME_SWITCH)))
+                       .setK8SNodeName(getSingleString(result._switchSpecifications.get(K8S_NODE_NAME_SWITCH)))
+                       .setProxyURL(getSingleString(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)))
                        .setAll(result._switchSpecifications.containsKey(ALL_SWITCH))
                        .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH))
                        .setNoUpdate(result._switchSpecifications.containsKey(NO_UPDATE_SWITCH));
 
-            var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
+           var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
             if ((values != null) && !values.isEmpty()) {
                 application.setTimeoutInSeconds((int) (long) ((FixedPointValue) values.get(0)).getValue());
             }
@@ -324,59 +427,12 @@ public class Main {
     // program entry point
     // ------------------------------------------------------------------------
 
-    //  TODO testing
-    public static final String[] testArgs = {
-        "auto",
-        "-px", "http://192.168.1.220:8001",
-//        "-no",
-        "-f",
-        "-l",
-
-//        "nodes",
-//        "-px", "http://192.168.1.220:8001",
-//        "-l",
-
-//        "link",
-//        "-px", "http://192.168.1.220:8001",
-//        "-ip", "10.10.14.236",
-//        "--liqid-username", "jose",
-//        "--liqid-password", "jose",
-//        "-g", "k8s_group",
-//        "--force",
-//        "-l",
-
-//        "unlink",
-//        "-px", "http://192.168.1.220:8001",
-//        "-l",
-
-//        "label",
-//        "-px", "http://192.168.1.220:8001",
-//        "-m", "Worker-Kub4",
-//        "-n", "kub4",
-//        "-l",
-
-//        "unlabel",
-//        "-px", "http://192.168.1.220:8001",
-//        "-n", "kub4",
-//        "-l",
-
-//        "resources",
-//        "-px", "http://192.168.1.220:8001",
-//        "-f",
-//        "-a",
-//        "-l",
-
-//        "snoopy",
-//        "-l",
-    };
-
-    //  TODO end testing
     public static void main(
         final String[] args
     ) {
         try {
             var app = new Application();
-            if (configureApplication(app, testArgs)) {
+            if (configureApplication(app, args)) {
                 app.process();
             }
         } catch (Throwable t) {

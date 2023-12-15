@@ -32,7 +32,12 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.liqid.k8s.Constants.K8S_ANNOTATION_FPGA_ENTRY;
+import static com.liqid.k8s.Constants.K8S_ANNOTATION_GPU_ENTRY;
+import static com.liqid.k8s.Constants.K8S_ANNOTATION_LINK_ENTRY;
+import static com.liqid.k8s.Constants.K8S_ANNOTATION_MEMORY_ENTRY;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
+import static com.liqid.k8s.Constants.K8S_ANNOTATION_SSD_ENTRY;
 import static com.liqid.k8s.Constants.K8S_CONFIG_MAP_GROUP_NAME_KEY;
 import static com.liqid.k8s.Constants.K8S_CONFIG_MAP_IP_ADDRESS_KEY;
 import static com.liqid.k8s.Constants.K8S_CONFIG_NAME;
@@ -47,6 +52,15 @@ import static com.liqid.k8s.annotate.Application.LOGGER_NAME;
  * Abstract class for all command handlers
  */
 public abstract class Command {
+
+    protected static final Map<GeneralType, String> ANNOTATION_KEY_FOR_DEVICE_TYPE = new HashMap<>();
+    static {
+        ANNOTATION_KEY_FOR_DEVICE_TYPE.put(GeneralType.FPGA, K8S_ANNOTATION_FPGA_ENTRY);
+        ANNOTATION_KEY_FOR_DEVICE_TYPE.put(GeneralType.GPU, K8S_ANNOTATION_GPU_ENTRY);
+        ANNOTATION_KEY_FOR_DEVICE_TYPE.put(GeneralType.MEMORY, K8S_ANNOTATION_MEMORY_ENTRY);
+        ANNOTATION_KEY_FOR_DEVICE_TYPE.put(GeneralType.LINK, K8S_ANNOTATION_LINK_ENTRY);
+        ANNOTATION_KEY_FOR_DEVICE_TYPE.put(GeneralType.SSD, K8S_ANNOTATION_SSD_ENTRY);
+    }
 
     protected final Logger _logger;
     protected final String _proxyURL;
@@ -112,6 +126,7 @@ public abstract class Command {
     protected Map<Integer, Group> _groupsById = new HashMap<>();
     protected Map<String, Group> _groupsByName = new HashMap<>();
     protected Map<Integer, Machine> _machinesById = new HashMap<>();
+    protected Map<String, Machine> _machinesByName = new HashMap<>();
 
     protected Command(
         final Logger logger,
@@ -180,6 +195,7 @@ public abstract class Command {
         var machines = _liqidClient.getMachines();
         for (Machine mach : machines) {
             _machinesById.put(mach.getMachineId(), mach);
+            _machinesByName.put(mach.getMachineName(), mach);
             _deviceStatusByMachineId.put(mach.getMachineId(), new LinkedList<>());
         }
 
