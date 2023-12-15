@@ -5,24 +5,61 @@
 
 package com.liqid.k8s.config;
 
+import com.bearsnake.k8sclient.K8SHTTPError;
+import com.bearsnake.k8sclient.K8SJSONError;
+import com.bearsnake.k8sclient.K8SRequestError;
 import com.bearsnake.klog.FileWriter;
 import com.bearsnake.klog.Level;
+import com.bearsnake.klog.LevelMask;
 import com.bearsnake.klog.Logger;
 import com.bearsnake.klog.PrefixEntity;
 import com.bearsnake.klog.StdOutWriter;
-import com.liqid.k8s.exceptions.ScriptException;
+import com.liqid.k8s.exceptions.ConfigurationDataException;
+import com.liqid.k8s.exceptions.ConfigurationException;
+import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.sdk.LiqidException;
 
 import java.io.IOException;
 
 public class Application {
 
-//    public static final String CONFIG_COMMAND = "config";
-//    public static final String EXPAND_COMMAND = "expand";
-//    public static final String UPDATE_COMMAND = "update";
-//    public static final String[] COMMAND_LIST = {CONFIG_COMMAND, EXPAND_COMMAND, UPDATE_COMMAND};
+    public static final String LOGGER_NAME = "Annotate";
+    public static final String LOG_FILE_NAME = "liq-annotation.log";
 
-    public static final String LOGGER_NAME = "K8sConfig";
-    public static final String LOG_FILE_NAME = "liqid_k8s_config.log";
+    // If _logging is true, we do extensive logging to a log file. If false, only errors to stdout.
+    private boolean _logging = false;
+
+    private CommandType _commandType;
+    private int _timeoutInSeconds = 300;
+
+    private Logger _logger;
+    private String _proxyURL;
+
+    public Application() {}
+
+    Application setCommandType(final CommandType value) { _commandType = value; return this; }
+    Application setLogging(final boolean flag) { _logging = flag; return this; }
+    Application setProxyURL(final String value) { _proxyURL = value; return this; }
+    Application setTimeoutInSeconds(final int value) { _timeoutInSeconds = value; return this; }
+
+    private void initLogging() throws InternalErrorException {
+        try {
+            var level = _logging ? Level.TRACE : Level.ERROR;
+            _logger = new Logger(LOGGER_NAME);
+            _logger.setLevel(level);
+
+            _logger.addWriter(new StdOutWriter(Level.ERROR));
+            if (_logging) {
+                var fw = new FileWriter(new LevelMask(level), LOG_FILE_NAME, false);
+                fw.addPrefixEntity(PrefixEntity.SOURCE_CLASS);
+                fw.addPrefixEntity(PrefixEntity.SOURCE_METHOD);
+                fw.addPrefixEntity(PrefixEntity.SOURCE_LINE_NUMBER);
+                _logger.addWriter(fw);
+            }
+        } catch (IOException ex) {
+            throw new InternalErrorException(ex.toString());
+        }
+    }
 
     // additional context for doUpdate
 //    private class ContextForUpdate {
@@ -51,33 +88,37 @@ public class Application {
 //        }
 //    }
 //
-//    private boolean _clearContext = false;
-//    private String _command;
-//    private String _directorAddress;
-//    private String _directorPassword;
-//    private String _directorUsername;
-
-    // If _logging is true, we do extensive logging to a log file. If false, only errors to stdout.
-    private boolean _logging = false;
-
-//    private String _proxyURL;
-//    private boolean _showMode = false;
-//    private int _timeoutInSeconds = 300;
-//
-//    private K8SClient _k8sClient;
-//    private LiqidClient _liqidClient;
-    private Logger _logger;
 //    private final ContextForUpdate _ContextForUpdate = new ContextForUpdate();
 
-//    public Application setClearContext(final boolean flag) { _clearContext = flag; return this; }
-//    public Application setCommand(final String value) { _command = value; return this; }
-//    public Application setDirectorAddress(final String value) { _directorAddress = value; return this; }
-//    public Application setDirectorPassword(final String value) { _directorPassword = value; return this; }
-//    public Application setDirectorUsername(final String value) { _directorUsername = value; return this; }
-    public Application setLogging(final boolean flag) { _logging = flag; return this; }
-//    public Application setProxyURL(final String value) { _proxyURL = value; return this; }
-//    public Application setShowMode(final boolean flag) { _showMode = flag; return this; }
-//    public Application setTimeoutInSeconds(final int value) { _timeoutInSeconds = value; return this; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // ------------------------------------------------------------------------
     // helper functions
@@ -836,48 +877,64 @@ public class Application {
 //        _logger.trace(String.format("%s returning", fn));
 //    }
 
-    private void initLogging() throws IOException {
-        var level = _logging ? Level.TRACE : Level.ERROR;
-        _logger = new Logger(LOGGER_NAME);
-        _logger.setLevel(level);
+    void process() {
+        var fn = "process";
+        boolean result = false;
+        try {
+            initLogging();
+            _logger.trace("Entering %s", fn);
 
-        _logger.addWriter(new StdOutWriter(Level.ERROR));
-        if (_logging) {
-            var fw = new FileWriter(level, LOG_FILE_NAME, false);
-            fw.addPrefixEntity(PrefixEntity.SOURCE_CLASS);
-            fw.addPrefixEntity(PrefixEntity.SOURCE_METHOD);
-            fw.addPrefixEntity(PrefixEntity.SOURCE_LINE_NUMBER);
-            _logger.addWriter(fw);
+            result = switch (_commandType) {
+                case CLEANUP ->
+                    new CleanupCommand(_logger, _proxyURL, _timeoutInSeconds).process();
+                case EXECUTE ->
+                    new ExecuteCommand(_logger, _proxyURL, _timeoutInSeconds).process();
+                case PLAN ->
+                    new PlanCommand(_logger, _proxyURL, _timeoutInSeconds).process();
+                case VALIDATE ->
+                    new ValidateCommand(_logger, _proxyURL, _timeoutInSeconds).process();
+            };
+        } catch (ConfigurationDataException ex) {
+            _logger.catching(ex);
+            System.err.println("Configuration Data inconsistency(ies) prevent further processing.");
+            System.err.println("Please collect logging information and contact Liqid Support.");
+        } catch (ConfigurationException ex) {
+            _logger.catching(ex);
+            System.err.println("Configuration inconsistency(ies) prevent further processing.");
+            System.err.println("Please collect logging information and contact Liqid Support.");
+        } catch (InternalErrorException ex) {
+            _logger.catching(ex);
+            System.err.println("An internal error has been detected in the application.");
+            System.err.println("Please collect logging information and contact Liqid Support.");
+        } catch (K8SJSONError ex) {
+            _logger.catching(ex);
+            System.err.println("Something went wrong while parsing JSON data from the Kubernetes cluster.");
+            System.err.println("Please collect logging information and contact Liqid Support.");
+        } catch (K8SHTTPError ex) {
+            _logger.catching(ex);
+            var code = ex.getResponseCode();
+            System.err.printf("Received unexpected %d HTTP response from the Kubernetes API server.\n", code);
+            System.err.println("Please verify that you have provided the correct IP address and port information,");
+            System.err.println("and that the API server (or proxy server) is up and running.");
+        } catch (K8SRequestError ex) {
+            _logger.catching(ex);
+            System.err.println("Could not complete the request to the Kubernetes API server.");
+            System.err.println("Error: " + ex.getMessage());
+            System.err.println("Please verify that you have provided the correct IP address and port information,");
+            System.err.println("and that the API server (or proxy server) is up and running.");
+        } catch (LiqidException ex) {
+            _logger.catching(ex);
+            System.err.println("Could not complete the request due to an error communicating with the Liqid Cluster.");
+            System.err.println("Error: " + ex.getMessage());
+            System.err.println("Please verify that you have provided the correct IP address and port information,");
+            System.err.println("and that the API server (or proxy server) is up and running.");
         }
-    }
 
-    public void process() throws ScriptException {
-//        try {
-//            initLogging();
-//        } catch (IOException ex) {
-//            throw new SetupException("Logging failed:" + ex);
-//        }
-
-        _logger.trace("Entering");
-
-//        try {
-//            switch (_command) {
-//                case CONFIG_COMMAND -> doConfig();
-//                case EXPAND_COMMAND -> doExpand();
-//                case UPDATE_COMMAND -> doUpdate();
-//            }
-//        } catch (K8SException kex) {
-//            _logger.catching(kex);
-//            var t = new ProcessingException(kex);
-//            _logger.throwing(t);
-//            throw t;
-//        } catch (LiqidException lex) {
-//            _logger.catching(lex);
-//            var t = new ProcessingException(lex);
-//            _logger.throwing(t);
-//            throw t;
-//        }
-
-        _logger.trace("Exiting");
+        if (result) {
+            System.out.printf("--- %s command completed successfully ---\n", _commandType.getToken());
+        } else {
+            System.err.printf("--- %s command failed ---\n", _commandType.getToken());
+        }
+        _logger.trace("Exiting %s", fn);
     }
 }
