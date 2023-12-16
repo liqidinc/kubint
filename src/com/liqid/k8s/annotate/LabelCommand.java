@@ -43,47 +43,16 @@ class LabelCommand extends Command {
         super(logger, proxyURL, force, timeoutInSeconds);
     }
 
-    public LabelCommand setFPGASpecifications(final Collection<String> list) {
-        _fpgaSpecs = list;
-        return this;
-    }
+    LabelCommand setFPGASpecifications(final Collection<String> list) { _fpgaSpecs = list; return this; }
+    LabelCommand setGPUSpecifications(final Collection<String> list) { _gpuSpecs = list; return this; }
+    LabelCommand setLinkSpecifications(final Collection<String> list) { _linkSpecs = list; return this; }
+    LabelCommand setMachineName(final String value) { _machineName = value; return this; }
+    LabelCommand setMemorySpecifications(final Collection<String> list) { _memorySpecs = list; return this; }
+    LabelCommand setNodeName(final String value) { _nodeName = value; return this; }
+    LabelCommand setNoUpdate(final Boolean value) { _noUpdate = value; return this; }
+    LabelCommand setSSDSpecifications(final Collection<String> list) { _ssdSpecs = list; return this; }
 
-    public LabelCommand setGPUSpecifications(final Collection<String> list) {
-        _gpuSpecs = list;
-        return this;
-    }
-
-    public LabelCommand setLinkSpecifications(final Collection<String> list) {
-        _linkSpecs = list;
-        return this;
-    }
-
-    public LabelCommand setMachineName(final String value) {
-        _machineName = value;
-        return this;
-    }
-
-    public LabelCommand setMemorySpecifications(final Collection<String> list) {
-        _memorySpecs = list;
-        return this;
-    }
-
-    public LabelCommand setNodeName(final String value) {
-        _nodeName = value;
-        return this;
-    }
-
-    public LabelCommand setNoUpdate(final Boolean value) {
-        _noUpdate = value;
-        return this;
-    }
-
-    public LabelCommand setSSDSpecifications(final Collection<String> list) {
-        _ssdSpecs = list;
-        return this;
-    }
-
-    public boolean liqidHasDevice(
+    private boolean liqidHasDevice(
         final String vendor,
         final String model
     ) {
@@ -92,7 +61,7 @@ class LabelCommand extends Command {
                               .anyMatch(di -> di.getVendor().equals(vendor) && di.getModel().equals(model));
     }
 
-    public boolean liqidHasDevice(
+    private boolean liqidHasDevice(
         final String model
     ) {
         return _deviceInfoById.values()
@@ -100,7 +69,7 @@ class LabelCommand extends Command {
                               .anyMatch(di -> di.getModel().equals(model));
     }
 
-    public boolean processType(
+    private boolean processType(
         final GeneralType genType,
         final Collection<String> specifications,
         final HashMap<String, String> annotations

@@ -29,7 +29,7 @@ class ResourcesCommand extends Command {
         super(logger, proxyURL, force, timeoutInSeconds);
     }
 
-    public ResourcesCommand setAll(final Boolean flag) { _allFlag = flag; return this; }
+    ResourcesCommand setAll(final Boolean flag) { _allFlag = flag; return this; }
 
     @Override
     public boolean process(

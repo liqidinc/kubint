@@ -11,8 +11,6 @@ import com.bearsnake.k8sclient.K8SRequestError;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
 
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_KEYS;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 import static com.liqid.k8s.annotate.CommandType.UNLABEL;
 
 class UnlabelCommand extends Command {

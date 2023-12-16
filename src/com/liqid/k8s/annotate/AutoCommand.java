@@ -20,16 +20,10 @@ import com.liqid.sdk.LiqidException;
 
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_FPGA_ENTRY;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_GPU_ENTRY;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_LINK_ENTRY;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_MEMORY_ENTRY;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_SSD_ENTRY;
 import static com.liqid.k8s.annotate.CommandType.AUTO;
 
 class AutoCommand extends Command {

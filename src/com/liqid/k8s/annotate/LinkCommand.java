@@ -40,10 +40,10 @@ class LinkCommand extends Command {
         super(logger, proxyURL, force, timeoutInSeconds);
     }
 
-    public LinkCommand setLiqidAddress(final String value) { _liqidAddress = value; return this; }
-    public LinkCommand setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
-    public LinkCommand setLiqidPassword(final String value) { _liqidPassword = value; return this; }
-    public LinkCommand setLiqidUsername(final String value) { _liqidUsername = value; return this; }
+    LinkCommand setLiqidAddress(final String value) { _liqidAddress = value; return this; }
+    LinkCommand setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
+    LinkCommand setLiqidPassword(final String value) { _liqidPassword = value; return this; }
+    LinkCommand setLiqidUsername(final String value) { _liqidUsername = value; return this; }
 
     @Override
     public boolean process() throws InternalErrorException, K8SHTTPError, K8SJSONError, K8SRequestError {
