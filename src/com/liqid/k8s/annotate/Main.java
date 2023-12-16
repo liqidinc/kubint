@@ -29,8 +29,8 @@ public class Main {
     /*
     annotate auto
         -px,--proxy-url={proxy_url}
-        -no,--no-update
-        -f,--force
+        [ -no,--no-update ]
+        [ -f,--force ]
 
     annotate link
         -px,--proxy-url={proxy_url}
@@ -38,11 +38,11 @@ public class Main {
         [ -u,--liqid-username={user_name} ]
         [ -p,--liqid-password={password} ]
         -g,--liqid-group={group_name}
-        -f,--force
+        [ -f,--force ]
 
     annotate unlink
         -px,--proxy-url={proxy_url}
-        -f,--force
+        [ -f,--force ]
 
     annotate label
         -px,--proxy-url={proxy_url}
@@ -53,7 +53,7 @@ public class Main {
         [ -ls,--link-spec={spec}[,...] ]
         [ -ms,--mem-spec={spec}[,...] ]
         [ -ss,--ssd-spec={spec}[,...] ]
-        -f,--force
+        [ -f,--force ]
 
     annotate unlabel
         -px,--proxy-url={proxy_url}

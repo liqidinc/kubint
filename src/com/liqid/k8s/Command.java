@@ -30,6 +30,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_FPGA_ENTRY;
@@ -163,6 +164,90 @@ public abstract class Command {
              K8SJSONError,
              K8SRequestError,
              LiqidException;
+
+    /**
+     * Displays devices
+     * @param group Reference to Group if we want to limit the display to resources in that group, else null
+     * @throws LiqidException If we have trouble talking to the Liqid Director
+     */
+    protected void displayDevices(
+        final Group group
+    ) throws LiqidException {
+        System.out.println();
+        if (group == null) {
+            System.out.println("All Resources:");
+            System.out.println("  ---TYPE---  --NAME--  ----ID----  --------VENDOR--------  -----MODEL------  "
+                                   + "-------MACHINE--------  -------------GROUP--------------  --DESCRIPTION--");
+        } else {
+            System.out.printf("Resources for group '%s':\n", group.getGroupName());
+            System.out.println("  ---TYPE---  --NAME--  ----ID----  --------VENDOR--------  -----MODEL------  "
+                                   + "-------MACHINE--------  --DESCRIPTION--");
+        }
+
+        for (var ds : _deviceStatusByName.values()) {
+            var di = _deviceInfoById.get(ds.getDeviceId());
+            var str1 = String.format("%-10s  %-8s  0x%08x  %-22s  %-16s",
+                                     ds.getDeviceType(),
+                                     ds.getName(),
+                                     ds.getDeviceId(),
+                                     di.getVendor(),
+                                     di.getModel());
+
+            var dr = _deviceRelationsByDeviceId.get(ds.getDeviceId());
+            var machStr = "<none>";
+            if (dr._machineId != null) {
+                machStr = _machinesById.get(dr._machineId).getMachineName();
+            }
+
+            var grpStr = "";
+            if (group == null) {
+                var temp = (dr._groupId == null) ? "<none>" : _groupsById.get(dr._groupId).getGroupName();
+                grpStr = String.format("  %-32s", temp);
+            }
+
+            System.out.printf("  %s  %-22s%s  %s\n", str1, machStr, grpStr, di.getUserDescription());
+        }
+    }
+
+    /**
+     * Displays machines
+     * @param group Reference to Group if we want to limit the display to machines in that group, else null
+     * @throws LiqidException If we have trouble talking to the Liqid Director
+     */
+    protected void displayMachines(
+        final Group group
+    ) throws LiqidException {
+        System.out.println();
+        if (group == null) {
+            System.out.println("All Machines:");
+            System.out.println("  -------------GROUP--------------  -------MACHINE--------  ----ID----  --------DEVICES---------");
+        } else {
+            System.out.printf("Machines for group '%s':\n", group.getGroupName());
+            System.out.println("  -------MACHINE--------  ----ID----  --------DEVICES---------");
+        }
+
+        for (var mach : _machinesById.values()) {
+            var devNames = _deviceStatusByMachineId.get(mach.getMachineId())
+                                                   .stream()
+                                                   .map(DeviceStatus::getName)
+                                                   .collect(Collectors.toCollection(TreeSet::new));
+            var devNamesStr = String.join(" ", devNames);
+
+            if (group == null) {
+                var grp = _groupsById.get(mach.getGroupId());
+                System.out.printf("  %-32s  %-22s  0x%08x  %s\n",
+                                  grp.getGroupName(),
+                                  mach.getMachineName(),
+                                  mach.getMachineId(),
+                                  devNamesStr);
+            } else {
+                System.out.printf("  %-22s  0x%08x  %s\n",
+                                  mach.getMachineName(),
+                                  mach.getMachineId(),
+                                  devNamesStr);
+            }
+        }
+    }
 
     /**
      * Loads the resource maps so we can do some auto-analysis

@@ -11,6 +11,8 @@ public enum CommandType {
     CLEANUP("cleanup"),
     EXECUTE("execute"),
     PLAN("plan"),
+    RESOURCES("resources"),
+    SETUP("setup"),
     VALIDATE("validate");
 
     private final String _token;

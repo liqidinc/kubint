@@ -32,12 +32,23 @@ public class Application {
     private CommandType _commandType;
     private int _timeoutInSeconds = 300;
 
+    private String _liqidAddress;
+    private String _liqidGroupName;
+    private String _liqidPassword;
+    private String _liqidUsername;
+
+    private Boolean _force;
     private Logger _logger;
     private String _proxyURL;
 
     public Application() {}
 
     Application setCommandType(final CommandType value) { _commandType = value; return this; }
+    Application setForce(final Boolean value) { _force = value; return this; }
+    Application setLiqidAddress(final String value) { _liqidAddress = value; return this; }
+    Application setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
+    Application setLiqidPassword(final String value) { _liqidPassword = value; return this; }
+    Application setLiqidUsername(final String value) { _liqidUsername = value; return this; }
     Application setLogging(final boolean flag) { _logging = flag; return this; }
     Application setProxyURL(final String value) { _proxyURL = value; return this; }
     Application setTimeoutInSeconds(final int value) { _timeoutInSeconds = value; return this; }
@@ -891,6 +902,19 @@ public class Application {
                     new ExecuteCommand(_logger, _proxyURL, _timeoutInSeconds).process();
                 case PLAN ->
                     new PlanCommand(_logger, _proxyURL, _timeoutInSeconds).process();
+                case RESOURCES ->
+                    new ResourcesCommand(_logger, _proxyURL, _timeoutInSeconds)
+                        .setLiqidAddress(_liqidAddress)
+                        .setLiqidPassword(_liqidPassword)
+                        .setLiqidUsername(_liqidUsername)
+                        .process();
+                case SETUP ->
+                    new SetupCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+                        .setLiqidAddress(_liqidAddress)
+                        .setLiqidGroupName(_liqidGroupName)
+                        .setLiqidPassword(_liqidPassword)
+                        .setLiqidUsername(_liqidUsername)
+                        .process();
                 case VALIDATE ->
                     new ValidateCommand(_logger, _proxyURL, _timeoutInSeconds).process();
             };

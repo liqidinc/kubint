@@ -3,7 +3,7 @@
  * Copyright 2023 by Liqid, Inc - All Rights Reserved
  */
 
-package com.liqid.k8s.annotate;
+package com.liqid.k8s.config;
 
 import com.bearsnake.k8sclient.K8SHTTPError;
 import com.bearsnake.k8sclient.K8SJSONError;
@@ -14,22 +14,21 @@ import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.sdk.LiqidException;
 
-import static com.liqid.k8s.annotate.CommandType.RESOURCES;
+import static com.liqid.k8s.config.CommandType.CLEANUP;
 
 class ResourcesCommand extends Command {
-
-    private boolean _allFlag = false;
 
     ResourcesCommand(
         final Logger logger,
         final String proxyURL,
-        final Boolean force,
         final Integer timeoutInSeconds
     ) {
-        super(logger, proxyURL, force, timeoutInSeconds);
+        super(logger, proxyURL, false, timeoutInSeconds);
     }
 
-    public ResourcesCommand setAll(final Boolean flag) { _allFlag = flag; return this; }
+    public ResourcesCommand setLiqidAddress(final String value) { _liqidAddress = value; return this; }
+    public ResourcesCommand setLiqidPassword(final String value) { _liqidPassword = value; return this; }
+    public ResourcesCommand setLiqidUsername(final String value) { _liqidUsername = value; return this; }
 
     @Override
     public boolean process(
@@ -39,31 +38,18 @@ class ResourcesCommand extends Command {
              K8SJSONError,
              K8SRequestError,
              LiqidException {
-        var fn = RESOURCES.getToken() + ":process";
+        var fn = CLEANUP.getToken() + ":process";
         _logger.trace("Entering %s", fn);
 
-        if (!initK8sClient()) {
-            _logger.trace("Exiting %s false", fn);
-            return false;
-        }
-
-        if (!getLiqidLinkage()) {
-            throw new ConfigurationException("No linkage exists between the Kubernetes Cluster and a Liqid Cluster.");
-        }
-
         if (!initLiqidClient()) {
-            System.err.println("ERROR:Cannot connect to the Liqid Cluster");
             _logger.trace("Exiting %s false", fn);
             return false;
         }
 
         getLiqidInventory();
-        var groupParam = _allFlag ? null : _groupsByName.get(_liqidGroupName);
-        displayDevices(groupParam);
-        displayMachines(groupParam);
+        displayDevices(null);
+        displayMachines(null);
 
-        // All done
-        logoutFromLiqidCluster();
         _logger.trace("Exiting %s true", fn);
         return true;
     }
