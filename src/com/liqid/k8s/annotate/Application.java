@@ -25,7 +25,7 @@ import java.util.Collection;
 public class Application {
 
     public static final String LOGGER_NAME = "Annotate";
-    public static final String LOG_FILE_NAME = "liq-annotation.log";
+    public static final String LOG_FILE_NAME = "liq-annotate.log";
 
     // If _logging is true, we do extensive logging to a log file. If false, only errors to stdout.
     private boolean _logging = false;

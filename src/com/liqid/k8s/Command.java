@@ -27,6 +27,7 @@ import com.liqid.sdk.Machine;
 
 import java.io.IOException;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -250,12 +251,41 @@ public abstract class Command {
     }
 
     /**
+     * Given two sets of the same type, we populate a third set of that type with
+     * only those items which are contained in both of the original sets.
+     * @param set1 first contributing set
+     * @param set2 second contributing set
+     * @param intersection result set.
+     * @param <T> item type
+     */
+    protected <T> void getIntersection(
+        final Collection<T> set1,
+        final Collection<T> set2,
+        final LinkedList<T> intersection
+    ) {
+        intersection.clear();
+        set1.stream().filter(set2::contains).forEach(intersection::add);
+    }
+
+    /**
      * Loads the resource maps so we can do some auto-analysis
      * @throws LiqidException if we cannot communicate with the Liqid Cluster
      */
     protected void getLiqidInventory() throws LiqidException {
         var fn = "getLiqidInventory";
         _logger.trace("Entering %s", fn);
+
+        _deviceInfoById.clear();
+        _deviceInfoByName.clear();
+        _deviceRelationsByDeviceId.clear();
+        _deviceStatusByGroupId.clear();
+        _deviceStatusById.clear();
+        _deviceStatusByMachineId.clear();
+        _deviceStatusByName.clear();
+        _groupsById.clear();
+        _groupsByName.clear();
+        _machinesById.clear();
+        _machinesByName.clear();
 
         var devStats = _liqidClient.getAllDevicesStatus();
         for (var ds : devStats) {
@@ -389,6 +419,18 @@ public abstract class Command {
 
         _logger.trace("Exiting %s with %s", fn, result);
         return result;
+    }
+
+    protected String createAnnotationKeyFor(
+        final String keySuffix
+    ) {
+        return String.format("%s/%s", K8S_ANNOTATION_PREFIX, keySuffix);
+    }
+
+    protected String createAnnotationKeyForDeviceType(
+        final GeneralType genType
+    ) {
+        return createAnnotationKeyFor(ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType));
     }
 
     /**

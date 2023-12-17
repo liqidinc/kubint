@@ -162,7 +162,7 @@ class LabelCommand extends Command {
             return false;
         }
 
-        var annoKey = String.format("%s/%s", K8S_ANNOTATION_PREFIX, ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType));
+        var annoKey = createAnnotationKeyForDeviceType(genType);
         if (vendorAndModel.isEmpty() && modelOnly.isEmpty() && (noSpecificity != null) && (noSpecificity == 0)) {
             System.out.printf("Any existing annotation for type %s will be removed\n", genType);
             annotations.put(annoKey, null);
@@ -268,7 +268,7 @@ class LabelCommand extends Command {
             }
         }
 
-        var annoKey = String.format("%s/%s", K8S_ANNOTATION_PREFIX, K8S_ANNOTATION_MACHINE_NAME);
+        var annoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
         annotations.put(annoKey, _machineName);
 
         if (_fpgaSpecs != null) {

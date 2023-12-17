@@ -73,7 +73,7 @@ class AutoCommand extends Command {
                     resCount++;
                 }
 
-                var annoKey = String.format("%s/%s", K8S_ANNOTATION_PREFIX, ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType));
+                var annoKey = createAnnotationKeyForDeviceType(genType);
                 var annoValue = String.format("%d", resCount);
                 annos.put(annoKey, annoValue);
 
@@ -202,7 +202,7 @@ class AutoCommand extends Command {
             } else {
                 var machName = _machinesById.get(machineId).getMachineName();
                 var newMap = new HashMap<String, String>();
-                newMap.put(K8S_ANNOTATION_PREFIX + "/" + K8S_ANNOTATION_MACHINE_NAME, machName);
+                newMap.put(createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME), machName);
                 annotations.put(node, newMap);
             }
         }
