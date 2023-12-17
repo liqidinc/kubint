@@ -8,7 +8,6 @@ package com.liqid.k8s.config;
 import java.util.Arrays;
 
 public enum CommandType {
-    CLEANUP("cleanup"),
     EXECUTE("execute"),
     INITIALIZE("initialize"),
     PLAN("plan"),

@@ -905,10 +905,10 @@ public class Application {
             _logger.trace("Entering %s", fn);
 
             result = switch (_commandType) {
-                case CLEANUP ->
-                    new CleanupCommand(_logger, _proxyURL, _timeoutInSeconds).process();
                 case EXECUTE ->
-                    new ExecuteCommand(_logger, _proxyURL, _timeoutInSeconds).process();
+                    new ExecuteCommand(_logger, _proxyURL, _timeoutInSeconds)
+                        .setNoUpdate(_noUpdate)
+                        .process();
                 case INITIALIZE ->
                     new InitializeCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
                         .setLiqidAddress(_liqidAddress)

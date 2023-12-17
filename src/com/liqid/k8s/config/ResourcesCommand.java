@@ -14,7 +14,7 @@ import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.sdk.LiqidException;
 
-import static com.liqid.k8s.config.CommandType.CLEANUP;
+import static com.liqid.k8s.config.CommandType.RESOURCES;
 import static com.liqid.k8s.plan.LiqidInventory.getLiqidInventory;
 
 class ResourcesCommand extends Command {
@@ -39,7 +39,7 @@ class ResourcesCommand extends Command {
              K8SJSONError,
              K8SRequestError,
              LiqidException {
-        var fn = CLEANUP.getToken() + ":process";
+        var fn = RESOURCES.getToken() + ":process";
         _logger.trace("Entering %s", fn);
 
         if (!initLiqidClient()) {

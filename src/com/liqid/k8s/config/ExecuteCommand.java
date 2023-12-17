@@ -14,10 +14,12 @@ import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.sdk.LiqidException;
 
-import static com.liqid.k8s.config.CommandType.CLEANUP;
+import static com.liqid.k8s.config.CommandType.EXECUTE;
 import static com.liqid.k8s.plan.LiqidInventory.getLiqidInventory;
 
 class ExecuteCommand extends Command {
+
+    private Boolean _noUpdate = false;
 
     ExecuteCommand(
         final Logger logger,
@@ -27,6 +29,8 @@ class ExecuteCommand extends Command {
         super(logger, proxyURL, false, timeoutInSeconds);
     }
 
+    ExecuteCommand setNoUpdate(final Boolean flag) { _noUpdate = flag; return this; }
+
     @Override
     public boolean process(
     ) throws ConfigurationException,
@@ -35,7 +39,7 @@ class ExecuteCommand extends Command {
              K8SJSONError,
              K8SRequestError,
              LiqidException {
-        var fn = CLEANUP.getToken() + ":process";
+        var fn = EXECUTE.getToken() + ":process";
         _logger.trace("Entering %s", fn);
 
         if (!initK8sClient()) {

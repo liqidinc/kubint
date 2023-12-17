@@ -19,7 +19,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.liqid.k8s.config.CommandType.CLEANUP;
 import static com.liqid.k8s.config.CommandType.EXECUTE;
 import static com.liqid.k8s.config.CommandType.INITIALIZE;
 import static com.liqid.k8s.config.CommandType.PLAN;
@@ -66,7 +65,6 @@ public class Main {
         -px,--proxy-url={proxy_url}
     */
 
-    private static final CommandValue CV_CLEANUP = new CommandValue(CLEANUP.getToken());
     private static final CommandValue CV_EXECUTE = new CommandValue(CommandType.EXECUTE.getToken());
     private static final CommandValue CV_INITIALIZE = new CommandValue(INITIALIZE.getToken());
     private static final CommandValue CV_PLAN = new CommandValue(PLAN.getToken());
@@ -93,8 +91,7 @@ public class Main {
                 new ArgumentSwitch.Builder().setShortName("px")
                                             .setLongName("proxy-url")
                                             .setIsRequired(true)
-                                            .addAffinity(CV_CLEANUP).addAffinity(CV_EXECUTE)
-                                            .addAffinity(CV_INITIALIZE).addAffinity(CV_RESET)
+                                            .addAffinity(CV_EXECUTE).addAffinity(CV_INITIALIZE).addAffinity(CV_RESET)
                                             .addAffinity(CV_PLAN).addAffinity(CV_VALIDATE)
                                             .setValueName("k8x_proxy_url")
                                             .setValueType(ValueType.STRING)
@@ -200,16 +197,13 @@ public class Main {
                                           .addDescription("/would/ be taken in the absence of this switch.")
                                           .build();
             COMMAND_ARG =
-                new CommandArgument.Builder().addDescription(CLEANUP.getToken())
-                                             .addDescription("  Cleans up the Liqid Configuration.")
-                                             .addDescription("  Detaches all resources from the various nodes, then deletes all the machines in the ")
-                                             .addDescription("  configured Kubernetes group, returning all resources to the group free pool.")
-                                             .addDescription(EXECUTE.getToken())
+                new CommandArgument.Builder().addDescription(EXECUTE.getToken())
                                              .addDescription("  Consults the various Kubernetes node annotations, develops a plan to achieve the requested")
                                              .addDescription("  resource layout, then executes the plan.")
                                              .addDescription(PLAN.getToken())
                                              .addDescription("  Consults the various Kubernetes node annotations, develops a plan to achieve the requested")
                                              .addDescription("  resource layout, displays the plan, but does not execute it.")
+                                             .addDescription("  Effectively the same as the " + EXECUTE.getToken() + " command with -no,--no-update set.")
                                              .addDescription(VALIDATE.getToken())
                                              .addDescription("  Ensures the validity of the Liqid Cluster and Kubernetes Cluster configurations")
                                              .addDescription("    in comparison to the various Kubernetes node annotations.")
@@ -225,7 +219,6 @@ public class Main {
                                              .addDescription(RESET.getToken())
                                              .addDescription("  Entirely resets the configuration of the Liqid Cluster by deleting all groups and machines.")
                                              .addDescription("  Removes all Liqid annotations and other configuration information from the Kubernetes Cluster.")
-                                             .addCommandValue(CV_CLEANUP)
                                              .addCommandValue(CV_EXECUTE)
                                              .addCommandValue(CV_INITIALIZE)
                                              .addCommandValue(CV_PLAN)
@@ -341,22 +334,22 @@ public class Main {
 
     //TODO testing
     static String[] tempArgs = {
-//        "reset",
-//        "-px", "http://192.168.1.220:8001",
-//        "-ip", "10.10.14.236",
-//        "-f",
-//        "-l"
-
-        "initialize",
+        "reset",
         "-px", "http://192.168.1.220:8001",
         "-ip", "10.10.14.236",
-        "-g", "InspectorMorse",
-        "-pr", "pcpu0:kub4",
-        "-pr", "pcpu1:kub5",
-        "-pr", "pcpu2:kub6",
-        "-r", "gpu0,gpu1",
         "-f",
-        "-l",
+        "-l"
+
+//        "initialize",
+//        "-px", "http://192.168.1.220:8001",
+//        "-ip", "10.10.14.236",
+//        "-g", "InspectorMorse",
+//        "-pr", "pcpu0:kub4",
+//        "-pr", "pcpu1:kub5",
+//        "-pr", "pcpu2:kub6",
+//        "-r", "gpu0,gpu1",
+//        "-f",
+//        "-l",
     };
     //TODO end testing
 

@@ -28,7 +28,6 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
-import static com.liqid.k8s.config.CommandType.CLEANUP;
 import static com.liqid.k8s.config.CommandType.INITIALIZE;
 import static com.liqid.k8s.plan.LiqidInventory.getLiqidInventory;
 
@@ -361,7 +360,7 @@ class InitializeCommand extends Command {
              K8SJSONError,
              K8SRequestError,
              LiqidException {
-        var fn = CLEANUP.getToken() + ":process";
+        var fn = INITIALIZE.getToken() + ":process";
         _logger.trace("Entering %s", fn);
 
         if (!initK8sClient()) {
