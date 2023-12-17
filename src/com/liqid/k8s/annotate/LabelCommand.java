@@ -11,6 +11,7 @@ import com.bearsnake.k8sclient.K8SRequestError;
 import com.bearsnake.k8sclient.Node;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
+import com.liqid.k8s.GeneralType;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.sdk.LiqidException;
 
@@ -20,8 +21,8 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 import static com.liqid.k8s.annotate.CommandType.LABEL;
+import static com.liqid.k8s.plan.LiqidInventory.getLiqidInventory;
 
 class LabelCommand extends Command {
 
@@ -56,17 +57,17 @@ class LabelCommand extends Command {
         final String vendor,
         final String model
     ) {
-        return _deviceInfoById.values()
-                              .stream()
-                              .anyMatch(di -> di.getVendor().equals(vendor) && di.getModel().equals(model));
+        return _liqidInventory._deviceInfoById.values()
+                                              .stream()
+                                              .anyMatch(di -> di.getVendor().equals(vendor) && di.getModel().equals(model));
     }
 
     private boolean liqidHasDevice(
         final String model
     ) {
-        return _deviceInfoById.values()
-                              .stream()
-                              .anyMatch(di -> di.getModel().equals(model));
+        return _liqidInventory._deviceInfoById.values()
+                                              .stream()
+                                              .anyMatch(di -> di.getModel().equals(model));
     }
 
     private boolean processType(
@@ -241,13 +242,13 @@ class LabelCommand extends Command {
             return false;
         }
 
-        getLiqidInventory();
+        _liqidInventory = getLiqidInventory(_liqidClient, _logger);
 
         var errPrefix = _force ? "WARNING" : "ERROR";
         var errors = false;
         var annotations = new HashMap<String, String>();
 
-        var group = _groupsByName.get(_liqidGroupName);
+        var group = _liqidInventory._groupsByName.get(_liqidGroupName);
         if (group == null) {
             System.err.printf("%s:Group '%s' does not exist in the Liqid Cluster\n", errPrefix, _liqidGroupName);
             if (!_force) {
@@ -255,7 +256,7 @@ class LabelCommand extends Command {
             }
         }
 
-        var mach = _machinesByName.get(_machineName);
+        var mach = _liqidInventory._machinesByName.get(_machineName);
         if (mach == null) {
             System.err.printf("%s:Machine '%s' does not exist in the Liqid Cluster\n", errPrefix, _machineName);
             if (!_force) {

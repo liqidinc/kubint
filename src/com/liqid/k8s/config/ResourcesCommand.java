@@ -15,6 +15,7 @@ import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.sdk.LiqidException;
 
 import static com.liqid.k8s.config.CommandType.CLEANUP;
+import static com.liqid.k8s.plan.LiqidInventory.getLiqidInventory;
 
 class ResourcesCommand extends Command {
 
@@ -26,9 +27,9 @@ class ResourcesCommand extends Command {
         super(logger, proxyURL, false, timeoutInSeconds);
     }
 
-    public ResourcesCommand setLiqidAddress(final String value) { _liqidAddress = value; return this; }
-    public ResourcesCommand setLiqidPassword(final String value) { _liqidPassword = value; return this; }
-    public ResourcesCommand setLiqidUsername(final String value) { _liqidUsername = value; return this; }
+    ResourcesCommand setLiqidAddress(final String value) { _liqidAddress = value; return this; }
+    ResourcesCommand setLiqidPassword(final String value) { _liqidPassword = value; return this; }
+    ResourcesCommand setLiqidUsername(final String value) { _liqidUsername = value; return this; }
 
     @Override
     public boolean process(
@@ -46,7 +47,7 @@ class ResourcesCommand extends Command {
             return false;
         }
 
-        getLiqidInventory();
+        _liqidInventory = getLiqidInventory(_liqidClient, _logger);
         displayDevices(null);
         displayMachines(null);
 

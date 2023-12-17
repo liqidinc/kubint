@@ -11,6 +11,7 @@ import com.bearsnake.k8sclient.K8SRequestError;
 import com.bearsnake.k8sclient.Node;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
+import com.liqid.k8s.GeneralType;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.sdk.DeviceStatus;
@@ -23,8 +24,8 @@ import java.util.LinkedList;
 import java.util.stream.Collectors;
 
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 import static com.liqid.k8s.annotate.CommandType.AUTO;
+import static com.liqid.k8s.plan.LiqidInventory.getLiqidInventory;
 
 class AutoCommand extends Command {
 
@@ -49,9 +50,9 @@ class AutoCommand extends Command {
         _logger.trace("Entering %s with group=%s annotations=%s", fn, group, annotations);
 
         var devsByType = new HashMap<GeneralType, LinkedList<DeviceStatus>>();
-        for (var ds : _deviceStatusByGroupId.get(group.getGroupId())) {
+        for (var ds : _liqidInventory._deviceStatusByGroupId.get(group.getGroupId())) {
             if (ds.getDeviceType() != DeviceType.COMPUTE) {
-                var genType = TYPE_CONVERSION_MAP.get(ds.getDeviceType());
+                var genType = GeneralType.fromDeviceType(ds.getDeviceType());
                 if (!devsByType.containsKey(genType)) {
                     devsByType.put(genType, new LinkedList<>());
                 }
@@ -116,7 +117,7 @@ class AutoCommand extends Command {
 
         // Go grab the Liqid config first, so that we can stop here if something is wrong with Liqid.
         // Then make sure there aren't any existing annotations in the way.
-        getLiqidInventory();
+        _liqidInventory = getLiqidInventory(_liqidClient, _logger);
 
         if (!checkForExistingAnnotations(AUTO.getToken())) {
             _logger.trace("Exiting %s false", fn);
@@ -145,7 +146,7 @@ class AutoCommand extends Command {
 
         // We'll need the Liqid Cluster group, and we're going to start building up annotations
         // as maps of keys to values, one map per worker node.
-        var group = _groupsByName.get(_liqidGroupName);
+        var group = _liqidInventory._groupsByName.get(_liqidGroupName);
 
         // Get the worker nodes from Kubernetes, then create a map of them keyed by node name.
         var workerNodes = _k8sClient.getNodes();
@@ -162,10 +163,10 @@ class AutoCommand extends Command {
         // actual worker nodes (as discovered above).
         var errPrefix = _force ? "WARNING" : "ERROR";
         var errors = false;
-        var deviceStatuses = _deviceStatusByGroupId.get(group.getGroupId());
+        var deviceStatuses = _liqidInventory._deviceStatusByGroupId.get(group.getGroupId());
         var cpuToNode = new HashMap<DeviceStatus, Node>();
         for (var ds : deviceStatuses) {
-            var di = _deviceInfoById.get(ds.getDeviceId());
+            var di = _liqidInventory._deviceInfoById.get(ds.getDeviceId());
             if (ds.getDeviceType() == DeviceType.COMPUTE) {
                 var workerName = di.getUserDescription();
                 if (workerName.isEmpty() || workerName.equals("n/a")) {
@@ -193,14 +194,14 @@ class AutoCommand extends Command {
             var cpu = entry.getKey();
             var node = entry.getValue();
 
-            var machineId = _deviceRelationsByDeviceId.get(cpu.getDeviceId())._machineId;
+            var machineId = _liqidInventory._deviceRelationsByDeviceId.get(cpu.getDeviceId())._machineId;
             if (machineId == null) {
                 System.err.printf("ERROR:CPU Resource '%s' is not attached to a machine\n", cpu.getName());
                 if (!_force) {
                     errors = true;
                 }
             } else {
-                var machName = _machinesById.get(machineId).getMachineName();
+                var machName = _liqidInventory._machinesById.get(machineId).getMachineName();
                 var newMap = new HashMap<String, String>();
                 newMap.put(createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME), machName);
                 annotations.put(node, newMap);

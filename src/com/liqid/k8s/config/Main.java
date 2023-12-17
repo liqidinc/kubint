@@ -14,13 +14,17 @@ import com.bearsnake.komando.values.Value;
 import com.bearsnake.komando.values.ValueType;
 import com.liqid.k8s.Constants;
 
+import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.liqid.k8s.config.CommandType.CLEANUP;
 import static com.liqid.k8s.config.CommandType.EXECUTE;
+import static com.liqid.k8s.config.CommandType.INITIALIZE;
 import static com.liqid.k8s.config.CommandType.PLAN;
+import static com.liqid.k8s.config.CommandType.RESET;
 import static com.liqid.k8s.config.CommandType.RESOURCES;
-import static com.liqid.k8s.config.CommandType.SETUP;
 import static com.liqid.k8s.config.CommandType.VALIDATE;
 
 public class Main {
@@ -32,22 +36,30 @@ public class Main {
     config execute
         -px,--proxy-url={proxy_url}
 
+    config initialize
+        -px,--proxy-url={proxy_url}
+        -ip,--liqid-ip-address={ip_address}
+        [ -u,--liqid-username={user_name} ]
+        [ -p,--liqid-password={password} ]
+        -g,--liqid-group={group_name}
+        -pr,--processors={pcpu_name=worker_node_name}[,...]
+        -r,--resources={name}[,...]
+        [ -f,--force ]
+
     config plan
         -px,--proxy-url={proxy_url}
+
+    config reset
+        -px,--proxy-url={proxy_url}
+        -ip,--liqid-ip-address={ip_address}
+        [ -u,--liqid-username={user_name} ]
+        [ -p,--liqid-password={password} ]
+        -f,--force
 
     config resources
         -ip,--liqid-ip-address={ip_address}
         [ -u,--liqid-username={user_name} ]
         [ -p,--liqid-password={password} ]
-        [ -f,--force ]
-
-    config setup
-        -ip,--liqid-ip-address={ip_address}
-        [ -u,--liqid-username={user_name} ]
-        [ -p,--liqid-password={password} ]
-        -g,--liqid-group={group_name}
-        -p,--processors={pcpu_name=worker_node_name}[,...]
-        -r,--resources={name}[,...]
         [ -f,--force ]
 
     config validate
@@ -56,18 +68,22 @@ public class Main {
 
     private static final CommandValue CV_CLEANUP = new CommandValue(CLEANUP.getToken());
     private static final CommandValue CV_EXECUTE = new CommandValue(CommandType.EXECUTE.getToken());
+    private static final CommandValue CV_INITIALIZE = new CommandValue(INITIALIZE.getToken());
     private static final CommandValue CV_PLAN = new CommandValue(PLAN.getToken());
     private static final CommandValue CV_RESOURCES = new CommandValue(RESOURCES.getToken());
-    private static final CommandValue CV_SETUP = new CommandValue(SETUP.getToken());
+    private static final CommandValue CV_RESET = new CommandValue(RESET.getToken());
     private static final CommandValue CV_VALIDATE = new CommandValue(CommandType.VALIDATE.getToken());
 
-    private static final Switch FORCE_SWITCH;
+    private static final Switch K8S_PROXY_URL_SWITCH;
     private static final Switch LIQID_ADDRESS_SWITCH;
     private static final Switch LIQID_GROUP_SWITCH;
     private static final Switch LIQID_PASSWORD_SWITCH;
     private static final Switch LIQID_USERNAME_SWITCH;
-    private static final Switch K8S_PROXY_URL_SWITCH;
+    private static final Switch PROCESSORS_SWITCH;
+    private static final Switch RESOURCES_SWITCH;
+    private static final Switch FORCE_SWITCH;
     private static final Switch LOGGING_SWITCH;
+    private static final Switch NO_UPDATE_SWITCH;
     private static final Switch TIMEOUT_SWITCH;
     private static final CommandArgument COMMAND_ARG;
 
@@ -77,7 +93,9 @@ public class Main {
                 new ArgumentSwitch.Builder().setShortName("px")
                                             .setLongName("proxy-url")
                                             .setIsRequired(true)
-                                            .addAffinity(CV_CLEANUP).addAffinity(CV_EXECUTE).addAffinity(CV_PLAN).addAffinity(CV_VALIDATE)
+                                            .addAffinity(CV_CLEANUP).addAffinity(CV_EXECUTE)
+                                            .addAffinity(CV_INITIALIZE).addAffinity(CV_RESET)
+                                            .addAffinity(CV_PLAN).addAffinity(CV_VALIDATE)
                                             .setValueName("k8x_proxy_url")
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the URL for the kubectl proxy server.")
@@ -86,7 +104,7 @@ public class Main {
                 new ArgumentSwitch.Builder().setShortName("ip")
                                             .setLongName("liqid-ip-address")
                                             .setIsRequired(true)
-                                            .addAffinity(CV_RESOURCES).addAffinity(CV_SETUP)
+                                            .addAffinity(CV_RESOURCES).addAffinity(CV_INITIALIZE).addAffinity(CV_RESET)
                                             .setValueName("ip_address_or_dns_name")
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the URL for the director of the Liqid Cluster.")
@@ -95,7 +113,7 @@ public class Main {
                 new ArgumentSwitch.Builder().setShortName("g")
                                             .setLongName("liqid-group")
                                             .setIsRequired(true)
-                                            .addAffinity(CV_SETUP)
+                                            .addAffinity(CV_INITIALIZE)
                                             .setValueName("group_name")
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the Liqid Cluster group name to be associated with this Liqid Cluster.")
@@ -109,7 +127,7 @@ public class Main {
                 new ArgumentSwitch.Builder().setShortName("p")
                                             .setLongName("liqid-password")
                                             .setIsRequired(false)
-                                            .addAffinity(CV_RESOURCES).addAffinity(CV_SETUP)
+                                            .addAffinity(CV_RESOURCES).addAffinity(CV_INITIALIZE).addAffinity(CV_RESET)
                                             .setValueName("password")
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the password credential for the Liqid Directory.")
@@ -118,7 +136,7 @@ public class Main {
                 new ArgumentSwitch.Builder().setShortName("u")
                                             .setLongName("liqid-username")
                                             .setIsRequired(false)
-                                            .addAffinity(CV_RESOURCES).addAffinity(CV_SETUP)
+                                            .addAffinity(CV_RESOURCES).addAffinity(CV_INITIALIZE).addAffinity(CV_RESET)
                                             .setValueName("username")
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the username credential for the Liqid Directory.")
@@ -129,6 +147,36 @@ public class Main {
                                           .addDescription("Enables logging for error diagnostics.")
                                           .addDescription("Information will be written to " + com.liqid.k8s.annotate.Application.LOG_FILE_NAME)
                                           .build();
+            PROCESSORS_SWITCH =
+                new ArgumentSwitch.Builder().setShortName("pr")
+                                            .setLongName("processors")
+                                            .setValueType(ValueType.STRING)
+                                            .setValueName("spec")
+                                            .setIsRequired(true)
+                                            .setIsMultiple(true)
+                                            .addAffinity(CV_INITIALIZE)
+                                            .addDescription("List of processor (compute) resources and the corresponding worker node names as known")
+                                            .addDescription("to the Kubernetes Cluster.")
+                                            .addDescription("{spec} format is:")
+                                            .addDescription("  {pcpu_name} ':' {node_name}")
+                                            .addDescription("example:")
+                                            .addDescription("  -pr=pcpu0:worker1,pcpu1:worker2,pcpu2:worker3")
+                                            .build();
+            RESOURCES_SWITCH =
+                new ArgumentSwitch.Builder().setShortName("r")
+                                            .setLongName("resources")
+                                            .setValueType(ValueType.STRING)
+                                            .setValueName("resource_name")
+                                            .setIsRequired(true)
+                                            .setIsMultiple(true)
+                                            .addAffinity(CV_INITIALIZE)
+                                            .addDescription("List of non-compute resources which are to be considered candidates for attaching to")
+                                            .addDescription("the compute resources associated with the Kubernetes Cluster.")
+                                            .addDescription("format is:")
+                                            .addDescription("  {pcpu_name} ':' {node_name}")
+                                            .addDescription("example:")
+                                            .addDescription("  -r=gpu0,gpu1,gpu2,mem0,mem1,mem2")
+                                            .build();
             TIMEOUT_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("t")
                                             .setLongName("timeout")
@@ -140,9 +188,16 @@ public class Main {
             FORCE_SWITCH =
                 new SimpleSwitch.Builder().setShortName("f")
                                           .setLongName("force")
-                                          .addAffinity(CV_SETUP)
+                                          .addAffinity(CV_INITIALIZE).addAffinity(CV_RESET)
                                           .addDescription("Forces command to be executed in spite of certain (not all) detected problems.")
                                           .addDescription("In these cases, the detected problems are flagged as warnings rather than errors.")
+                                          .build();
+            NO_UPDATE_SWITCH =
+                new SimpleSwitch.Builder().setShortName("no")
+                                          .setLongName("no-update")
+                                          .addAffinity(CV_EXECUTE)
+                                          .addDescription("Indicates that no action should be taken; however, the script will display what action")
+                                          .addDescription("/would/ be taken in the absence of this switch.")
                                           .build();
             COMMAND_ARG =
                 new CommandArgument.Builder().addDescription(CLEANUP.getToken())
@@ -160,17 +215,23 @@ public class Main {
                                              .addDescription("    in comparison to the various Kubernetes node annotations.")
                                              .addDescription(RESOURCES.getToken())
                                              .addDescription("  Displays the resources and machines available on the Liqid Cluster.")
-                                             .addDescription(SETUP.getToken())
-                                             .addDescription("  Configures the Liqid Cluster in preparation for use in a Kubernetes Cluster.")
+                                             .addDescription(INITIALIZE.getToken())
+                                             .addDescription("  Configures the Liqid Cluster for use in a Kubernetes Cluster.")
                                              .addDescription("    Creates a resource group if it does not exist.")
                                              .addDescription("    Moves the listed compute nodes into the group, adding the worker node names to the description fields.")
                                              .addDescription("    Moves the listed resources into the group.")
+                                             .addDescription("  The Liqid Cluster nodes referenced on the command line must already be configured and running")
+                                             .addDescription("  as worker nodes, and should have no resources assigned to them.")
+                                             .addDescription(RESET.getToken())
+                                             .addDescription("  Entirely resets the configuration of the Liqid Cluster by deleting all groups and machines.")
+                                             .addDescription("  Removes all Liqid annotations and other configuration information from the Kubernetes Cluster.")
                                              .addCommandValue(CV_CLEANUP)
                                              .addCommandValue(CV_EXECUTE)
+                                             .addCommandValue(CV_INITIALIZE)
                                              .addCommandValue(CV_PLAN)
-                                             .addCommandValue(CV_VALIDATE)
                                              .addCommandValue(CV_RESOURCES)
-                                             .addCommandValue(CV_SETUP)
+                                             .addCommandValue(CV_RESET)
+                                             .addCommandValue(CV_VALIDATE)
                                              .build();
         } catch (KomandoException e) {
             throw new RuntimeException(e);
@@ -193,6 +254,23 @@ public class Main {
         return result;
     }
 
+    // Presuming we have a collection of StringValue entities (but presented as String entities)
+    // we convert that to a collection of String values extracted from the StringValue entities.
+    // Any value which is not a string value is ignored.
+    private static Collection<String> getStringCollection(
+        final List<Value> valueList
+    ) {
+        LinkedList<String> strings = null;
+        if (valueList != null) {
+            strings = valueList.stream()
+                               .filter(v -> v instanceof StringValue)
+                               .map(v -> (StringValue) v)
+                               .map(StringValue::getValue)
+                               .collect(Collectors.toCollection(LinkedList::new));
+        }
+        return strings;
+    }
+
     /**
      * Converts command line nonsense into configuration values which make sense.
      */
@@ -212,6 +290,8 @@ public class Main {
                .addSwitch(K8S_PROXY_URL_SWITCH)
                .addSwitch(TIMEOUT_SWITCH)
                .addSwitch(FORCE_SWITCH)
+               .addSwitch(PROCESSORS_SWITCH)
+               .addSwitch(RESOURCES_SWITCH)
                .addCommandArgument(COMMAND_ARG);
 
             var result = clh.processCommandLine(args);
@@ -234,10 +314,13 @@ public class Main {
             application.setLogging(result._switchSpecifications.containsKey(LOGGING_SWITCH))
                        .setCommandType(CommandType.get(result._commandValue.getValue()))
                        .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH))
+                       .setNoUpdate(result._switchSpecifications.containsKey(NO_UPDATE_SWITCH))
                        .setLiqidAddress(getSingleString(result._switchSpecifications.get(LIQID_ADDRESS_SWITCH)))
                        .setLiqidGroupName(getSingleString(result._switchSpecifications.get(LIQID_GROUP_SWITCH)))
                        .setLiqidPassword(getSingleString(result._switchSpecifications.get(LIQID_PASSWORD_SWITCH)))
                        .setLiqidUsername(getSingleString(result._switchSpecifications.get(LIQID_USERNAME_SWITCH)))
+                       .setProcessorSpecs(getStringCollection(result._switchSpecifications.get(PROCESSORS_SWITCH)))
+                       .setResourceSpecs(getStringCollection(result._switchSpecifications.get(RESOURCES_SWITCH)))
                        .setProxyURL(getSingleString(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)));
 
             var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
@@ -258,10 +341,22 @@ public class Main {
 
     //TODO testing
     static String[] tempArgs = {
-        "resources",
-        "-ip", "10.10.14.236"
-    };
+//        "reset",
+//        "-px", "http://192.168.1.220:8001",
+//        "-ip", "10.10.14.236",
+//        "-f",
+//        "-l"
 
+        "initialize",
+        "-px", "http://192.168.1.220:8001",
+        "-ip", "10.10.14.236",
+        "-g", "InspectorMorse",
+        "-pr", "pcpu0:kub4",
+        "-pr", "pcpu1:kub5",
+        "-pr", "pcpu2:kub6",
+        "-r", "gpu0,gpu1",
+        "-l",
+    };
     //TODO end testing
 
     public static void main(

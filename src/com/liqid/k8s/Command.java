@@ -5,29 +5,30 @@
 
 package com.liqid.k8s;
 
+import com.bearsnake.k8sclient.ConfigMapPayload;
 import com.bearsnake.k8sclient.K8SClient;
 import com.bearsnake.k8sclient.K8SHTTPError;
 import com.bearsnake.k8sclient.K8SJSONError;
 import com.bearsnake.k8sclient.K8SRequestError;
+import com.bearsnake.k8sclient.NamespacedMetadata;
 import com.bearsnake.k8sclient.Node;
+import com.bearsnake.k8sclient.SecretPayload;
 import com.bearsnake.klog.Logger;
 import com.bearsnake.klog.StdErrWriter;
 import com.bearsnake.klog.StdOutWriter;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
-import com.liqid.sdk.DeviceInfo;
+import com.liqid.k8s.plan.LiqidInventory;
 import com.liqid.sdk.DeviceStatus;
-import com.liqid.sdk.DeviceType;
 import com.liqid.sdk.Group;
 import com.liqid.sdk.LiqidClient;
 import com.liqid.sdk.LiqidClientBuilder;
 import com.liqid.sdk.LiqidException;
-import com.liqid.sdk.Machine;
 
 import java.io.IOException;
-import java.util.Base64;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -76,59 +77,7 @@ public abstract class Command {
 
     protected K8SClient _k8sClient;
     protected LiqidClient _liqidClient;
-
-    protected static class DeviceRelation {
-        public Integer _deviceId;
-        public Integer _groupId;
-        public Integer _machineId;
-
-        public DeviceRelation(
-            final Integer deviceId,
-            final Integer groupId,
-            final Integer machineId
-        ) {
-            _deviceId = deviceId;
-            _groupId = (groupId != null) && (groupId.equals(0)) ? null : groupId;
-            _machineId = (machineId != null) && (machineId.equals(0)) ? null : machineId;
-        }
-    }
-
-    protected static enum GeneralType {
-        FPGA,
-        GPU,
-        LINK,
-        MEMORY,
-        SSD,
-    }
-
-    // The following map is necessary because we want to effectively treat all LINK devices the same...
-    // Well, not really, but really. We're not so much advocating treating fibre-channel HBAs the same as
-    // ethernet HBAs, although that will be the practical outcome.  We just don't want to have to have to deal with
-    // all the various sub-types of resources separately, nor do we wish to subject our users to that.
-    // It's very unlikely we will run into configurations with different types of links, and if we do we can
-    // let the user play games with vendors and models to sort things out.
-    protected static final Map<DeviceType, GeneralType> TYPE_CONVERSION_MAP = new HashMap<>();
-    static {
-        TYPE_CONVERSION_MAP.put(DeviceType.FPGA, GeneralType.FPGA);
-        TYPE_CONVERSION_MAP.put(DeviceType.GPU, GeneralType.GPU);
-        TYPE_CONVERSION_MAP.put(DeviceType.ETHERNET_LINK, GeneralType.LINK);
-        TYPE_CONVERSION_MAP.put(DeviceType.FIBER_CHANNEL_LINK, GeneralType.LINK);
-        TYPE_CONVERSION_MAP.put(DeviceType.INFINIBAND_LINK, GeneralType.LINK);
-        TYPE_CONVERSION_MAP.put(DeviceType.MEMORY, GeneralType.MEMORY);
-        TYPE_CONVERSION_MAP.put(DeviceType.SSD, GeneralType.SSD);
-    }
-
-    protected Map<Integer, DeviceInfo> _deviceInfoById = new HashMap<>();
-    protected Map<String, DeviceInfo> _deviceInfoByName = new HashMap<>();
-    protected Map<Integer, DeviceRelation> _deviceRelationsByDeviceId = new HashMap<>();
-    protected Map<Integer, LinkedList<DeviceStatus>> _deviceStatusByGroupId = new HashMap<>();
-    protected Map<Integer, DeviceStatus> _deviceStatusById = new HashMap<>();
-    protected Map<Integer, LinkedList<DeviceStatus>> _deviceStatusByMachineId = new HashMap<>();
-    protected Map<String, DeviceStatus> _deviceStatusByName = new HashMap<>();
-    protected Map<Integer, Group> _groupsById = new HashMap<>();
-    protected Map<String, Group> _groupsByName = new HashMap<>();
-    protected Map<Integer, Machine> _machinesById = new HashMap<>();
-    protected Map<String, Machine> _machinesByName = new HashMap<>();
+    protected LiqidInventory _liqidInventory;
 
     protected Command(
         final Logger logger,
@@ -165,204 +114,6 @@ public abstract class Command {
              K8SJSONError,
              K8SRequestError,
              LiqidException;
-
-    /**
-     * Displays devices
-     * @param group Reference to Group if we want to limit the display to resources in that group, else null
-     * @throws LiqidException If we have trouble talking to the Liqid Director
-     */
-    protected void displayDevices(
-        final Group group
-    ) throws LiqidException {
-        System.out.println();
-        if (group == null) {
-            System.out.println("All Resources:");
-            System.out.println("  ---TYPE---  --NAME--  ----ID----  --------VENDOR--------  -----MODEL------  "
-                                   + "-------MACHINE--------  -------------GROUP--------------  --DESCRIPTION--");
-        } else {
-            System.out.printf("Resources for group '%s':\n", group.getGroupName());
-            System.out.println("  ---TYPE---  --NAME--  ----ID----  --------VENDOR--------  -----MODEL------  "
-                                   + "-------MACHINE--------  --DESCRIPTION--");
-        }
-
-        for (var ds : _deviceStatusByName.values()) {
-            var di = _deviceInfoById.get(ds.getDeviceId());
-            var str1 = String.format("%-10s  %-8s  0x%08x  %-22s  %-16s",
-                                     ds.getDeviceType(),
-                                     ds.getName(),
-                                     ds.getDeviceId(),
-                                     di.getVendor(),
-                                     di.getModel());
-
-            var dr = _deviceRelationsByDeviceId.get(ds.getDeviceId());
-            var machStr = "<none>";
-            if (dr._machineId != null) {
-                machStr = _machinesById.get(dr._machineId).getMachineName();
-            }
-
-            var grpStr = "";
-            if (group == null) {
-                var temp = (dr._groupId == null) ? "<none>" : _groupsById.get(dr._groupId).getGroupName();
-                grpStr = String.format("  %-32s", temp);
-            }
-
-            System.out.printf("  %s  %-22s%s  %s\n", str1, machStr, grpStr, di.getUserDescription());
-        }
-    }
-
-    /**
-     * Displays machines
-     * @param group Reference to Group if we want to limit the display to machines in that group, else null
-     * @throws LiqidException If we have trouble talking to the Liqid Director
-     */
-    protected void displayMachines(
-        final Group group
-    ) throws LiqidException {
-        System.out.println();
-        if (group == null) {
-            System.out.println("All Machines:");
-            System.out.println("  -------------GROUP--------------  -------MACHINE--------  ----ID----  --------DEVICES---------");
-        } else {
-            System.out.printf("Machines for group '%s':\n", group.getGroupName());
-            System.out.println("  -------MACHINE--------  ----ID----  --------DEVICES---------");
-        }
-
-        for (var mach : _machinesById.values()) {
-            var devNames = _deviceStatusByMachineId.get(mach.getMachineId())
-                                                   .stream()
-                                                   .map(DeviceStatus::getName)
-                                                   .collect(Collectors.toCollection(TreeSet::new));
-            var devNamesStr = String.join(" ", devNames);
-
-            if (group == null) {
-                var grp = _groupsById.get(mach.getGroupId());
-                System.out.printf("  %-32s  %-22s  0x%08x  %s\n",
-                                  grp.getGroupName(),
-                                  mach.getMachineName(),
-                                  mach.getMachineId(),
-                                  devNamesStr);
-            } else {
-                System.out.printf("  %-22s  0x%08x  %s\n",
-                                  mach.getMachineName(),
-                                  mach.getMachineId(),
-                                  devNamesStr);
-            }
-        }
-    }
-
-    /**
-     * Given two sets of the same type, we populate a third set of that type with
-     * only those items which are contained in both of the original sets.
-     * @param set1 first contributing set
-     * @param set2 second contributing set
-     * @param intersection result set.
-     * @param <T> item type
-     */
-    protected <T> void getIntersection(
-        final Collection<T> set1,
-        final Collection<T> set2,
-        final LinkedList<T> intersection
-    ) {
-        intersection.clear();
-        set1.stream().filter(set2::contains).forEach(intersection::add);
-    }
-
-    /**
-     * Loads the resource maps so we can do some auto-analysis
-     * @throws LiqidException if we cannot communicate with the Liqid Cluster
-     */
-    protected void getLiqidInventory() throws LiqidException {
-        var fn = "getLiqidInventory";
-        _logger.trace("Entering %s", fn);
-
-        _deviceInfoById.clear();
-        _deviceInfoByName.clear();
-        _deviceRelationsByDeviceId.clear();
-        _deviceStatusByGroupId.clear();
-        _deviceStatusById.clear();
-        _deviceStatusByMachineId.clear();
-        _deviceStatusByName.clear();
-        _groupsById.clear();
-        _groupsByName.clear();
-        _machinesById.clear();
-        _machinesByName.clear();
-
-        var devStats = _liqidClient.getAllDevicesStatus();
-        for (var ds : devStats) {
-            _deviceStatusById.put(ds.getDeviceId(), ds);
-            _deviceStatusByName.put(ds.getName(), ds);
-            _deviceRelationsByDeviceId.put(ds.getDeviceId(), new DeviceRelation(ds.getDeviceId(), null, null));
-        }
-
-        var devInfos = new LinkedList<DeviceInfo>();
-        devInfos.addAll(_liqidClient.getComputeDeviceInfo());
-        devInfos.addAll(_liqidClient.getFPGADeviceInfo());
-        devInfos.addAll(_liqidClient.getGPUDeviceInfo());
-        devInfos.addAll(_liqidClient.getMemoryDeviceInfo());
-        devInfos.addAll(_liqidClient.getNetworkDeviceInfo());
-        devInfos.addAll(_liqidClient.getStorageDeviceInfo());
-
-        for (var di : devInfos) {
-            _deviceInfoById.put(di.getDeviceIdentifier(), di);
-            _deviceInfoByName.put(di.getName(), di);
-        }
-
-        var machines = _liqidClient.getMachines();
-        for (Machine mach : machines) {
-            _machinesById.put(mach.getMachineId(), mach);
-            _machinesByName.put(mach.getMachineName(), mach);
-            _deviceStatusByMachineId.put(mach.getMachineId(), new LinkedList<>());
-        }
-
-        var groups = _liqidClient.getGroups();
-        for (Group group : groups) {
-            _groupsById.put(group.getGroupId(), group);
-            _groupsByName.put(group.getGroupName(), group);
-            _deviceStatusByGroupId.put(group.getGroupId(), new LinkedList<>());
-
-            var preDevs = _liqidClient.getDevices(null, group.getGroupId(), null);
-            for (var preDev : preDevs) {
-                var devStat = _deviceStatusByName.get(preDev.getDeviceName());
-                _deviceStatusByGroupId.get(group.getGroupId()).add(devStat);
-                var devRel = new DeviceRelation(devStat.getDeviceId(), preDev.getGroupId(), preDev.getMachineId());
-                _deviceRelationsByDeviceId.put(devRel._deviceId, devRel);
-
-                if (devRel._machineId != null) {
-                    _deviceStatusByMachineId.get(devRel._machineId).add(devStat);
-                }
-            }
-        }
-
-        _logger.trace("Exiting %s", fn);
-    }
-
-    /**
-     * Removes all liqid-related annotations from a particular node.
-     * @param nodeName name of the worker node
-     * @return true if we removed any annotations, else false
-     */
-    protected boolean removeAnnotationsFromNode(
-        final String nodeName
-    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
-        var fn = "removeAnnotationsFromNode";
-        _logger.trace("Entering %s", fn);
-
-        var annotations = _k8sClient.getAnnotationsForNode(nodeName);
-        var changed = false;
-        for (java.util.Map.Entry<String, String> entry : annotations.entrySet()) {
-            if (entry.getKey().startsWith(K8S_ANNOTATION_PREFIX)) {
-                annotations.put(entry.getKey(), null);
-                changed = true;
-            }
-        }
-        if (changed) {
-            System.out.println("Removing annotations for worker '" + nodeName + "'...");
-            _k8sClient.updateAnnotationsForNode(nodeName, annotations);
-        }
-
-        _logger.trace("Exiting %s with %s", fn, changed);
-        return changed;
-    }
 
     /**
      * This is invoked in situations where such annotations should not exist.
@@ -434,6 +185,46 @@ public abstract class Command {
     }
 
     /**
+     * Creates linkage between Kubernetes and Liqid.
+     * Deletes any existing configMap and secret, then creates new configMap and optionally a secet.
+     */
+    protected void createLinkage(
+    ) throws K8SHTTPError, K8SRequestError {
+        try {
+            _k8sClient.deleteConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
+        } catch (K8SHTTPError ex) {
+            if (ex.getResponseCode() != 404) {
+                throw ex;
+            }
+        }
+
+        try {
+            _k8sClient.deleteSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
+        } catch (K8SHTTPError ex) {
+            if (ex.getResponseCode() != 404) {
+                throw ex;
+            }
+        }
+
+        // Write the configMap
+        var cfgMapData = new HashMap<String, String>();
+        cfgMapData.put(K8S_CONFIG_MAP_IP_ADDRESS_KEY, _liqidAddress);
+        cfgMapData.put(K8S_CONFIG_MAP_GROUP_NAME_KEY, _liqidGroupName);
+        var cmMetadata = new NamespacedMetadata().setNamespace(K8S_CONFIG_NAMESPACE).setName(K8S_CONFIG_NAME);
+        var newCfgMap = new ConfigMapPayload().setMetadata(cmMetadata).setData(cfgMapData);
+        _k8sClient.createConfigMap(newCfgMap);
+
+        // If there are credentials, write a secret
+        if (_liqidUsername != null) {
+            var mangled = new Credentials(_liqidUsername, _liqidPassword).getMangledString();
+            var secretData = Collections.singletonMap(K8S_SECRET_CREDENTIALS_KEY, mangled);
+            var secretMetadata = new NamespacedMetadata().setNamespace(K8S_SECRET_NAMESPACE).setName(K8S_SECRET_NAME);
+            var newSecret = new SecretPayload().setMetadata(secretMetadata).setData(secretData);
+            _k8sClient.createSecret(newSecret);
+        }
+    }
+
+    /**
      * Creates a new Logger based on our current logger, which does NOT log to stdout or stderr.
      */
     private Logger createSubLogger(
@@ -446,6 +237,107 @@ public abstract class Command {
             }
         }
         return newLogger;
+    }
+
+    /**
+     * Displays devices based on the current known liqid inventory (see getLiqidInventory())
+     * @param group Reference to Group if we want to limit the display to resources in that group, else null
+     */
+    protected void displayDevices(
+        final Group group
+    ) {
+        System.out.println();
+        if (group == null) {
+            System.out.println("All Resources:");
+            System.out.println("  ---TYPE---  --NAME--  ----ID----  --------VENDOR--------  -----MODEL------  "
+                                   + "-------MACHINE--------  -------------GROUP--------------  --DESCRIPTION--");
+        } else {
+            System.out.printf("Resources for group '%s':\n", group.getGroupName());
+            System.out.println("  ---TYPE---  --NAME--  ----ID----  --------VENDOR--------  -----MODEL------  "
+                                   + "-------MACHINE--------  --DESCRIPTION--");
+        }
+
+        for (var ds : _liqidInventory._deviceStatusByName.values()) {
+            var di = _liqidInventory._deviceInfoById.get(ds.getDeviceId());
+            var str1 = String.format("%-10s  %-8s  0x%08x  %-22s  %-16s",
+                                     ds.getDeviceType(),
+                                     ds.getName(),
+                                     ds.getDeviceId(),
+                                     di.getVendor(),
+                                     di.getModel());
+
+            var dr = _liqidInventory._deviceRelationsByDeviceId.get(ds.getDeviceId());
+            var machStr = "<none>";
+            if (dr._machineId != null) {
+                machStr = _liqidInventory._machinesById.get(dr._machineId).getMachineName();
+            }
+
+            var grpStr = "";
+            if (group == null) {
+                var temp = (dr._groupId == null)
+                    ? "<none>"
+                    : _liqidInventory._groupsById.get(dr._groupId).getGroupName();
+                grpStr = String.format("  %-32s", temp);
+            }
+
+            System.out.printf("  %s  %-22s%s  %s\n", str1, machStr, grpStr, di.getUserDescription());
+        }
+    }
+
+    /**
+     * Displays machines based on the current known liqid inventory (see getLiqidInventory())
+     * @param group Reference to Group if we want to limit the display to machines in that group, else null
+     */
+    protected void displayMachines(
+        final Group group
+    ) {
+        System.out.println();
+        if (group == null) {
+            System.out.println("All Machines:");
+            System.out.println("  -------------GROUP--------------  -------MACHINE--------  ----ID----  --------DEVICES---------");
+        } else {
+            System.out.printf("Machines for group '%s':\n", group.getGroupName());
+            System.out.println("  -------MACHINE--------  ----ID----  --------DEVICES---------");
+        }
+
+        for (var mach : _liqidInventory._machinesById.values()) {
+            var devNames = _liqidInventory._deviceStatusByMachineId.get(mach.getMachineId())
+                                                   .stream()
+                                                   .map(DeviceStatus::getName)
+                                                   .collect(Collectors.toCollection(TreeSet::new));
+            var devNamesStr = String.join(" ", devNames);
+
+            if (group == null) {
+                var grp = _liqidInventory._groupsById.get(mach.getGroupId());
+                System.out.printf("  %-32s  %-22s  0x%08x  %s\n",
+                                  grp.getGroupName(),
+                                  mach.getMachineName(),
+                                  mach.getMachineId(),
+                                  devNamesStr);
+            } else {
+                System.out.printf("  %-22s  0x%08x  %s\n",
+                                  mach.getMachineName(),
+                                  mach.getMachineId(),
+                                  devNamesStr);
+            }
+        }
+    }
+
+    /**
+     * Given two sets of the same type, we populate a third set of that type with
+     * only those items which are contained in both of the original sets.
+     * @param set1 first contributing set
+     * @param set2 second contributing set
+     * @param intersection result set.
+     * @param <T> item type
+     */
+    protected <T> void getIntersection(
+        final Collection<T> set1,
+        final Collection<T> set2,
+        final LinkedList<T> intersection
+    ) {
+        intersection.clear();
+        set1.stream().filter(set2::contains).forEach(intersection::add);
     }
 
     /**
@@ -492,16 +384,9 @@ public abstract class Command {
 
         try {
             var secret = _k8sClient.getSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
-            var bytes = Base64.getDecoder().decode(secret.data.get(K8S_SECRET_CREDENTIALS_KEY));
-            var composite = new String(bytes);
-            var split = composite.split(":");
-            if (split.length > 2) {
-                var ex = new ConfigurationDataException("Malformed decoded Base64 string detected while obtaining Liqid credentials");
-                _logger.throwing(ex);
-                throw ex;
-            }
-            _liqidUsername = split[0];
-            _liqidPassword = split.length == 2 ? split[1] : null;
+            var creds = new Credentials(secret.data.get(K8S_SECRET_CREDENTIALS_KEY));
+            _liqidUsername = creds.getUsername();
+            _liqidPassword = creds.getPassword();
         } catch (K8SHTTPError ex) {
             //  A 404 could indicate no linkage, but we wouldn't be here in that case.
             //  Thus, if we get here *now* with a 404, it simply means no credentials are configured,
@@ -581,5 +466,33 @@ public abstract class Command {
                 System.err.println("WARNING:Failed to logout of Liqid Cluster:" + ex);
             }
         }
+    }
+
+    /**
+     * Removes all liqid-related annotations from a particular node.
+     * @param nodeName name of the worker node
+     * @return true if we removed any annotations, else false
+     */
+    protected boolean removeAnnotationsFromNode(
+        final String nodeName
+    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
+        var fn = "removeAnnotationsFromNode";
+        _logger.trace("Entering %s", fn);
+
+        var annotations = _k8sClient.getAnnotationsForNode(nodeName);
+        var changed = false;
+        for (java.util.Map.Entry<String, String> entry : annotations.entrySet()) {
+            if (entry.getKey().startsWith(K8S_ANNOTATION_PREFIX)) {
+                annotations.put(entry.getKey(), null);
+                changed = true;
+            }
+        }
+        if (changed) {
+            System.out.println("Removing annotations for worker '" + nodeName + "'...");
+            _k8sClient.updateAnnotationsForNode(nodeName, annotations);
+        }
+
+        _logger.trace("Exiting %s with %s", fn, changed);
+        return changed;
     }
 }

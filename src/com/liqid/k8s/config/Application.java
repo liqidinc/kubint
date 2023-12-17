@@ -20,11 +20,12 @@ import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.sdk.LiqidException;
 
 import java.io.IOException;
+import java.util.Collection;
 
 public class Application {
 
-    public static final String LOGGER_NAME = "Annotate";
-    public static final String LOG_FILE_NAME = "liq-annotation.log";
+    public static final String LOGGER_NAME = "Config";
+    public static final String LOG_FILE_NAME = "liq-config.log";
 
     // If _logging is true, we do extensive logging to a log file. If false, only errors to stdout.
     private boolean _logging = false;
@@ -39,7 +40,10 @@ public class Application {
 
     private Boolean _force;
     private Logger _logger;
+    private Boolean _noUpdate;
     private String _proxyURL;
+    private Collection<String> _processorSpecs;
+    private Collection<String> _resourceSpecs;
 
     public Application() {}
 
@@ -50,7 +54,10 @@ public class Application {
     Application setLiqidPassword(final String value) { _liqidPassword = value; return this; }
     Application setLiqidUsername(final String value) { _liqidUsername = value; return this; }
     Application setLogging(final boolean flag) { _logging = flag; return this; }
+    Application setNoUpdate(final boolean flag) { _noUpdate = flag; return this; }
     Application setProxyURL(final String value) { _proxyURL = value; return this; }
+    Application setProcessorSpecs(final Collection<String> list) { _processorSpecs = list; return this; }
+    Application setResourceSpecs(final Collection<String> list) { _resourceSpecs = list; return this; }
     Application setTimeoutInSeconds(final int value) { _timeoutInSeconds = value; return this; }
 
     private void initLogging() throws InternalErrorException {
@@ -888,6 +895,8 @@ public class Application {
 //        _logger.trace(String.format("%s returning", fn));
 //    }
 
+    // TODO need to be able to add and remove resources, including compute resources
+
     void process() {
         var fn = "process";
         boolean result = false;
@@ -900,18 +909,26 @@ public class Application {
                     new CleanupCommand(_logger, _proxyURL, _timeoutInSeconds).process();
                 case EXECUTE ->
                     new ExecuteCommand(_logger, _proxyURL, _timeoutInSeconds).process();
+                case INITIALIZE ->
+                    new InitializeCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+                        .setLiqidAddress(_liqidAddress)
+                        .setLiqidGroupName(_liqidGroupName)
+                        .setLiqidPassword(_liqidPassword)
+                        .setLiqidUsername(_liqidUsername)
+                        .setProcessorSpecs(_processorSpecs)
+                        .setResourceSpecs(_resourceSpecs)
+                        .process();
                 case PLAN ->
                     new PlanCommand(_logger, _proxyURL, _timeoutInSeconds).process();
-                case RESOURCES ->
-                    new ResourcesCommand(_logger, _proxyURL, _timeoutInSeconds)
+                case RESET ->
+                    new ResetCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
                         .setLiqidAddress(_liqidAddress)
                         .setLiqidPassword(_liqidPassword)
                         .setLiqidUsername(_liqidUsername)
                         .process();
-                case SETUP ->
-                    new SetupCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+                case RESOURCES ->
+                    new ResourcesCommand(_logger, _proxyURL, _timeoutInSeconds)
                         .setLiqidAddress(_liqidAddress)
-                        .setLiqidGroupName(_liqidGroupName)
                         .setLiqidPassword(_liqidPassword)
                         .setLiqidUsername(_liqidUsername)
                         .process();

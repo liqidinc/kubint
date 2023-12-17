@@ -15,6 +15,7 @@ import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.sdk.LiqidException;
 
 import static com.liqid.k8s.config.CommandType.CLEANUP;
+import static com.liqid.k8s.plan.LiqidInventory.getLiqidInventory;
 
 class ValidateCommand extends Command {
 
@@ -52,7 +53,7 @@ class ValidateCommand extends Command {
             return false;
         }
 
-        getLiqidInventory();
+        _liqidInventory = getLiqidInventory(_liqidClient, _logger);
 
         // TODO
 

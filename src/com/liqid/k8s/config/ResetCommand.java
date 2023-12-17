@@ -3,7 +3,7 @@
  * Copyright 2023 by Liqid, Inc - All Rights Reserved
  */
 
-package com.liqid.k8s.annotate;
+package com.liqid.k8s.config;
 
 import com.bearsnake.k8sclient.K8SHTTPError;
 import com.bearsnake.k8sclient.K8SJSONError;
@@ -14,14 +14,11 @@ import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.sdk.LiqidException;
 
-import static com.liqid.k8s.annotate.CommandType.RESOURCES;
-import static com.liqid.k8s.plan.LiqidInventory.getLiqidInventory;
+import static com.liqid.k8s.config.CommandType.RESET;
 
-class ResourcesCommand extends Command {
+class ResetCommand extends Command {
 
-    private boolean _allFlag = false;
-
-    ResourcesCommand(
+    ResetCommand(
         final Logger logger,
         final String proxyURL,
         final Boolean force,
@@ -30,7 +27,9 @@ class ResourcesCommand extends Command {
         super(logger, proxyURL, force, timeoutInSeconds);
     }
 
-    ResourcesCommand setAll(final Boolean flag) { _allFlag = flag; return this; }
+    ResetCommand setLiqidAddress(final String value) { _liqidAddress = value; return this; }
+    ResetCommand setLiqidPassword(final String value) { _liqidPassword = value; return this; }
+    ResetCommand setLiqidUsername(final String value) { _liqidUsername = value; return this; }
 
     @Override
     public boolean process(
@@ -40,31 +39,31 @@ class ResourcesCommand extends Command {
              K8SJSONError,
              K8SRequestError,
              LiqidException {
-        var fn = RESOURCES.getToken() + ":process";
+        var fn = RESET.getToken() + ":process";
         _logger.trace("Entering %s", fn);
+
+        if (!_force) {
+            System.err.println("ERROR: -f,--force must be set to run this command");
+            _logger.trace("Exiting %s false", fn);
+            return false;
+        }
 
         if (!initK8sClient()) {
             _logger.trace("Exiting %s false", fn);
             return false;
         }
 
-        if (!getLiqidLinkage()) {
-            throw new ConfigurationException("No linkage exists between the Kubernetes Cluster and a Liqid Cluster.");
-        }
-
         if (!initLiqidClient()) {
-            System.err.println("ERROR:Cannot connect to the Liqid Cluster");
             _logger.trace("Exiting %s false", fn);
             return false;
         }
 
-        _liqidInventory = getLiqidInventory(_liqidClient, _logger);
-        var groupParam = _allFlag ? null : _liqidInventory._groupsByName.get(_liqidGroupName);
-        displayDevices(groupParam);
-        displayMachines(groupParam);
+        // TODO clear annotations, configmaps, secrets
 
-        // All done
-        logoutFromLiqidCluster();
+        // Clear Liqid configuration
+        System.out.println("Deleting all Liqid groups...");
+        _liqidClient.clearGroups();
+
         _logger.trace("Exiting %s true", fn);
         return true;
     }

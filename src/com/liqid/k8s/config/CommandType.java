@@ -10,9 +10,10 @@ import java.util.Arrays;
 public enum CommandType {
     CLEANUP("cleanup"),
     EXECUTE("execute"),
+    INITIALIZE("initialize"),
     PLAN("plan"),
+    RESET("reset"),
     RESOURCES("resources"),
-    SETUP("setup"),
     VALIDATE("validate");
 
     private final String _token;
