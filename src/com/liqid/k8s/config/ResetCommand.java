@@ -58,7 +58,9 @@ class ResetCommand extends Command {
             return false;
         }
 
-        // TODO clear annotations, configmaps, secrets
+        // Clear Kubernetes
+        System.out.println("Removing Kubernetes <-> Liqid linkages...");
+        clearLinkage();
 
         // Clear Liqid configuration
         System.out.println("Deleting all Liqid groups...");

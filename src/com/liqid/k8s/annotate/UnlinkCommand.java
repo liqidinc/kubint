@@ -13,8 +13,6 @@ import com.liqid.k8s.Command;
 
 import static com.liqid.k8s.Constants.K8S_CONFIG_NAME;
 import static com.liqid.k8s.Constants.K8S_CONFIG_NAMESPACE;
-import static com.liqid.k8s.Constants.K8S_SECRET_NAME;
-import static com.liqid.k8s.Constants.K8S_SECRET_NAMESPACE;
 import static com.liqid.k8s.annotate.CommandType.UNLINK;
 
 class UnlinkCommand extends Command {
@@ -56,17 +54,7 @@ class UnlinkCommand extends Command {
             return false;
         }
 
-        // delete the configMap and secret
-        _k8sClient.deleteConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
-        try {
-            _k8sClient.deleteSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
-        } catch (K8SHTTPError ex) {
-            //  If we got a 404, it's okay and even expected it there are no credentials.
-            //  Non-404 is not okay.
-            if (ex.getResponseCode() != 404) {
-                throw ex;
-            }
-        }
+        clearLinkage();
 
         _logger.trace("Exiting %s true", fn);
         return true;

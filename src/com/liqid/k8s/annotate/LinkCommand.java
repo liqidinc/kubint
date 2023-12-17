@@ -13,10 +13,6 @@ import com.liqid.k8s.Command;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.sdk.LiqidException;
 
-import static com.liqid.k8s.Constants.K8S_CONFIG_NAME;
-import static com.liqid.k8s.Constants.K8S_CONFIG_NAMESPACE;
-import static com.liqid.k8s.Constants.K8S_SECRET_NAME;
-import static com.liqid.k8s.Constants.K8S_SECRET_NAMESPACE;
 import static com.liqid.k8s.annotate.CommandType.LINK;
 
 class LinkCommand extends Command {
@@ -53,40 +49,15 @@ class LinkCommand extends Command {
             return false;
         }
 
-        // If there is already a configMap with this cluster name...
-        //      If force is set, write warning, delete the existing info, and continue
-        //      Otherwise tell user it already exists, and stop
-        try {
-            var oldConfigMap = _k8sClient.getConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
-            if (oldConfigMap != null) {
-                if (!_force) {
-                    System.err.println("ERROR:A link already exists between the Kubernetes Cluster and the Liqid Cluster.");
-                    for (var e : oldConfigMap.data.entrySet()) {
-                        System.err.printf("     : %s = %s\n", e.getKey(), e.getValue());
-                    }
-                    _logger.trace("Exiting %s false", fn);
-                    return false;
-                }
-
-                System.err.println("WARNING:A link already exists between the Kubernetes Cluster and the Liqid Cluster.");
-                System.err.println("       :The existing link will be deleted, and a new one created.");
-                _k8sClient.deleteConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
-            }
-        } catch (K8SHTTPError ex) {
-            //  We *should* get here with a 404. Anything other than a 404 is a Bad Thing.
-            if (ex.getResponseCode() != 404) {
-                throw ex;
-            }
+        // There should not be any current linkages nor annotations
+        if (!checkForExistingLinkage(LINK.getToken())) {
+            _logger.trace("Exiting %s false", fn);
+            return false;
         }
 
-        // Is there a configMap? If so, get rid of it.
-        try {
-            _k8sClient.deleteSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
-        } catch (K8SHTTPError ex) {
-            //  A 404 is okay - anything else is not
-            if (ex.getResponseCode() != 404) {
-                throw ex;
-            }
+        if (!checkForExistingAnnotations(LINK.getToken())) {
+            _logger.trace("Exiting %s false", fn);
+            return false;
         }
 
         // Now go verify that the link is correct (i.e., that we can contact the Liqid Director)

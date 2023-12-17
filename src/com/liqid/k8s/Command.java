@@ -52,7 +52,9 @@ import static com.liqid.k8s.Constants.LIQID_SDK_LABEL;
 import static com.liqid.k8s.annotate.Application.LOGGER_NAME;
 
 /**
- * Abstract class for all command handlers
+ * Abstract class for all command handlers.
+ * Most of the really useful functionality exists in this class, with the subclasses simply calling back
+ * if and as necessary.
  */
 public abstract class Command {
 
@@ -116,8 +118,8 @@ public abstract class Command {
              LiqidException;
 
     /**
-     * This is invoked in situations where such annotations should not exist.
-     * We checks all the worker nodes in the k8s cluster to see if any of them have any liqid-related annotations.
+     * This is invoked in situations where worker node annotations should not exist.
+     * We check all the worker nodes in the k8s cluster to see if any of them have any liqid-related annotations.
      * If any annotations exist, we do the following:
      *      If we are not forcing, we display the list of offending worker nodes and return false.
      *          This is considered an error and the invoker should not proceed with processing.
@@ -135,35 +137,21 @@ public abstract class Command {
         final String command
     ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
         var fn = "checkForExistingAnnotations";
-        _logger.trace("Entering %s", fn);
-
-        // Are there any annotations? If so, we note them, and either quit or clear them depending on _force flag.
-        var workersWithAnnotations = new LinkedList<Node>();
-        var nodeEntities = _k8sClient.getNodes();
-        for (var node : nodeEntities) {
-            var annos = _k8sClient.getAnnotationsForNode(node.getName());
-            for (var key : annos.keySet()) {
-                if (key.startsWith(K8S_ANNOTATION_PREFIX)) {
-                    workersWithAnnotations.add(node);
-                    break;
-                }
-            }
-        }
+        _logger.trace("Entering %s command=%s", fn, command);
 
         var result = true;
-        if (!workersWithAnnotations.isEmpty()) {
-            var prefix1 = _force ? "WARNING" : "ERROR";
-            var prefix2 = _force ? "       " : "     ";
-            System.err.printf("%s:The following worker nodes have Liqid Cluster-related annotations:\n", prefix1);
-            var names = workersWithAnnotations.stream().map(Node::getName).collect(Collectors.toCollection(LinkedList::new));
-            System.err.printf("%s:  %s\n", prefix2, String.join(", ", names));
-            if (!_force) {
-                System.err.printf("%s:%s command will not be performed unless forced.\n", prefix2, command);
-                result = false;
-            } else {
-                System.err.printf("%s:The nodes will be un-annotated.\n", prefix2);
-                for (var node : workersWithAnnotations) {
-                    removeAnnotationsFromNode(node.getName());
+        var nodeEntities = _k8sClient.getNodes();
+        for (var node : nodeEntities) {
+            var annos = node.metadata.annotations;
+            for (var key : annos.keySet()) {
+                if (key.startsWith(K8S_ANNOTATION_PREFIX)) {
+                    if (_force) {
+                        System.err.printf("WARNING:Deleting Liqid annotations from worker %s...\n", node.getName());
+                        removeAnnotationsFromNode(node);
+                    } else {
+                        System.err.printf("ERROR:Worker node %s has Liqid annotations\n", node.getName());
+                        result = false;
+                    }
                 }
             }
         }
@@ -172,12 +160,126 @@ public abstract class Command {
         return result;
     }
 
+    /**
+     * This is invoked in situations where linkage (configmaps and secrets) should not exist.
+     * If any linkage exists, we do the following:
+     *      If we are not forcing, we display the problem and return false.
+     *          This is considered an error and the invoker should not proceed with processing.
+     *      If we are forcing, we note the existence of the linkage and remove it, then return true.
+     *          The invoker may continue processing.
+     * @param command The command which was issued - this is merely for nice-formatting the error/warning messages.
+     * @return true if the invoker may continue, false if processing should stop.
+     * @throws K8SHTTPError If any unexpected HTTP responses are received. Generally, we expect only 200s.
+     * @throws K8SJSONError If information received from k8s cannot be converted from JSON into the expected data
+     *                          structs. This generally indicates a programming error on our part, but it could also
+     *                          result from gratuitous changes in k8s, which does unfortunately occur.
+     * @throws K8SRequestError Indicates some other error during processing, from within the k8sClient module.
+     */
+    protected boolean checkForExistingLinkage(
+        final String command
+    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
+        var fn = "checkForExistingLinkage";
+        _logger.trace("Entering %s with command=%s", fn, command);
+
+        ConfigMapPayload cfgMap = null;
+        try {
+            cfgMap = _k8sClient.getConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
+        } catch (K8SHTTPError ex) {
+            //  We *should* get here with a 404. Anything other than a 404 is a Bad Thing.
+            if (ex.getResponseCode() != 404) {
+                throw ex;
+            }
+        }
+
+        SecretPayload secret = null;
+        try {
+            secret = _k8sClient.getSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
+        } catch (K8SHTTPError ex) {
+            //  We *should* get here with a 404. Anything other than a 404 is a Bad Thing.
+            if (ex.getResponseCode() != 404) {
+                throw ex;
+            }
+        }
+
+        if ((cfgMap != null) || (secret != null)) {
+            if (!_force) {
+                System.err.println("ERROR:A link already exists between the Kubernetes Cluster and the Liqid Cluster.");
+                _logger.trace("Exiting %s false", fn);
+                return false;
+            }
+
+            System.err.println("WARNING:A link already exists between the Kubernetes Cluster and the Liqid Cluster.");
+        }
+
+        if (cfgMap != null) {
+            System.err.println("WARNING:Deleting config map entry...");
+            _k8sClient.deleteConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
+        }
+
+        if (secret != null) {
+            System.err.println("WARNING:Deleting secret entry...");
+            _k8sClient.deleteSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
+        }
+
+        _logger.trace("Exiting %s true", fn);
+        return true;
+    }
+
+    /**
+     * Clears all the Liqid annotations from all the nodes
+     */
+    protected void clearAnnotations() throws K8SHTTPError, K8SJSONError, K8SRequestError {
+        var fn = "clearAnnotations";
+        _logger.trace("Entering %s", fn);
+
+        var nodes = _k8sClient.getNodes();
+        for (var node : nodes) {
+            removeAnnotationsFromNode(node);
+        }
+
+        _logger.trace("Exiting %s", fn);
+    }
+
+    /**
+     * Clears linkage from the Kubernetes cluster and the Liqid Cluster.
+     * Includes configMap, secret, and all worker node annotations.
+     */
+    protected void clearLinkage() throws K8SHTTPError, K8SJSONError, K8SRequestError {
+        var fn = "clearLinkage";
+        _logger.trace("Entering %s", fn);
+
+        try {
+            clearAnnotations();
+            _k8sClient.deleteConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
+        } catch (K8SHTTPError ex) {
+            if (ex.getResponseCode() != 404) {
+                throw ex;
+            }
+        }
+
+        try {
+            _k8sClient.deleteSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
+        } catch (K8SHTTPError ex) {
+            if (ex.getResponseCode() != 404) {
+                throw ex;
+            }
+        }
+
+        _logger.trace("Exiting %s", fn);
+    }
+
+    /**
+     * Helpful wrapper to create a full annotation key
+     */
     protected String createAnnotationKeyFor(
         final String keySuffix
     ) {
         return String.format("%s/%s", K8S_ANNOTATION_PREFIX, keySuffix);
     }
 
+    /**
+     * Helpful wrapper to create a full annotation key
+     */
     protected String createAnnotationKeyForDeviceType(
         final GeneralType genType
     ) {
@@ -190,6 +292,9 @@ public abstract class Command {
      */
     protected void createLinkage(
     ) throws K8SHTTPError, K8SRequestError {
+        var fn = "createLinkage";
+        _logger.trace("Entering %s", fn);
+
         try {
             _k8sClient.deleteConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
         } catch (K8SHTTPError ex) {
@@ -222,6 +327,8 @@ public abstract class Command {
             var newSecret = new SecretPayload().setMetadata(secretMetadata).setData(secretData);
             _k8sClient.createSecret(newSecret);
         }
+
+        _logger.trace("Exiting %s", fn);
     }
 
     /**
@@ -246,6 +353,9 @@ public abstract class Command {
     protected void displayDevices(
         final Group group
     ) {
+        var fn = "displayDevices";
+        _logger.trace("Entering %s", fn);
+
         System.out.println();
         if (group == null) {
             System.out.println("All Resources:");
@@ -282,6 +392,8 @@ public abstract class Command {
 
             System.out.printf("  %s  %-22s%s  %s\n", str1, machStr, grpStr, di.getUserDescription());
         }
+
+        _logger.trace("Exiting %s", fn);
     }
 
     /**
@@ -291,6 +403,9 @@ public abstract class Command {
     protected void displayMachines(
         final Group group
     ) {
+        var fn = "displayMachines";
+        _logger.trace("Entering %s", fn);
+
         System.out.println();
         if (group == null) {
             System.out.println("All Machines:");
@@ -321,6 +436,12 @@ public abstract class Command {
                                   devNamesStr);
             }
         }
+
+        _logger.trace("Exiting %s", fn);
+    }
+
+    protected String getErrorPrefix() {
+        return _force ? "WARNING" : "ERROR";
     }
 
     /**
@@ -470,16 +591,18 @@ public abstract class Command {
 
     /**
      * Removes all liqid-related annotations from a particular node.
-     * @param nodeName name of the worker node
+     * Note that we remove *anything* with the K8S liqid prefix, even if we don't recognize the full key.
+     * This means that we actually have to have the node, in order to iterate over the existing annotations.
+     * @param node the node in question
      * @return true if we removed any annotations, else false
      */
     protected boolean removeAnnotationsFromNode(
-        final String nodeName
+        final Node node
     ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
         var fn = "removeAnnotationsFromNode";
         _logger.trace("Entering %s", fn);
 
-        var annotations = _k8sClient.getAnnotationsForNode(nodeName);
+        var annotations = node.metadata.annotations;
         var changed = false;
         for (java.util.Map.Entry<String, String> entry : annotations.entrySet()) {
             if (entry.getKey().startsWith(K8S_ANNOTATION_PREFIX)) {
@@ -488,8 +611,8 @@ public abstract class Command {
             }
         }
         if (changed) {
-            System.out.println("Removing annotations for worker '" + nodeName + "'...");
-            _k8sClient.updateAnnotationsForNode(nodeName, annotations);
+            System.out.println("Removing annotations for worker '" + node.getName() + "'...");
+            _k8sClient.updateAnnotationsForNode(node.getName(), annotations);
         }
 
         _logger.trace("Exiting %s with %s", fn, changed);

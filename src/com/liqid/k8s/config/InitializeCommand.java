@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
 import static com.liqid.k8s.config.CommandType.CLEANUP;
+import static com.liqid.k8s.config.CommandType.INITIALIZE;
 import static com.liqid.k8s.plan.LiqidInventory.getLiqidInventory;
 
 class InitializeCommand extends Command {
@@ -66,26 +67,64 @@ class InitializeCommand extends Command {
         _liqidClient.groupPoolDone(group.getGroupId());
     }
 
-    private boolean checkConfiguration() {
+    private boolean checkConfiguration(
+        final Map<DeviceStatus, Node> computeDevices,
+        final List<DeviceStatus> resourceDevices
+    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
         var fn = "checkConfiguration";
         _logger.trace("Entering %s", fn);
 
-        // TODO Need to check compute resource description field, if set
+        // Are there any compute device descriptions which contradict the node names?
+        var errors = false;
+        var errPrefix = getErrorPrefix();
+        for (var entry : computeDevices.entrySet()) {
+            var ds = entry.getKey();
+            var node = entry.getValue();
+            var di = _liqidInventory._deviceInfoById.get(entry.getKey().getDeviceId());
+            var desc = di.getUserDescription();
+            if (!(desc.equals("n/a") || desc.equals(node.getName()))) {
+                System.err.printf("%s:Description for resource %s conflicts with node name %s\n",
+                                  errPrefix, ds.getName(), node.getName());
+                if (!_force) {
+                    errors = true;
+                }
+            }
+        }
 
-        // TODO Check configmap and secret entries - there should be none
+        // Check for existing linkage and annotations
+        if (!checkForExistingLinkage(INITIALIZE.getToken())) {
+            errors = true;
+        }
 
-        // TODO Check worker node annotations - there should be none
+        if (!checkForExistingAnnotations(INITIALIZE.getToken())) {
+            errors = true;
+        }
 
-        // Are there any resources assigned to machines or to any groups other than the specified group?
+        // Are there any resources assigned to groups?
         // If so, we cannot continue unless -force is set
-        //  TODO
+        var allDevs = new LinkedList<>(computeDevices.keySet());
+        allDevs.addAll(resourceDevices);
+        for (var ds : allDevs) {
+            var dr = _liqidInventory._deviceRelationsByDeviceId.get(ds.getDeviceId());
+            if (dr._groupId != null) {
+                System.err.printf("%s:Device %s is currently assigned to a group or machine\n", errPrefix, ds.getName());
+                if (!_force) {
+                    errors = true;
+                }
+            }
+        }
 
-        // Are there any resources which are *not* called-out, in the specified group (presuming it exists)?
-        // If group free-pool, it's just a warning. If part of a machine, it's a non-avoidable error.
-        //  TODO
+        // Does the called-out group already exist?
+        if (_liqidInventory._groupsByName.containsKey(_liqidGroupName)) {
+            System.err.printf("%s:Group %s already exists.\n", errPrefix, _liqidGroupName);
+            if (!_force) {
+                errors = true;
+            }
+        }
 
-        _logger.trace("Exiting %s true", fn);
-        return true;
+        var result = !errors;
+        _logger.trace("Exiting %s with %s", fn, result);
+        return result;
     }
 
     private void createMachines(
@@ -150,7 +189,7 @@ class InitializeCommand extends Command {
         _logger.trace("Entering %s compDevs=%s resDevs=%s", fn, computeDevices, resourceDevices);
 
         // Create linkage between Kubernetes and Liqid
-
+        createLinkage();
 
         // If there is already a group, delete it. This will free up all the resources, machines, etc.
         // Then recreate the empty group.
@@ -197,12 +236,7 @@ class InitializeCommand extends Command {
         _logger.trace("Entering %s", fn);
 
         var errors = false;
-        var errPrefix = _force ? "WARNING" : "ERROR";
-
-        var group = _liqidInventory._groupsByName.get(_liqidGroupName);
-        if (group != null) {
-            System.err.printf("INFO:Group '%s' already exists in the Liqid Cluster\n", _liqidGroupName);
-        }
+        var errPrefix = getErrorPrefix();
 
         for (var spec : _processorSpecs) {
             var split = spec.split(":");
@@ -350,7 +384,7 @@ class InitializeCommand extends Command {
             return false;
         }
 
-        if (!checkConfiguration() && !_force) {
+        if (!checkConfiguration(computeResources, otherResources) && !_force) {
             System.err.println("Errors prevent further processing");
             _logger.trace("Exiting %s false", fn);
             return false;

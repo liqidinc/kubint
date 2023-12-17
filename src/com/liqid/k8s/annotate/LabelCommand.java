@@ -83,7 +83,7 @@ class LabelCommand extends Command {
                       annotations);
 
         var errors = false;
-        var errPrefix = _force ? "WARNING" : "ERROR";
+        var errPrefix = getErrorPrefix();
 
         var vendorAndModel = new LinkedHashMap<String, Integer>();
         var modelOnly = new LinkedHashMap<String, Integer>();
@@ -244,7 +244,7 @@ class LabelCommand extends Command {
 
         _liqidInventory = getLiqidInventory(_liqidClient, _logger);
 
-        var errPrefix = _force ? "WARNING" : "ERROR";
+        var errPrefix = getErrorPrefix();
         var errors = false;
         var annotations = new HashMap<String, String>();
 

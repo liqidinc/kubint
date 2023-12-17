@@ -355,6 +355,7 @@ public class Main {
         "-pr", "pcpu1:kub5",
         "-pr", "pcpu2:kub6",
         "-r", "gpu0,gpu1",
+        "-f",
         "-l",
     };
     //TODO end testing

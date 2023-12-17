@@ -39,10 +39,8 @@ class UnlabelCommand extends Command {
         }
 
         try {
-            // Note that we do NOT effect the removal of an annotation key by simply removing it from the container.
-            // Instead, we have to keep the key, but set the value to null, and pass it all back for PATCH to work.
-            // And YES, intelliJ, 'effect' *IS* the correct word here. Go away, you're drunk.
-            var removed = removeAnnotationsFromNode(_nodeName);
+            var node = _k8sClient.getNode(_nodeName);
+            var removed = removeAnnotationsFromNode(node);
             if (removed) {
                 System.out.println("Removed Liqid annotations for worker '" + _nodeName + "'");
             } else {

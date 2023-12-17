@@ -161,7 +161,7 @@ class AutoCommand extends Command {
 
         // Go find the CPU resources, check the descriptions, and create a map of the ones which refer to
         // actual worker nodes (as discovered above).
-        var errPrefix = _force ? "WARNING" : "ERROR";
+        var errPrefix = getErrorPrefix();
         var errors = false;
         var deviceStatuses = _liqidInventory._deviceStatusByGroupId.get(group.getGroupId());
         var cpuToNode = new HashMap<DeviceStatus, Node>();

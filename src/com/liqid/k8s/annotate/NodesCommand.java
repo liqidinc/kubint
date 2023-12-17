@@ -64,7 +64,7 @@ class NodesCommand extends Command {
         for (var node : nodes) {
             var nodeName = node.metadata.name;
             System.out.println("Node " + nodeName + ":");
-            var annotations = _k8sClient.getAnnotationsForNode(node.metadata.name);
+            var annotations = node.metadata.annotations;
             var hasEntry = false;
             for (var entry : annotations.entrySet()) {
                 if (entry.getKey().startsWith(K8S_ANNOTATION_PREFIX)) {
