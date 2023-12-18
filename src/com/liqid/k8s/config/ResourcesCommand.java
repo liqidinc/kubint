@@ -5,17 +5,11 @@
 
 package com.liqid.k8s.config;
 
-import com.bearsnake.k8sclient.K8SHTTPError;
-import com.bearsnake.k8sclient.K8SJSONError;
-import com.bearsnake.k8sclient.K8SRequestError;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
-import com.liqid.k8s.exceptions.ConfigurationDataException;
-import com.liqid.k8s.exceptions.ConfigurationException;
+import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.k8s.plan.Plan;
 import com.liqid.sdk.LiqidException;
-
-import static com.liqid.k8s.config.CommandType.RESOURCES;
-import static com.liqid.k8s.plan.LiqidInventory.getLiqidInventory;
 
 class ResourcesCommand extends Command {
 
@@ -32,26 +26,17 @@ class ResourcesCommand extends Command {
     ResourcesCommand setLiqidUsername(final String value) { _liqidUsername = value; return this; }
 
     @Override
-    public boolean process(
-    ) throws ConfigurationException,
-             ConfigurationDataException,
-             K8SHTTPError,
-             K8SJSONError,
-             K8SRequestError,
-             LiqidException {
-        var fn = RESOURCES.getToken() + ":process";
+    public Plan process(
+    ) throws InternalErrorException, LiqidException {
+        var fn = this.getClass().getName() + ":process";
         _logger.trace("Entering %s", fn);
 
-        if (!initLiqidClient()) {
-            _logger.trace("Exiting %s false", fn);
-            return false;
-        }
-
-        _liqidInventory = getLiqidInventory(_liqidClient, _logger);
+        initLiqidClient();
+        getLiqidInventory();
         displayDevices(null);
         displayMachines(null);
 
-        _logger.trace("Exiting %s true", fn);
-        return true;
+        _logger.trace("Exiting %s with null", fn);
+        return null;
     }
 }

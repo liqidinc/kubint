@@ -5,30 +5,14 @@
 
 package com.liqid.k8s.config;
 
-import com.bearsnake.k8sclient.K8SHTTPError;
-import com.bearsnake.k8sclient.K8SJSONError;
-import com.bearsnake.k8sclient.K8SRequestError;
-import com.bearsnake.klog.FileWriter;
-import com.bearsnake.klog.Level;
-import com.bearsnake.klog.LevelMask;
+import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.klog.Logger;
-import com.bearsnake.klog.PrefixEntity;
-import com.bearsnake.klog.StdOutWriter;
-import com.liqid.k8s.exceptions.ConfigurationDataException;
-import com.liqid.k8s.exceptions.ConfigurationException;
-import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.k8s.exceptions.ScriptException;
 import com.liqid.sdk.LiqidException;
 
-import java.io.IOException;
 import java.util.Collection;
 
 public class Application {
-
-    public static final String LOGGER_NAME = "Config";
-    public static final String LOG_FILE_NAME = "liq-config.log";
-
-    // If _logging is true, we do extensive logging to a log file. If false, only errors to stdout.
-    private boolean _logging = false;
 
     private CommandType _commandType;
     private int _timeoutInSeconds = 300;
@@ -45,70 +29,18 @@ public class Application {
     private Collection<String> _processorSpecs;
     private Collection<String> _resourceSpecs;
 
-    public Application() {}
-
     Application setCommandType(final CommandType value) { _commandType = value; return this; }
     Application setForce(final Boolean value) { _force = value; return this; }
     Application setLiqidAddress(final String value) { _liqidAddress = value; return this; }
     Application setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
     Application setLiqidPassword(final String value) { _liqidPassword = value; return this; }
     Application setLiqidUsername(final String value) { _liqidUsername = value; return this; }
-    Application setLogging(final boolean flag) { _logging = flag; return this; }
+    Application setLogger(final Logger value) { _logger = value; return this; }
     Application setNoUpdate(final boolean flag) { _noUpdate = flag; return this; }
     Application setProxyURL(final String value) { _proxyURL = value; return this; }
     Application setProcessorSpecs(final Collection<String> list) { _processorSpecs = list; return this; }
     Application setResourceSpecs(final Collection<String> list) { _resourceSpecs = list; return this; }
     Application setTimeoutInSeconds(final int value) { _timeoutInSeconds = value; return this; }
-
-    private void initLogging() throws InternalErrorException {
-        try {
-            var level = _logging ? Level.TRACE : Level.ERROR;
-            _logger = new Logger(LOGGER_NAME);
-            _logger.setLevel(level);
-
-            _logger.addWriter(new StdOutWriter(Level.ERROR));
-            if (_logging) {
-                var fw = new FileWriter(new LevelMask(level), LOG_FILE_NAME, false);
-                fw.addPrefixEntity(PrefixEntity.SOURCE_CLASS);
-                fw.addPrefixEntity(PrefixEntity.SOURCE_METHOD);
-                fw.addPrefixEntity(PrefixEntity.SOURCE_LINE_NUMBER);
-                _logger.addWriter(fw);
-            }
-        } catch (IOException ex) {
-            throw new InternalErrorException(ex.toString());
-        }
-    }
-
-    // additional context for doUpdate
-//    private class ContextForUpdate {
-//
-//        public final Map<String, DeviceStatus> _allDevicesStatusByName = new HashMap<>();
-//        public final Map<String, Machine> _liqidMachinesByName = new HashMap<>(); // only in the k8s group
-//        public final Map<String, List<PreDevice>> _preDevicesByMachineName = new HashMap<>();
-//        public final Map<String, String> _nodeNamesByMachineName = new HashMap<>(); // only in the k8s group
-//
-//        public void populate(
-//            final Integer groupId
-//        ) throws LiqidException {
-//            var allDevStats = _liqidClient.getAllDevicesStatus();
-//            allDevStats.forEach(devStat -> _allDevicesStatusByName.put(devStat.getName(), devStat));
-//
-//            var prefix = LIQID_K8S_GROUP_NAME + "-";
-//            var liqidMachines = _liqidClient.getMachinesByGroupId(groupId);
-//            for (var liqidMachine : liqidMachines) {
-//                var machineId = liqidMachine.getMachineId();
-//                var machineName = liqidMachine.getMachineName();
-//                _liqidMachinesByName.put(machineName, liqidMachine);
-//                _nodeNamesByMachineName.put(machineName, machineName.replace(prefix, ""));
-//                var preDevs = _liqidClient.getDevices(null, null, machineId);
-//                _preDevicesByMachineName.put(machineName, preDevs);
-//            }
-//        }
-//    }
-//
-//    private final ContextForUpdate _ContextForUpdate = new ContextForUpdate();
-
-
 
 
 
@@ -725,257 +657,47 @@ public class Application {
 //        return result;
 //    }
 
-    // ------------------------------------------------------------------------
-    // top-level command handlers
-    // ------------------------------------------------------------------------
-
-//    private void doConfig() throws ScriptException, LiqidException, K8SException {
-//        var fn = "doConfig";
-//        _logger.atTrace().log("Entering {}", fn);
-//
-//        makeLiqidClient();
-//        makeK8SClient();
-//
-//        try {
-//            // Ensure that no Kubernetes group exists, and that at least one node is in the free pool
-//            var groups = _liqidClient.getGroups();
-//            if (!groups.isEmpty() && !_clearContext && !_showMode) {
-//                var t = new SetupException("Cannot run config action without a clean configuration");
-//                _logger.throwing(t);
-//                throw t;
-//            }
-//
-//            System.out.println();
-//            System.out.println("Reading Liqid Cluster Configuration...");
-//            var liqidConfig = LiqidConfiguration.create(_liqidClient);
-//            liqidConfig.show("| ");
-//
-//            System.out.println();
-//            System.out.println("Reading K8S Configuration...");
-//            var k8sConfig = new K8SConfiguration(_logger);
-//            k8sConfig.load(_k8sClient);
-//            k8sConfig.display("| ");
-//
-//            var layout = Layout.createForInitialConfiguration(k8sConfig, liqidConfig, _logger);
-//            System.out.println();
-//            System.out.println("Target Layout:");
-//            layout.show("| ");
-//
-//            var plan = Plan.createForInitialConfiguration(liqidConfig, _clearContext, LIQID_K8S_GROUP_NAME, layout);
-//            plan.show();
-//
-//            if (!_showMode) {
-//                plan.execute(_k8sClient, _liqidClient, _logger);
-//            }
-//        } finally {
-//            _liqidClient.logout();
-//        }
-//
-//        _logger.atTrace().log("{} returning", fn);
-//    }
-//
-//    private void doExpand() throws ScriptException, LiqidException, K8SException {
-//        var fn = "doExpand";
-//        _logger.atTrace().log("Entering {}", fn);
-//
-//        // This is to be used when the administrator has already used the config command at least once.
-//        // There are precautions we could take, and may do so in the future.
-//        // For now, we just raid the liqid config for all the compute devices identified by liqid annotations
-//        // in k8s which are in the system free pool so we can get them into the k8s group, then create
-//        // machines for all the nodes in the k8s group which are not already in a machine.
-//        if (_clearContext) {
-//            var t = new SetupException("Will not clear configuration for expand command");
-//            _logger.throwing(t);
-//            throw t;
-//        }
-//
-//        makeLiqidClient();
-//        makeK8SClient();
-//
-//        try {
-//            // find the kubernetes group
-//            // account for temporary API bug - should give us a 404 which raises an exception.
-//            var groupId = _liqidClient.getGroupIdByName(LIQID_K8S_GROUP_NAME);
-//            if (groupId == 0) {
-//                var t = new SetupException(String.format("Kubernetes group '%s' does not exists", LIQID_K8S_GROUP_NAME));
-//                _logger.throwing(t);
-//                throw t;
-//            }
-//
-//            System.out.println();
-//            System.out.println("Reading Liqid Cluster Configuration...");
-//            var liqidConfig = LiqidConfiguration.create(_liqidClient);
-//            liqidConfig.show("| ");
-//
-//            System.out.println();
-//            System.out.println("Reading K8S Configuration...");
-//            var k8sConfig = new K8SConfiguration(_logger);
-//            k8sConfig.load(_k8sClient);
-//            k8sConfig.display("| ");
-//
-//            // make a plan and execute it.
-//            var currentLayout = Layout.createExisting(k8sConfig, liqidConfig, groupId, _logger);
-//            System.out.println();
-//            System.out.println("Existing Layout:");
-//            currentLayout.show("| ");
-//
-//            var requestedLayout = Layout.createForAddingNodes(k8sConfig, liqidConfig, groupId, _logger);
-//            System.out.println();
-//            System.out.println("Updated Layout:");
-//            requestedLayout.show("| ");
-//
-//            var plan = Plan.createForAddingNodes(currentLayout, requestedLayout);
-//            plan.show();
-//
-//            if (!_showMode) {
-//                plan.execute(_k8sClient, _liqidClient, _liqidClient.getGroup(groupId), _logger);
-//            }
-//        } finally {
-//            _liqidClient.logout();
-//        }
-//
-//        _logger.atTrace().log("{} returning", fn);
-//    }
-//
-//    private void doUpdate() throws ScriptException, LiqidException, K8SException {
-//        var fn = "doUpdate";
-//        _logger.atTrace().log("Entering {}", fn);
-//
-//        if (_clearContext) {
-//            var t = new SetupException("Will not clear configuration for expand command");
-//            _logger.throwing(t);
-//            throw t;
-//        }
-//
-//        makeLiqidClient();
-//        makeK8SClient();
-//
-//        try {
-//            // find the kubernetes group
-//            // account for temporary API bug - should give us a 404 which raises an exception.
-//            var groupId = _liqidClient.getGroupIdByName(LIQID_K8S_GROUP_NAME);
-//            if (groupId == 0) {
-//                var t = new SetupException(String.format("Kubernetes group '%s' does not exists", LIQID_K8S_GROUP_NAME));
-//                _logger.throwing(t);
-//                throw t;
-//            }
-//
-//            System.out.println();
-//            System.out.println("Reading Liqid Cluster Configuration...");
-//            var liqidConfig = LiqidConfiguration.create(_liqidClient);
-//            liqidConfig.show("| ");
-//
-//            System.out.println();
-//            System.out.println("Reading K8S Configuration...");
-//            var k8sConfig = new K8SConfiguration(_logger);
-//            k8sConfig.load(_k8sClient);
-//            k8sConfig.display("| ");
-//
-//            // make a plan and execute it.
-//            var currentLayout = Layout.createExisting(k8sConfig, liqidConfig, groupId, _logger);
-//            System.out.println();
-//            System.out.println("Existing Layout:");
-//            currentLayout.show("| ");
-//
-//            var requestedLayout = Layout.createForInitialConfiguration(k8sConfig, liqidConfig, _logger);
-//            System.out.println();
-//            System.out.println("Updated Layout:");
-//            requestedLayout.show("| ");
-//
-//            var plan = Plan.createForReconfiguration(currentLayout, requestedLayout);
-//            plan.show();
-//
-//            if (!_showMode) {
-//                plan.execute(_k8sClient, _liqidClient, _liqidClient.getGroup(groupId), _logger);
-//            }
-//        } finally {
-//            _liqidClient.logout();
-//        }
-//
-//        _logger.trace(String.format("%s returning", fn));
-//    }
-
-    // TODO need to be able to add and remove resources, including compute resources
-
-    void process() {
+    void process() throws K8SException, LiqidException, ScriptException {
         var fn = "process";
-        boolean result = false;
-        try {
-            initLogging();
-            _logger.trace("Entering %s", fn);
+        _logger.trace("Entering %s", fn);
 
-            result = switch (_commandType) {
-                case EXECUTE ->
-                    new ExecuteCommand(_logger, _proxyURL, _timeoutInSeconds)
-                        .setNoUpdate(_noUpdate)
-                        .process();
-                case INITIALIZE ->
-                    new InitializeCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
-                        .setLiqidAddress(_liqidAddress)
-                        .setLiqidGroupName(_liqidGroupName)
-                        .setLiqidPassword(_liqidPassword)
-                        .setLiqidUsername(_liqidUsername)
-                        .setProcessorSpecs(_processorSpecs)
-                        .setResourceSpecs(_resourceSpecs)
-                        .process();
-                case PLAN ->
-                    new PlanCommand(_logger, _proxyURL, _timeoutInSeconds).process();
-                case RESET ->
-                    new ResetCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
-                        .setLiqidAddress(_liqidAddress)
-                        .setLiqidPassword(_liqidPassword)
-                        .setLiqidUsername(_liqidUsername)
-                        .process();
-                case RESOURCES ->
-                    new ResourcesCommand(_logger, _proxyURL, _timeoutInSeconds)
-                        .setLiqidAddress(_liqidAddress)
-                        .setLiqidPassword(_liqidPassword)
-                        .setLiqidUsername(_liqidUsername)
-                        .process();
-                case VALIDATE ->
-                    new ValidateCommand(_logger, _proxyURL, _timeoutInSeconds).process();
-            };
-        } catch (ConfigurationDataException ex) {
-            _logger.catching(ex);
-            System.err.println("Configuration Data inconsistency(ies) prevent further processing.");
-            System.err.println("Please collect logging information and contact Liqid Support.");
-        } catch (ConfigurationException ex) {
-            _logger.catching(ex);
-            System.err.println("Configuration inconsistency(ies) prevent further processing.");
-            System.err.println("Please collect logging information and contact Liqid Support.");
-        } catch (InternalErrorException ex) {
-            _logger.catching(ex);
-            System.err.println("An internal error has been detected in the application.");
-            System.err.println("Please collect logging information and contact Liqid Support.");
-        } catch (K8SJSONError ex) {
-            _logger.catching(ex);
-            System.err.println("Something went wrong while parsing JSON data from the Kubernetes cluster.");
-            System.err.println("Please collect logging information and contact Liqid Support.");
-        } catch (K8SHTTPError ex) {
-            _logger.catching(ex);
-            var code = ex.getResponseCode();
-            System.err.printf("Received unexpected %d HTTP response from the Kubernetes API server.\n", code);
-            System.err.println("Please verify that you have provided the correct IP address and port information,");
-            System.err.println("and that the API server (or proxy server) is up and running.");
-        } catch (K8SRequestError ex) {
-            _logger.catching(ex);
-            System.err.println("Could not complete the request to the Kubernetes API server.");
-            System.err.println("Error: " + ex.getMessage());
-            System.err.println("Please verify that you have provided the correct IP address and port information,");
-            System.err.println("and that the API server (or proxy server) is up and running.");
-        } catch (LiqidException ex) {
-            _logger.catching(ex);
-            System.err.println("Could not complete the request due to an error communicating with the Liqid Cluster.");
-            System.err.println("Error: " + ex.getMessage());
-            System.err.println("Please verify that you have provided the correct IP address and port information,");
-            System.err.println("and that the API server (or proxy server) is up and running.");
-        }
+        var command = switch (_commandType) {
+            case COMPOSE ->
+                new ComposeCommand(_logger, _proxyURL, _timeoutInSeconds);
+            case INITIALIZE -> new InitializeCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+                .setLiqidAddress(_liqidAddress)
+                .setLiqidGroupName(_liqidGroupName)
+                .setLiqidPassword(_liqidPassword)
+                .setLiqidUsername(_liqidUsername)
+                .setProcessorSpecs(_processorSpecs)
+                .setResourceSpecs(_resourceSpecs);
+            case PLAN ->
+                new PlanCommand(_logger, _proxyURL, _timeoutInSeconds);
+            case RECONFIGURE ->
+                new ReconfigureCommand(_logger, _proxyURL, _timeoutInSeconds);
+            case RESET ->
+                new ResetCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+                    .setLiqidAddress(_liqidAddress)
+                    .setLiqidPassword(_liqidPassword)
+                    .setLiqidUsername(_liqidUsername);
+            case RESOURCES ->
+                new ResourcesCommand(_logger, _proxyURL, _timeoutInSeconds)
+                    .setLiqidAddress(_liqidAddress)
+                    .setLiqidPassword(_liqidPassword)
+                    .setLiqidUsername(_liqidUsername);
+            case VALIDATE ->
+                new ValidateCommand(_logger, _proxyURL, _timeoutInSeconds);
+        };
 
-        if (result) {
-            System.out.printf("--- %s command completed successfully ---\n", _commandType.getToken());
-        } else {
-            System.err.printf("--- %s command failed ---\n", _commandType.getToken());
+        var plan = command.process();
+        if (plan != null) {
+            // commands which do not update anything may not create a plan
+            plan.show();
+            if (!_noUpdate) {
+                plan.execute(command.getK8SClient(), command.getLiqidClient(), _logger);
+            }
         }
+        System.out.printf("--- %s command completed successfully ---\n", _commandType.getToken());
         _logger.trace("Exiting %s", fn);
     }
 }

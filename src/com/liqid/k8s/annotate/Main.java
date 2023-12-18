@@ -270,7 +270,8 @@ public class Main {
                                              .addDescription("  referenced by the user description fields of the various Liqid Cluster resources.")
                                              .addDescription("  Only resources which are attached to the linked Liqid Cluster group, or to machines within")
                                              .addDescription("  that group will be considered.")
-                                             .addDescription("  Each worker node referenced by a compute resource will be annotated to refer to that resource.")
+                                             .addDescription("  Each worker node referenced by a compute resource will be annotated to refer to the ")
+                                             .addDescription("  Liqid Cluster machine which contains that resource.")
                                              .addDescription("  Then all the other resources will be allocated evenly (as possible) across the various")
                                              .addDescription("  worker nodes via subsequent annotations on those nodes.")
                                              .addDescription("  If any worker nodes are already annotated the process will not proceed unless -f,--force is specified,")
@@ -348,80 +349,80 @@ public class Main {
     /**
      * Converts command line nonsense into configuration values which make sense.
      */
-    private static boolean configureApplication(
-        final Application application,
-        final String[] args
-    ) {
-        try {
-            CommandLineHandler clh = new CommandLineHandler();
-            clh.addCanonicalHelpSwitch()
-               .addCanonicalVersionSwitch()
-               .addSwitch(K8S_NODE_NAME_SWITCH)
-               .addSwitch(LIQID_ADDRESS_SWITCH)
-               .addSwitch(LIQID_GROUP_SWITCH)
-               .addSwitch(LIQID_MACHINE_SWITCH)
-               .addSwitch(LIQID_USERNAME_SWITCH)
-               .addSwitch(LIQID_PASSWORD_SWITCH)
-               .addSwitch(LIQID_RESOURCE_FPGA_SWITCH)
-               .addSwitch(LIQID_RESOURCE_GPU_SWITCH)
-               .addSwitch(LIQID_RESOURCE_LINK_SWITCH)
-               .addSwitch(LIQID_RESOURCE_MEM_SWITCH)
-               .addSwitch(LIQID_RESOURCE_SSD_SWITCH)
-               .addSwitch(LOGGING_SWITCH)
-               .addSwitch(K8S_PROXY_URL_SWITCH)
-               .addSwitch(ALL_SWITCH)
-               .addSwitch(FORCE_SWITCH)
-               .addSwitch(NO_UPDATE_SWITCH)
-               .addSwitch(TIMEOUT_SWITCH)
-               .addMutualExclusion(NO_UPDATE_SWITCH, FORCE_SWITCH)
-               .addCommandArgument(COMMAND_ARG);
-
-            var result = clh.processCommandLine(args);
-            if (result.hasErrors() || result.hasWarnings()) {
-                for (var msg : result._messages) {
-                    System.err.println(msg);
-                }
-                System.err.println("Use --help for usage assistance");
-                if (result.hasErrors()) {
-                    return false;
-                }
-            } else if (result.isHelpRequested()) {
-                clh.displayUsage("");
-                return false;
-            } else if (result.isVersionRequested()) {
-                System.out.println("k8sIntegration Version " + Constants.VERSION);
-                return false;
-            }
-
-            application.setLogging(result._switchSpecifications.containsKey(LOGGING_SWITCH))
-                       .setCommandType(CommandType.get(result._commandValue.getValue()))
-                       .setLiqidAddress(getSingleString(result._switchSpecifications.get(LIQID_ADDRESS_SWITCH)))
-                       .setLiqidFPGASpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_FPGA_SWITCH)))
-                       .setLiqidGPUSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_GPU_SWITCH)))
-                       .setLiqidGroupName(getSingleString(result._switchSpecifications.get(LIQID_GROUP_SWITCH)))
-                       .setLiqidLinkSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_LINK_SWITCH)))
-                       .setLiqidMachineName(getSingleString(result._switchSpecifications.get(LIQID_MACHINE_SWITCH)))
-                       .setLiqidMemorySpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_MEM_SWITCH)))
-                       .setLiqidPassword(getSingleString(result._switchSpecifications.get(LIQID_PASSWORD_SWITCH)))
-                       .setLiqidSSDSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_SSD_SWITCH)))
-                       .setLiqidUsername(getSingleString(result._switchSpecifications.get(LIQID_USERNAME_SWITCH)))
-                       .setK8SNodeName(getSingleString(result._switchSpecifications.get(K8S_NODE_NAME_SWITCH)))
-                       .setProxyURL(getSingleString(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)))
-                       .setAll(result._switchSpecifications.containsKey(ALL_SWITCH))
-                       .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH))
-                       .setNoUpdate(result._switchSpecifications.containsKey(NO_UPDATE_SWITCH));
-
-           var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
-            if ((values != null) && !values.isEmpty()) {
-                application.setTimeoutInSeconds((int) (long) ((FixedPointValue) values.get(0)).getValue());
-            }
-
-            return true;
-        } catch (KomandoException ex) {
-            System.out.println("Internal error:" + ex.getMessage());
-            return false;
-        }
-    }
+//    private static boolean configureApplication(
+//        final Application application,
+//        final String[] args
+//    ) {
+//        try {
+//            CommandLineHandler clh = new CommandLineHandler();
+//            clh.addCanonicalHelpSwitch()
+//               .addCanonicalVersionSwitch()
+//               .addSwitch(K8S_NODE_NAME_SWITCH)
+//               .addSwitch(LIQID_ADDRESS_SWITCH)
+//               .addSwitch(LIQID_GROUP_SWITCH)
+//               .addSwitch(LIQID_MACHINE_SWITCH)
+//               .addSwitch(LIQID_USERNAME_SWITCH)
+//               .addSwitch(LIQID_PASSWORD_SWITCH)
+//               .addSwitch(LIQID_RESOURCE_FPGA_SWITCH)
+//               .addSwitch(LIQID_RESOURCE_GPU_SWITCH)
+//               .addSwitch(LIQID_RESOURCE_LINK_SWITCH)
+//               .addSwitch(LIQID_RESOURCE_MEM_SWITCH)
+//               .addSwitch(LIQID_RESOURCE_SSD_SWITCH)
+//               .addSwitch(LOGGING_SWITCH)
+//               .addSwitch(K8S_PROXY_URL_SWITCH)
+//               .addSwitch(ALL_SWITCH)
+//               .addSwitch(FORCE_SWITCH)
+//               .addSwitch(NO_UPDATE_SWITCH)
+//               .addSwitch(TIMEOUT_SWITCH)
+//               .addMutualExclusion(NO_UPDATE_SWITCH, FORCE_SWITCH)
+//               .addCommandArgument(COMMAND_ARG);
+//
+//            var result = clh.processCommandLine(args);
+//            if (result.hasErrors() || result.hasWarnings()) {
+//                for (var msg : result._messages) {
+//                    System.err.println(msg);
+//                }
+//                System.err.println("Use --help for usage assistance");
+//                if (result.hasErrors()) {
+//                    return false;
+//                }
+//            } else if (result.isHelpRequested()) {
+//                clh.displayUsage("");
+//                return false;
+//            } else if (result.isVersionRequested()) {
+//                System.out.println("k8sIntegration Version " + Constants.VERSION);
+//                return false;
+//            }
+//
+//            application.setLogging(result._switchSpecifications.containsKey(LOGGING_SWITCH))
+//                       .setCommandType(CommandType.get(result._commandValue.getValue()))
+//                       .setLiqidAddress(getSingleString(result._switchSpecifications.get(LIQID_ADDRESS_SWITCH)))
+//                       .setLiqidFPGASpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_FPGA_SWITCH)))
+//                       .setLiqidGPUSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_GPU_SWITCH)))
+//                       .setLiqidGroupName(getSingleString(result._switchSpecifications.get(LIQID_GROUP_SWITCH)))
+//                       .setLiqidLinkSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_LINK_SWITCH)))
+//                       .setLiqidMachineName(getSingleString(result._switchSpecifications.get(LIQID_MACHINE_SWITCH)))
+//                       .setLiqidMemorySpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_MEM_SWITCH)))
+//                       .setLiqidPassword(getSingleString(result._switchSpecifications.get(LIQID_PASSWORD_SWITCH)))
+//                       .setLiqidSSDSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_SSD_SWITCH)))
+//                       .setLiqidUsername(getSingleString(result._switchSpecifications.get(LIQID_USERNAME_SWITCH)))
+//                       .setK8SNodeName(getSingleString(result._switchSpecifications.get(K8S_NODE_NAME_SWITCH)))
+//                       .setProxyURL(getSingleString(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)))
+//                       .setAll(result._switchSpecifications.containsKey(ALL_SWITCH))
+//                       .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH))
+//                       .setNoUpdate(result._switchSpecifications.containsKey(NO_UPDATE_SWITCH));
+//
+//           var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
+//            if ((values != null) && !values.isEmpty()) {
+//                application.setTimeoutInSeconds((int) (long) ((FixedPointValue) values.get(0)).getValue());
+//            }
+//
+//            return true;
+//        } catch (KomandoException ex) {
+//            System.out.println("Internal error:" + ex.getMessage());
+//            return false;
+//        }
+//    }
 
     // ------------------------------------------------------------------------
     // program entry point
@@ -430,17 +431,17 @@ public class Main {
     public static void main(
         final String[] args
     ) {
-        try {
-            var app = new Application();
-            if (configureApplication(app, args)) {
-                app.process();
-            }
-        } catch (Throwable t) {
-            // Last resort - hopefully we never hit this one
-            System.err.println("An internal error occurred from which the application cannot recover.");
-            System.err.println("Please capture this (and the following) information and report it to Liqid support.");
-            System.err.println("Catching:" + t.getMessage());
-            t.printStackTrace();
-        }
+//        try {
+//            var app = new Application();
+//            if (configureApplication(app, args)) {
+//                app.process();
+//            }
+//        } catch (Throwable t) {
+//            // Last resort - hopefully we never hit this one
+//            System.err.println("An internal error occurred from which the application cannot recover.");
+//            System.err.println("Please capture this (and the following) information and report it to Liqid support.");
+//            System.err.println("Catching:" + t.getMessage());
+//            t.printStackTrace();
+//        }
     }
 }

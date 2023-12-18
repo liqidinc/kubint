@@ -9,7 +9,9 @@ import com.bearsnake.k8sclient.K8SException;
 import com.liqid.sdk.LiqidException;
 
 /**
- * TODO Not sure we need this anymore...
+ * Something went wrong and we cannot continue processing.
+ * One example of this would be detecting a problem which might otherwise be ignorable,
+ * however the force flag was not specified.
  */
 public class ProcessingException extends ScriptException {
 

@@ -5,33 +5,24 @@
 
 package com.liqid.k8s.plan;
 
-import com.liqid.k8s.Layout;
-import com.liqid.k8s.LiqidConfiguration;
-import com.liqid.k8s.MachineInfo;
-import com.liqid.k8s.exceptions.ProcessingException;
+import com.bearsnake.k8sclient.K8SException;
+import com.bearsnake.klog.Logger;
+import com.liqid.k8s.LiqidInventory;
+import com.liqid.k8s.exceptions.InternalErrorException;
 import com.bearsnake.k8sclient.K8SClient;
-import com.liqid.sdk.Group;
+import com.liqid.k8s.exceptions.ProcessingException;
+import com.liqid.k8s.plan.actions.Action;
 import com.liqid.sdk.LiqidClient;
 import com.liqid.sdk.LiqidException;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
 
 public class Plan {
 
-//    private final ArrayList<Step> _steps = new ArrayList<>();
-//
-//    private Plan(
-//        final Collection<Step> steps
-//    ) {
-//        _steps.addAll(steps);
-//    }
-//
-//    public Step getStep(final int index) { return _steps.get(index); }
-//    public int getStepCount() { return _steps.size(); }
-//
+    private final ArrayList<Action> _actions = new ArrayList<>();
+
+    public Plan addAction(final Action action) { _actions.add(action); return this; }
+
 //    public static Plan createForAddingNodes(
 //        final Layout currentLayout,
 //        final Layout targetLayout
@@ -54,7 +45,7 @@ public class Plan {
 //
 //        return new Plan(steps);
 //    }
-//
+
 //    /**
 //     * Creates a plan for clearing the liqid configuration and subsequently
 //     * reaching the given requested layout.
@@ -88,7 +79,7 @@ public class Plan {
 //
 //        return new Plan(steps);
 //    }
-//
+
 //    public static Plan createForReconfiguration(
 //        final Layout currentLayout,
 //        final Layout targetLayout
@@ -175,48 +166,38 @@ public class Plan {
 //
 //        return new Plan(steps);
 //    }
-//
-//    public void execute(
-//        final K8SClient k8SClient,
-//        final LiqidClient liqidClient,
-//        final Logger logger
-//    ) throws ProcessingException {
-//        execute(k8SClient, liqidClient, null, logger);
-//    }
-//
-//    public void execute(
-//        final K8SClient k8SClient,
-//        final LiqidClient liqidClient,
-//        final Group group,
-//        final Logger logger
-//    ) throws ProcessingException {
-//        var context = new ExecutionContext(k8SClient, liqidClient, logger);
-//        try {
-//            context.loadMachines();
-//            context.setGroup(group);
-//        } catch (LiqidException lex) {
-//            logger.catching(lex);
-//            var t = new ProcessingException(lex);
-//            logger.throwing(t);
-//            throw t;
-//        }
-//
-//        for (int sx = 0; sx < _steps.size(); ++sx) {
-//            var step = _steps.get(sx);
-//            System.out.printf("Executing Step %d: %s...\n", sx + 1, step.toString());
-//            step.perform(context);
-//        }
-//    }
-//
-//    public void show() {
-//        System.out.println();
-//        System.out.println("Plan----------------------------------");
-//        if (_steps.isEmpty()) {
-//            System.out.println("Nothing to be done");
-//        } else {
-//            for (int sx = 0; sx < _steps.size(); ++sx) {
-//                System.out.printf("| Step %d: %s\n", sx + 1, _steps.get(sx).toString());
-//            }
-//        }
-//    }
+
+    public void execute(
+        final K8SClient k8SClient,
+        final LiqidClient liqidClient,
+        final Logger logger
+    ) throws InternalErrorException, K8SException, LiqidException, ProcessingException {
+        for (var action : _actions) {
+            action.checkParameters();
+        }
+
+        var context = new ExecutionContext().setK8SClient(k8SClient)
+                                            .setLiqidClient(liqidClient)
+                                            .setLiqidInventory(LiqidInventory.getLiqidInventory(liqidClient, logger))
+                                            .setLogger(logger);
+
+        for (int sx = 0; sx < _actions.size(); ++sx) {
+            var step = _actions.get(sx);
+            System.out.printf("---| Executing Step %d: %s...\n", sx + 1, step.toString());
+            step.perform(context);
+        }
+    }
+
+    public void show() {
+        System.out.println();
+        System.out.println("Plan----------------------------------");
+        if (_actions.isEmpty()) {
+            System.out.println("Nothing to be done");
+        } else {
+            for (int sx = 0; sx < _actions.size(); ++sx) {
+                System.out.printf("| Step %d: %s\n", sx + 1, _actions.get(sx).toString());
+            }
+        }
+        System.out.println("--------------------------------------");
+    }
 }

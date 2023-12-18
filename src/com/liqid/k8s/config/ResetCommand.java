@@ -5,16 +5,17 @@
 
 package com.liqid.k8s.config;
 
-import com.bearsnake.k8sclient.K8SHTTPError;
-import com.bearsnake.k8sclient.K8SJSONError;
-import com.bearsnake.k8sclient.K8SRequestError;
+import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
-import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
+import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.k8s.exceptions.ProcessingException;
+import com.liqid.k8s.plan.Plan;
+import com.liqid.k8s.plan.actions.ClearConfiguration;
+import com.liqid.k8s.plan.actions.RemoveAllAnnotations;
+import com.liqid.k8s.plan.actions.RemoveLinkage;
 import com.liqid.sdk.LiqidException;
-
-import static com.liqid.k8s.config.CommandType.RESET;
 
 class ResetCommand extends Command {
 
@@ -32,41 +33,36 @@ class ResetCommand extends Command {
     ResetCommand setLiqidUsername(final String value) { _liqidUsername = value; return this; }
 
     @Override
-    public boolean process(
+    public Plan process(
     ) throws ConfigurationException,
-             ConfigurationDataException,
-             K8SHTTPError,
-             K8SJSONError,
-             K8SRequestError,
-             LiqidException {
-        var fn = RESET.getToken() + ":process";
+             InternalErrorException,
+             K8SException,
+             LiqidException,
+             ProcessingException {
+        var fn = this.getClass().getName() + ":process";
         _logger.trace("Entering %s", fn);
+
+        initK8sClient();
+        initLiqidClient();
+        getLiqidInventory();
 
         if (!_force) {
             System.err.println("ERROR: -f,--force must be set to run this command");
-            _logger.trace("Exiting %s false", fn);
-            return false;
+            _logger.trace("Exiting %s with null", fn);
+            return null;
         }
 
-        if (!initK8sClient()) {
-            _logger.trace("Exiting %s false", fn);
-            return false;
+        var plan = new Plan();
+        if (hasLinkage()) {
+            plan.addAction(new RemoveLinkage());
+        }
+        if (hasAnnotations()) {
+            plan.addAction(new RemoveAllAnnotations());
         }
 
-        if (!initLiqidClient()) {
-            _logger.trace("Exiting %s false", fn);
-            return false;
-        }
+        plan.addAction(new ClearConfiguration());
 
-        // Clear Kubernetes
-        System.out.println("Removing Kubernetes <-> Liqid linkages...");
-        clearLinkage();
-
-        // Clear Liqid configuration
-        System.out.println("Deleting all Liqid groups...");
-        _liqidClient.clearGroups();
-
-        _logger.trace("Exiting %s true", fn);
-        return true;
+        _logger.trace("Exiting %s with %s", fn, plan);
+        return plan;
     }
 }

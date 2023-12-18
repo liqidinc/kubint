@@ -8,12 +8,14 @@ package com.liqid.k8s.config;
 import java.util.Arrays;
 
 public enum CommandType {
-    EXECUTE("execute"),
+    COMPOSE("compose"),
     INITIALIZE("initialize"),
     PLAN("plan"),
     RESET("reset"),
+    RECONFIGURE("reconfigure"),
     RESOURCES("resources"),
-    VALIDATE("validate");
+    VALIDATE("validate"),
+    ;
 
     private final String _token;
 

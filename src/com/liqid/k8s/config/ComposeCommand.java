@@ -15,15 +15,19 @@ import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.plan.Plan;
 import com.liqid.sdk.LiqidException;
 
-class ValidateCommand extends Command {
+class ComposeCommand extends Command {
 
-    ValidateCommand(
+    private Boolean _noUpdate = false;
+
+    ComposeCommand(
         final Logger logger,
         final String proxyURL,
         final Integer timeoutInSeconds
     ) {
         super(logger, proxyURL, false, timeoutInSeconds);
     }
+
+    ComposeCommand setNoUpdate(final Boolean flag) { _noUpdate = flag; return this; }
 
     @Override
     public Plan process(

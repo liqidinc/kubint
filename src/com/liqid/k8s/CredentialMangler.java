@@ -9,13 +9,13 @@ import com.liqid.k8s.exceptions.ConfigurationDataException;
 
 import java.util.Base64;
 
-public class Credentials {
+public class CredentialMangler {
 
     private final String _mangledString;
     private final String _username;
     private final String _password;
 
-    public Credentials(
+    public CredentialMangler(
         final String username,
         final String password
     ) {
@@ -28,7 +28,7 @@ public class Credentials {
         _mangledString = Base64.getEncoder().encodeToString(temp.getBytes());
     }
 
-    public Credentials(
+    public CredentialMangler(
         final String mangledString
     ) throws ConfigurationDataException {
         _mangledString = mangledString;

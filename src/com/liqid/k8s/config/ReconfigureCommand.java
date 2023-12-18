@@ -12,16 +12,14 @@ import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
+import com.liqid.k8s.plan.Plan;
 import com.liqid.sdk.LiqidException;
 
-import static com.liqid.k8s.config.CommandType.EXECUTE;
-import static com.liqid.k8s.plan.LiqidInventory.getLiqidInventory;
-
-class ExecuteCommand extends Command {
+class ReconfigureCommand extends Command {
 
     private Boolean _noUpdate = false;
 
-    ExecuteCommand(
+    ReconfigureCommand(
         final Logger logger,
         final String proxyURL,
         final Integer timeoutInSeconds
@@ -29,39 +27,40 @@ class ExecuteCommand extends Command {
         super(logger, proxyURL, false, timeoutInSeconds);
     }
 
-    ExecuteCommand setNoUpdate(final Boolean flag) { _noUpdate = flag; return this; }
+    ReconfigureCommand setNoUpdate(final Boolean flag) { _noUpdate = flag; return this; }
 
     @Override
-    public boolean process(
+    public Plan process(
     ) throws ConfigurationException,
              ConfigurationDataException,
              K8SHTTPError,
              K8SJSONError,
              K8SRequestError,
              LiqidException {
-        var fn = EXECUTE.getToken() + ":process";
+        var fn = this.getClass().getName() + ":process";
         _logger.trace("Entering %s", fn);
+        var plan = new Plan();
 
-        if (!initK8sClient()) {
-            _logger.trace("Exiting %s false", fn);
-            return false;
-        }
-
-        if (!getLiqidLinkage()) {
-            _logger.trace("Exiting %s false", fn);
-            return false;
-        }
-
-        if (!initLiqidClient()) {
-            _logger.trace("Exiting %s false", fn);
-            return false;
-        }
-
-        _liqidInventory = getLiqidInventory(_liqidClient, _logger);
+//        if (!initK8sClient()) {
+//            _logger.trace("Exiting %s false", fn);
+//            return false;
+//        }
+//
+//        if (!getLiqidLinkage()) {
+//            _logger.trace("Exiting %s false", fn);
+//            return false;
+//        }
+//
+//        if (!initLiqidClient()) {
+//            _logger.trace("Exiting %s false", fn);
+//            return false;
+//        }
+//
+//        _liqidInventory = getLiqidInventory(_liqidClient, _logger);
 
         // TODO
 
-        _logger.trace("Exiting %s true", fn);
-        return true;
+        _logger.trace("Exiting %s with %s", fn, plan);
+        return plan;
     }
 }

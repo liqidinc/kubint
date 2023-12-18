@@ -94,89 +94,89 @@ public class Application {
     }
 
     void process() {
-        var fn = "process";
-        boolean result = false;
-        try {
-            initLogging();
-            _logger.trace("Entering %s", fn);
-
-            result = switch (_commandType) {
-                case AUTO ->
-                    new AutoCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
-                        .setNoUpdate(_noUpdate)
-                        .process();
-                case LABEL ->
-                    new LabelCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
-                        .setFPGASpecifications(_liqidFPGASpecs)
-                        .setGPUSpecifications(_liqidGPUSpecs)
-                        .setLinkSpecifications(_liqidLinkSpecs)
-                        .setMachineName(_liqidMachineName)
-                        .setMemorySpecifications(_liqidMemorySpecs)
-                        .setNodeName(_k8sNodeName)
-                        .setNoUpdate(_noUpdate)
-                        .setSSDSpecifications(_liqidSSDSpecs)
-                        .process();
-                case LINK ->
-                    new LinkCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
-                        .setLiqidAddress(_liqidAddress)
-                        .setLiqidGroupName(_liqidGroupName)
-                        .setLiqidPassword(_liqidPassword)
-                        .setLiqidUsername(_liqidUsername)
-                        .process();
-                case NODES ->
-                    new NodesCommand(_logger, _proxyURL, _force, _timeoutInSeconds).process();
-                case RESOURCES ->
-                    new ResourcesCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
-                        .setAll(_all)
-                        .process();
-                case UNLABEL ->
-                    new UnlabelCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
-                        .setNodeName(_k8sNodeName)
-                        .process();
-                case UNLINK ->
-                    new UnlinkCommand(_logger, _proxyURL, _force, _timeoutInSeconds).process();
-            };
-        } catch (ConfigurationDataException ex) {
-            _logger.catching(ex);
-            System.err.println("Configuration Data inconsistency(ies) prevent further processing.");
-            System.err.println("Please collect logging information and contact Liqid Support.");
-        } catch (ConfigurationException ex) {
-            _logger.catching(ex);
-            System.err.println("Configuration inconsistency(ies) prevent further processing.");
-            System.err.println("Please collect logging information and contact Liqid Support.");
-        } catch (InternalErrorException ex) {
-            _logger.catching(ex);
-            System.err.println("An internal error has been detected in the application.");
-            System.err.println("Please collect logging information and contact Liqid Support.");
-        } catch (K8SJSONError ex) {
-            _logger.catching(ex);
-            System.err.println("Something went wrong while parsing JSON data from the Kubernetes cluster.");
-            System.err.println("Please collect logging information and contact Liqid Support.");
-        } catch (K8SHTTPError ex) {
-            _logger.catching(ex);
-            var code = ex.getResponseCode();
-            System.err.printf("Received unexpected %d HTTP response from the Kubernetes API server.\n", code);
-            System.err.println("Please verify that you have provided the correct IP address and port information,");
-            System.err.println("and that the API server (or proxy server) is up and running.");
-        } catch (K8SRequestError ex) {
-            _logger.catching(ex);
-            System.err.println("Could not complete the request to the Kubernetes API server.");
-            System.err.println("Error: " + ex.getMessage());
-            System.err.println("Please verify that you have provided the correct IP address and port information,");
-            System.err.println("and that the API server (or proxy server) is up and running.");
-        } catch (LiqidException ex) {
-            _logger.catching(ex);
-            System.err.println("Could not complete the request due to an error communicating with the Liqid Cluster.");
-            System.err.println("Error: " + ex.getMessage());
-            System.err.println("Please verify that you have provided the correct IP address and port information,");
-            System.err.println("and that the API server (or proxy server) is up and running.");
-        }
-
-        if (result) {
-            System.out.printf("--- %s command completed successfully ---\n", _commandType.getToken());
-        } else {
-            System.err.printf("--- %s command failed ---\n", _commandType.getToken());
-        }
-        _logger.trace("Exiting %s", fn);
+//        var fn = "process";
+//        boolean result = false;
+//        try {
+//            initLogging();
+//            _logger.trace("Entering %s", fn);
+//
+//            result = switch (_commandType) {
+//                case AUTO ->
+//                    new AutoCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+//                        .setNoUpdate(_noUpdate)
+//                        .process();
+//                case LABEL ->
+//                    new LabelCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+//                        .setFPGASpecifications(_liqidFPGASpecs)
+//                        .setGPUSpecifications(_liqidGPUSpecs)
+//                        .setLinkSpecifications(_liqidLinkSpecs)
+//                        .setMachineName(_liqidMachineName)
+//                        .setMemorySpecifications(_liqidMemorySpecs)
+//                        .setNodeName(_k8sNodeName)
+//                        .setNoUpdate(_noUpdate)
+//                        .setSSDSpecifications(_liqidSSDSpecs)
+//                        .process();
+//                case LINK ->
+//                    new LinkCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+//                        .setLiqidAddress(_liqidAddress)
+//                        .setLiqidGroupName(_liqidGroupName)
+//                        .setLiqidPassword(_liqidPassword)
+//                        .setLiqidUsername(_liqidUsername)
+//                        .process();
+//                case NODES ->
+//                    new NodesCommand(_logger, _proxyURL, _force, _timeoutInSeconds).process();
+//                case RESOURCES ->
+//                    new ResourcesCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+//                        .setAll(_all)
+//                        .process();
+//                case UNLABEL ->
+//                    new UnlabelCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+//                        .setNodeName(_k8sNodeName)
+//                        .process();
+//                case UNLINK ->
+//                    new UnlinkCommand(_logger, _proxyURL, _force, _timeoutInSeconds).process();
+//            };
+//        } catch (ConfigurationDataException ex) {
+//            _logger.catching(ex);
+//            System.err.println("Configuration Data inconsistency(ies) prevent further processing.");
+//            System.err.println("Please collect logging information and contact Liqid Support.");
+//        } catch (ConfigurationException ex) {
+//            _logger.catching(ex);
+//            System.err.println("Configuration inconsistency(ies) prevent further processing.");
+//            System.err.println("Please collect logging information and contact Liqid Support.");
+//        } catch (InternalErrorException ex) {
+//            _logger.catching(ex);
+//            System.err.println("An internal error has been detected in the application.");
+//            System.err.println("Please collect logging information and contact Liqid Support.");
+//        } catch (K8SJSONError ex) {
+//            _logger.catching(ex);
+//            System.err.println("Something went wrong while parsing JSON data from the Kubernetes cluster.");
+//            System.err.println("Please collect logging information and contact Liqid Support.");
+//        } catch (K8SHTTPError ex) {
+//            _logger.catching(ex);
+//            var code = ex.getResponseCode();
+//            System.err.printf("Received unexpected %d HTTP response from the Kubernetes API server.\n", code);
+//            System.err.println("Please verify that you have provided the correct IP address and port information,");
+//            System.err.println("and that the API server (or proxy server) is up and running.");
+//        } catch (K8SRequestError ex) {
+//            _logger.catching(ex);
+//            System.err.println("Could not complete the request to the Kubernetes API server.");
+//            System.err.println("Error: " + ex.getMessage());
+//            System.err.println("Please verify that you have provided the correct IP address and port information,");
+//            System.err.println("and that the API server (or proxy server) is up and running.");
+//        } catch (LiqidException ex) {
+//            _logger.catching(ex);
+//            System.err.println("Could not complete the request due to an error communicating with the Liqid Cluster.");
+//            System.err.println("Error: " + ex.getMessage());
+//            System.err.println("Please verify that you have provided the correct IP address and port information,");
+//            System.err.println("and that the API server (or proxy server) is up and running.");
+//        }
+//
+//        if (result) {
+//            System.out.printf("--- %s command completed successfully ---\n", _commandType.getToken());
+//        } else {
+//            System.err.printf("--- %s command failed ---\n", _commandType.getToken());
+//        }
+//        _logger.trace("Exiting %s", fn);
     }
 }

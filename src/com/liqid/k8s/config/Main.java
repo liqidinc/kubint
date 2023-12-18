@@ -5,6 +5,16 @@
 
 package com.liqid.k8s.config;
 
+import com.bearsnake.k8sclient.K8SException;
+import com.bearsnake.k8sclient.K8SHTTPError;
+import com.bearsnake.k8sclient.K8SJSONError;
+import com.bearsnake.k8sclient.K8SRequestError;
+import com.bearsnake.klog.FileWriter;
+import com.bearsnake.klog.Level;
+import com.bearsnake.klog.LevelMask;
+import com.bearsnake.klog.Logger;
+import com.bearsnake.klog.PrefixEntity;
+import com.bearsnake.klog.StdOutWriter;
 import com.bearsnake.komando.*;
 import com.bearsnake.komando.exceptions.*;
 import com.bearsnake.komando.values.CommandValue;
@@ -13,15 +23,21 @@ import com.bearsnake.komando.values.StringValue;
 import com.bearsnake.komando.values.Value;
 import com.bearsnake.komando.values.ValueType;
 import com.liqid.k8s.Constants;
+import com.liqid.k8s.exceptions.ConfigurationDataException;
+import com.liqid.k8s.exceptions.ConfigurationException;
+import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.sdk.LiqidException;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.liqid.k8s.config.CommandType.EXECUTE;
+import static com.liqid.k8s.config.CommandType.COMPOSE;
 import static com.liqid.k8s.config.CommandType.INITIALIZE;
 import static com.liqid.k8s.config.CommandType.PLAN;
+import static com.liqid.k8s.config.CommandType.RECONFIGURE;
 import static com.liqid.k8s.config.CommandType.RESET;
 import static com.liqid.k8s.config.CommandType.RESOURCES;
 import static com.liqid.k8s.config.CommandType.VALIDATE;
@@ -65,9 +81,13 @@ public class Main {
         -px,--proxy-url={proxy_url}
     */
 
-    private static final CommandValue CV_EXECUTE = new CommandValue(CommandType.EXECUTE.getToken());
+    private static final String LOGGER_NAME = "Config";
+    private static final String LOG_FILE_NAME = "liq-config.log";
+
+    private static final CommandValue CV_CONFIGURE = new CommandValue(CommandType.COMPOSE.getToken());
     private static final CommandValue CV_INITIALIZE = new CommandValue(INITIALIZE.getToken());
     private static final CommandValue CV_PLAN = new CommandValue(PLAN.getToken());
+    private static final CommandValue CV_RECONFIGURE = new CommandValue(RECONFIGURE.getToken());
     private static final CommandValue CV_RESOURCES = new CommandValue(RESOURCES.getToken());
     private static final CommandValue CV_RESET = new CommandValue(RESET.getToken());
     private static final CommandValue CV_VALIDATE = new CommandValue(CommandType.VALIDATE.getToken());
@@ -91,7 +111,7 @@ public class Main {
                 new ArgumentSwitch.Builder().setShortName("px")
                                             .setLongName("proxy-url")
                                             .setIsRequired(true)
-                                            .addAffinity(CV_EXECUTE).addAffinity(CV_INITIALIZE).addAffinity(CV_RESET)
+                                            .addAffinity(CV_CONFIGURE).addAffinity(CV_INITIALIZE).addAffinity(CV_RESET)
                                             .addAffinity(CV_PLAN).addAffinity(CV_VALIDATE)
                                             .setValueName("k8x_proxy_url")
                                             .setValueType(ValueType.STRING)
@@ -192,18 +212,18 @@ public class Main {
             NO_UPDATE_SWITCH =
                 new SimpleSwitch.Builder().setShortName("no")
                                           .setLongName("no-update")
-                                          .addAffinity(CV_EXECUTE)
+                                          .addAffinity(CV_CONFIGURE).addAffinity(CV_INITIALIZE).addAffinity(CV_RESET)
                                           .addDescription("Indicates that no action should be taken; however, the script will display what action")
                                           .addDescription("/would/ be taken in the absence of this switch.")
                                           .build();
             COMMAND_ARG =
-                new CommandArgument.Builder().addDescription(EXECUTE.getToken())
+                new CommandArgument.Builder().addDescription(COMPOSE.getToken())
                                              .addDescription("  Consults the various Kubernetes node annotations, develops a plan to achieve the requested")
                                              .addDescription("  resource layout, then executes the plan.")
                                              .addDescription(PLAN.getToken())
                                              .addDescription("  Consults the various Kubernetes node annotations, develops a plan to achieve the requested")
                                              .addDescription("  resource layout, displays the plan, but does not execute it.")
-                                             .addDescription("  Effectively the same as the " + EXECUTE.getToken() + " command with -no,--no-update set.")
+                                             .addDescription("  Effectively the same as the " + COMPOSE.getToken() + " command with -no,--no-update set.")
                                              .addDescription(VALIDATE.getToken())
                                              .addDescription("  Ensures the validity of the Liqid Cluster and Kubernetes Cluster configurations")
                                              .addDescription("    in comparison to the various Kubernetes node annotations.")
@@ -216,10 +236,14 @@ public class Main {
                                              .addDescription("    Moves the listed resources into the group.")
                                              .addDescription("  The Liqid Cluster nodes referenced on the command line must already be configured and running")
                                              .addDescription("  as worker nodes, and should have no resources assigned to them.")
+                                             .addDescription(RECONFIGURE.getToken())
+                                             .addDescription("  Used after adding resources (including compute nodes) to the Liqid Cluster, or before removing")
+                                             .addDescription("  them from the Liqid Cluster.")
+                                             // TODO more description here for RECONFIGURE after we've figured it out.
                                              .addDescription(RESET.getToken())
                                              .addDescription("  Entirely resets the configuration of the Liqid Cluster by deleting all groups and machines.")
                                              .addDescription("  Removes all Liqid annotations and other configuration information from the Kubernetes Cluster.")
-                                             .addCommandValue(CV_EXECUTE)
+                                             .addCommandValue(CV_CONFIGURE)
                                              .addCommandValue(CV_INITIALIZE)
                                              .addCommandValue(CV_PLAN)
                                              .addCommandValue(CV_RESOURCES)
@@ -230,6 +254,9 @@ public class Main {
             throw new RuntimeException(e);
         }
     }
+
+    private static Logger _logger = null;
+    private static boolean _logging = false;
 
     // ------------------------------------------------------------------------
     // helper functions
@@ -265,10 +292,57 @@ public class Main {
     }
 
     /**
-     * Converts command line nonsense into configuration values which make sense.
+     * Creates an Application object and loads it with the stuff we pulled from the command line
      */
-    private static boolean configureApplication(
-        final Application application,
+    private static Application configureApplication(
+        final Result result
+    ) {
+        var app = new Application().setCommandType(CommandType.get(result._commandValue.getValue()))
+                                   .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH))
+                                   .setLiqidAddress(getSingleString(result._switchSpecifications.get(LIQID_ADDRESS_SWITCH)))
+                                   .setLiqidGroupName(getSingleString(result._switchSpecifications.get(LIQID_GROUP_SWITCH)))
+                                   .setLiqidPassword(getSingleString(result._switchSpecifications.get(LIQID_PASSWORD_SWITCH)))
+                                   .setLiqidUsername(getSingleString(result._switchSpecifications.get(LIQID_USERNAME_SWITCH)))
+                                   .setLogger(_logger)
+                                   .setNoUpdate(result._switchSpecifications.containsKey(NO_UPDATE_SWITCH))
+                                   .setProcessorSpecs(getStringCollection(result._switchSpecifications.get(PROCESSORS_SWITCH)))
+                                   .setProxyURL(getSingleString(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)))
+                                   .setResourceSpecs(getStringCollection(result._switchSpecifications.get(RESOURCES_SWITCH)));
+
+        var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
+        if ((values != null) && !values.isEmpty()) {
+            app.setTimeoutInSeconds((int) (long) ((FixedPointValue) values.get(0)).getValue());
+        }
+
+        return app;
+    }
+
+    private static void initLogging() throws InternalErrorException {
+        try {
+            var level = _logging ? Level.TRACE : Level.ERROR;
+            _logger = new Logger(LOGGER_NAME);
+            _logger.setLevel(level);
+
+            _logger.addWriter(new StdOutWriter(Level.ERROR));
+            if (_logging) {
+                var fw = new FileWriter(new LevelMask(level), LOG_FILE_NAME, false);
+                fw.addPrefixEntity(PrefixEntity.SOURCE_CLASS);
+                fw.addPrefixEntity(PrefixEntity.SOURCE_METHOD);
+                fw.addPrefixEntity(PrefixEntity.SOURCE_LINE_NUMBER);
+                _logger.addWriter(fw);
+            }
+        } catch (IOException ex) {
+            throw new InternalErrorException(ex.toString());
+        }
+    }
+
+    /**
+     * Converts command line nonsense into configuration values which make sense.
+     * Since this bit determines logging levels, we cannot initialize logging until after we return.
+     * @return reference to command line handler result if successful,
+     *          null if we failed or if we were asked for version or help.
+     */
+    private static Result parseCommandLine(
         final String[] args
     ) {
         try {
@@ -283,6 +357,7 @@ public class Main {
                .addSwitch(K8S_PROXY_URL_SWITCH)
                .addSwitch(TIMEOUT_SWITCH)
                .addSwitch(FORCE_SWITCH)
+               .addSwitch(NO_UPDATE_SWITCH)
                .addSwitch(PROCESSORS_SWITCH)
                .addSwitch(RESOURCES_SWITCH)
                .addCommandArgument(COMMAND_ARG);
@@ -294,37 +369,21 @@ public class Main {
                 }
                 System.err.println("Use --help for usage assistance");
                 if (result.hasErrors()) {
-                    return false;
+                    return null;
                 }
             } else if (result.isHelpRequested()) {
                 clh.displayUsage("");
-                return false;
+                return null;
             } else if (result.isVersionRequested()) {
                 System.out.println("k8sIntegration Version " + Constants.VERSION);
-                return false;
+                return null;
             }
 
-            application.setLogging(result._switchSpecifications.containsKey(LOGGING_SWITCH))
-                       .setCommandType(CommandType.get(result._commandValue.getValue()))
-                       .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH))
-                       .setNoUpdate(result._switchSpecifications.containsKey(NO_UPDATE_SWITCH))
-                       .setLiqidAddress(getSingleString(result._switchSpecifications.get(LIQID_ADDRESS_SWITCH)))
-                       .setLiqidGroupName(getSingleString(result._switchSpecifications.get(LIQID_GROUP_SWITCH)))
-                       .setLiqidPassword(getSingleString(result._switchSpecifications.get(LIQID_PASSWORD_SWITCH)))
-                       .setLiqidUsername(getSingleString(result._switchSpecifications.get(LIQID_USERNAME_SWITCH)))
-                       .setProcessorSpecs(getStringCollection(result._switchSpecifications.get(PROCESSORS_SWITCH)))
-                       .setResourceSpecs(getStringCollection(result._switchSpecifications.get(RESOURCES_SWITCH)))
-                       .setProxyURL(getSingleString(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)));
-
-            var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
-            if ((values != null) && !values.isEmpty()) {
-                application.setTimeoutInSeconds((int) (long) ((FixedPointValue) values.get(0)).getValue());
-            }
-
-            return true;
+            return result;
         } catch (KomandoException ex) {
             System.out.println("Internal error:" + ex.getMessage());
-            return false;
+            ex.printStackTrace();
+            return null;
         }
     }
 
@@ -334,11 +393,16 @@ public class Main {
 
     //TODO testing
     static String[] tempArgs = {
-        "reset",
-        "-px", "http://192.168.1.220:8001",
+        "resources",
         "-ip", "10.10.14.236",
-        "-f",
-        "-l"
+        "-l",
+
+//        "reset",
+//        "-px", "http://192.168.1.220:8001",
+//        "-ip", "10.10.14.236",
+//        "-f",
+//        "-no",
+//        "-l",
 
 //        "initialize",
 //        "-px", "http://192.168.1.220:8001",
@@ -348,6 +412,7 @@ public class Main {
 //        "-pr", "pcpu1:kub5",
 //        "-pr", "pcpu2:kub6",
 //        "-r", "gpu0,gpu1",
+//        "-no",
 //        "-f",
 //        "-l",
     };
@@ -356,13 +421,58 @@ public class Main {
     public static void main(
         final String[] args
     ) {
-        var app = new Application();
-        if (configureApplication(app, tempArgs)) {
+        var result = parseCommandLine(tempArgs);
+        if (result != null) {
+            _logging = result._switchSpecifications.containsKey(LOGGING_SWITCH);
             try {
-                app.process();
-            } catch (Exception ex) {
-                System.out.println("Caught " + ex.getMessage());
-                ex.printStackTrace();
+                initLogging();
+                configureApplication(result).process();
+            } catch (ConfigurationDataException ex) {
+                _logger.catching(ex);
+                System.err.println("Configuration Data inconsistency(ies) prevent further processing.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
+            } catch (ConfigurationException ex) {
+                _logger.catching(ex);
+                System.err.println("Configuration inconsistency(ies) prevent further processing.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
+            } catch (InternalErrorException ex) {
+                _logger.catching(ex);
+                System.err.println("An internal error has been detected in the application.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
+            } catch (K8SJSONError ex) {
+                _logger.catching(ex);
+                System.err.println("Something went wrong while parsing JSON data from the Kubernetes cluster.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
+            } catch (K8SHTTPError ex) {
+                _logger.catching(ex);
+                var code = ex.getResponseCode();
+                System.err.printf("Received unexpected %d HTTP response from the Kubernetes API server.\n", code);
+                System.err.println("Please verify that you have provided the correct IP address and port information,");
+                System.err.println("and that the API server (or proxy server) is up and running.");
+            } catch (K8SRequestError ex) {
+                _logger.catching(ex);
+                System.err.println("Could not complete the request to the Kubernetes API server.");
+                System.err.println("Error: " + ex.getMessage());
+                System.err.println("Please verify that you have provided the correct IP address and port information,");
+                System.err.println("and that the API server (or proxy server) is up and running.");
+            } catch (K8SException ex) {
+                _logger.catching(ex);
+                System.err.println("Could not communicate with the Kubernetes API server.");
+                System.err.println("Error: " + ex.getMessage());
+                System.err.println("Please verify that you have provided the correct IP address and port information,");
+                System.err.println("and that the API server (or proxy server) is up and running.");
+            } catch (LiqidException ex) {
+                _logger.catching(ex);
+                System.err.println("Could not complete the request due to an error communicating with the Liqid Cluster.");
+                System.err.println("Error: " + ex.getMessage());
+                System.err.println("Please verify that you have provided the correct IP address and port information,");
+                System.err.println("and that the API server (or proxy server) is up and running.");
+            } catch (Throwable t) {
+                // just in case anything else gets through
+                System.out.println("Caught " + t.getMessage());
+                t.printStackTrace();
+                System.err.println("An internal error has been detected in the application.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
             }
         }
     }

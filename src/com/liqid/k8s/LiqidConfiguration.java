@@ -23,7 +23,8 @@ import java.util.stream.Collectors;
 /**
  * Represents the state of the basic configuration of a Liqid cluster.
  */
-public class LiqidConfiguration {
+//TODO don't need this anymore
+//public class LiqidConfiguration {
 //
 //    private final Map<String, DeviceStatus> _devicesByName = new HashMap<>();
 //    private final Collection<Group> _groups = new LinkedList<>();
@@ -159,4 +160,4 @@ public class LiqidConfiguration {
 //            System.out.printf("%s%s%s\n", indent, indent, p.getDeviceName());
 //        }
 //    }
-}
+//}

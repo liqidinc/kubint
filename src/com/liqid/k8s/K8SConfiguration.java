@@ -16,7 +16,8 @@ import java.util.LinkedList;
 /**
  * Represents the information we're interested in, derived from a configuration file.
  */
-public class K8SConfiguration {
+// TODO probably don't need this anymore
+//public class K8SConfiguration {
 //
 //    private final Logger _logger;
 //    private final Collection<ConfigurationNode> _nodes = new LinkedList<>();
@@ -108,4 +109,4 @@ public class K8SConfiguration {
 //            System.out.printf("%s%s\n", indent, entry.toString());
 //        }
 //    }
-}
+//}

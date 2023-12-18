@@ -10,6 +10,7 @@ import com.bearsnake.k8sclient.K8SJSONError;
 import com.bearsnake.k8sclient.K8SRequestError;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
+import com.liqid.k8s.plan.Plan;
 
 import static com.liqid.k8s.annotate.CommandType.UNLABEL;
 
@@ -29,32 +30,33 @@ class UnlabelCommand extends Command {
     UnlabelCommand setNodeName(final String value) { _nodeName = value; return this; }
 
     @Override
-    public boolean process() throws K8SHTTPError, K8SJSONError, K8SRequestError {
-        var fn = UNLABEL.getToken() + ":process";
+    public Plan process() throws K8SHTTPError, K8SJSONError, K8SRequestError {
+        var fn = this.getClass().getName() + ":process";
         _logger.trace("Entering %s", fn);
+        var plan = new Plan();
 
-        if (!initK8sClient()) {
-            _logger.trace("Exiting %s false", fn);
-            return false;
-        }
+//        if (!initK8sClient()) {
+//            _logger.trace("Exiting %s false", fn);
+//            return false;
+//        }
+//
+//        try {
+//            var node = _k8sClient.getNode(_nodeName);
+//            var removed = removeAnnotationsFromNode(node);
+//            if (removed) {
+//                System.out.println("Removed Liqid annotations for worker '" + _nodeName + "'");
+//            } else {
+//                System.out.println("No Liqid annotations exist for worker '" + _nodeName + "'");
+//            }
+//        } catch (K8SHTTPError ex) {
+//            if (ex.getResponseCode() == 404) {
+//                System.err.println("ERROR:No Kubernetes worker node found with the name '" + _nodeName + "'");
+//                _logger.trace("Exiting %s false", fn);
+//                return false;
+//            }
+//        }
 
-        try {
-            var node = _k8sClient.getNode(_nodeName);
-            var removed = removeAnnotationsFromNode(node);
-            if (removed) {
-                System.out.println("Removed Liqid annotations for worker '" + _nodeName + "'");
-            } else {
-                System.out.println("No Liqid annotations exist for worker '" + _nodeName + "'");
-            }
-        } catch (K8SHTTPError ex) {
-            if (ex.getResponseCode() == 404) {
-                System.err.println("ERROR:No Kubernetes worker node found with the name '" + _nodeName + "'");
-                _logger.trace("Exiting %s false", fn);
-                return false;
-            }
-        }
-
-        _logger.trace("Exiting %s true", fn);
-        return true;
+        _logger.trace("Exiting %s with %s", fn, plan);
+        return plan;
     }
 }
