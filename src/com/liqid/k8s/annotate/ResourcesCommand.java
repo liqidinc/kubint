@@ -52,7 +52,6 @@ class ResourcesCommand extends Command {
         getLiqidInventory();
 
         var groupParam = _allFlag ? null : _liqidInventory._groupsByName.get(_liqidGroupName);
-        System.out.println(groupParam);
         displayDevices(groupParam);
         displayMachines(groupParam);
 

@@ -5,16 +5,12 @@
 
 package com.liqid.k8s.annotate;
 
-import com.bearsnake.k8sclient.K8SHTTPError;
-import com.bearsnake.k8sclient.K8SJSONError;
-import com.bearsnake.k8sclient.K8SRequestError;
+import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
+import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.k8s.plan.Plan;
-
-import static com.liqid.k8s.Constants.K8S_CONFIG_NAME;
-import static com.liqid.k8s.Constants.K8S_CONFIG_NAMESPACE;
-import static com.liqid.k8s.annotate.CommandType.UNLINK;
+import com.liqid.k8s.plan.actions.RemoveLinkage;
 
 class UnlinkCommand extends Command {
 
@@ -28,36 +24,21 @@ class UnlinkCommand extends Command {
     }
 
     @Override
-    public Plan process() throws K8SHTTPError, K8SJSONError, K8SRequestError {
+    public Plan process() throws K8SException, ProcessingException {
         var fn = this.getClass().getName() + ":process";
         _logger.trace("Entering %s", fn);
-        var plan = new Plan();
 
-//        if (!initK8sClient()) {
-//            _logger.trace("Exiting %s false", fn);
-//            return false;
-//        }
-//
-//        // If there is no configMap for this cluster-name, tell the user and stop
-//        try {
-//            _k8sClient.getConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
-//        } catch (K8SHTTPError ex) {
-//            if (ex.getResponseCode() == 404) {
-//                System.err.println("ERROR:No linkage exists from this Kubernetes Cluster to the Liqid Cluster.");
-//                _logger.trace("Exiting %s false", fn);
-//                return false;
-//            } else {
-//                throw ex;
-//            }
-//        }
-//
-//        if (!checkForExistingAnnotations(UNLINK.getToken())) {
-//            _logger.trace("Exiting %s false", fn);
-//            return false;
-//        }
-//
-//        clearLinkage();
-//
+        initK8sClient();
+
+        // If there is no linkage, tell the user and stop
+        if (!hasLinkage()) {
+            System.err.println("WARNING:No linkage exists from this Kubernetes Cluster to the Liqid Cluster.");
+            _logger.trace("Exiting %s with null", fn);
+            return null;
+        }
+
+        var plan = new Plan().addAction(new RemoveLinkage());
+
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;
     }

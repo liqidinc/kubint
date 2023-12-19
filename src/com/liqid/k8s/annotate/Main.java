@@ -22,10 +22,12 @@ import com.liqid.k8s.Constants;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.sdk.LiqidException;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -71,7 +73,8 @@ public class Main {
 
     annotate unlabel
         -px,--proxy-url={proxy_url}
-        -n,--worker-node={worker_node_name}
+        [ -n,--worker-node={worker_node_name} ]
+        [ -a ]
 
     annotate nodes
         -px,--proxy-url={proxy_url}
@@ -114,10 +117,10 @@ public class Main {
         try {
             K8S_NODE_NAME_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("n")
-                                            .setLongName("worker-node")
-                                            .setIsRequired(true)
+                                            .setLongName("node-name")
+                                            .setIsRequired(false)
                                             .addAffinity(CV_LABEL).addAffinity(CV_UNLABEL)
-                                            .setValueName("worker_node_name")
+                                            .setValueName("node_name")
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the node name of the Kubernetes node to be labeled or unlabeled.")
                                             .build();
@@ -263,21 +266,22 @@ public class Main {
             ALL_SWITCH =
                 new SimpleSwitch.Builder().setShortName("a")
                                           .setLongName("all")
-                                          .addAffinity(CV_RESOURCES)
+                                          .addAffinity(CV_RESOURCES).addAffinity(CV_UNLABEL)
                                           .addDescription("Displays or processes all information, not just that which is normally processed.")
                                           .addDescription("See the related command(s) for more specific information.")
                                           .build();
             FORCE_SWITCH =
                 new SimpleSwitch.Builder().setShortName("f")
                                           .setLongName("force")
-                                          .addAffinity(CV_AUTO).addAffinity(CV_LINK).addAffinity(CV_UNLINK).addAffinity(CV_LABEL)
+                                          .addAffinity(CV_AUTO).addAffinity(CV_LINK).addAffinity(CV_LABEL)
                                           .addDescription("Forces command to be executed in spite of certain (not all) detected problems.")
                                           .addDescription("In these cases, the detected problems are flagged as warnings rather than errors.")
                                           .build();
             NO_UPDATE_SWITCH =
                 new SimpleSwitch.Builder().setShortName("no")
                                           .setLongName("no-update")
-                                          .addAffinity(CV_AUTO).addAffinity(CV_LABEL)
+                                          .addAffinity(CV_AUTO).addAffinity(CV_LABEL).addAffinity(CV_UNLABEL)
+                                          .addAffinity(CV_LINK).addAffinity(CV_UNLINK)
                                           .addDescription("Indicates that no action should be taken; however, the script will display what action")
                                           .addDescription("/would/ be taken in the absence of this switch.")
                                           .build();
@@ -426,53 +430,52 @@ public class Main {
     private static Result parseCommandLine(
         final String[] args
     ) {
-        try {
-            CommandLineHandler clh = new CommandLineHandler();
-            clh.addCanonicalHelpSwitch()
-               .addCanonicalVersionSwitch()
-               .addSwitch(K8S_NODE_NAME_SWITCH)
-               .addSwitch(LIQID_ADDRESS_SWITCH)
-               .addSwitch(LIQID_GROUP_SWITCH)
-               .addSwitch(LIQID_MACHINE_SWITCH)
-               .addSwitch(LIQID_USERNAME_SWITCH)
-               .addSwitch(LIQID_PASSWORD_SWITCH)
-               .addSwitch(LIQID_RESOURCE_FPGA_SWITCH)
-               .addSwitch(LIQID_RESOURCE_GPU_SWITCH)
-               .addSwitch(LIQID_RESOURCE_LINK_SWITCH)
-               .addSwitch(LIQID_RESOURCE_MEM_SWITCH)
-               .addSwitch(LIQID_RESOURCE_SSD_SWITCH)
-               .addSwitch(LOGGING_SWITCH)
-               .addSwitch(K8S_PROXY_URL_SWITCH)
-               .addSwitch(ALL_SWITCH)
-               .addSwitch(FORCE_SWITCH)
-               .addSwitch(NO_UPDATE_SWITCH)
-               .addSwitch(TIMEOUT_SWITCH)
-               .addMutualExclusion(NO_UPDATE_SWITCH, FORCE_SWITCH)
-               .addCommandArgument(COMMAND_ARG);
+        CommandLineHandler clh = new CommandLineHandler();
+        var unlabelReqSet = new HashSet<Switch>();
+        unlabelReqSet.add(ALL_SWITCH);
+        unlabelReqSet.add(K8S_NODE_NAME_SWITCH);
 
-            var result = clh.processCommandLine(args);
-            if (result.hasErrors() || result.hasWarnings()) {
-                for (var msg : result._messages) {
-                    System.err.println(msg);
-                }
-                System.err.println("Use --help for usage assistance");
-                if (result.hasErrors()) {
-                    return null;
-                }
-            } else if (result.isHelpRequested()) {
-                clh.displayUsage("");
-                return null;
-            } else if (result.isVersionRequested()) {
-                System.out.println("k8sIntegration Version " + Constants.VERSION);
+        clh.addCanonicalHelpSwitch()
+           .addCanonicalVersionSwitch()
+           .addSwitch(K8S_NODE_NAME_SWITCH)
+           .addSwitch(LIQID_ADDRESS_SWITCH)
+           .addSwitch(LIQID_GROUP_SWITCH)
+           .addSwitch(LIQID_MACHINE_SWITCH)
+           .addSwitch(LIQID_USERNAME_SWITCH)
+           .addSwitch(LIQID_PASSWORD_SWITCH)
+           .addSwitch(LIQID_RESOURCE_FPGA_SWITCH)
+           .addSwitch(LIQID_RESOURCE_GPU_SWITCH)
+           .addSwitch(LIQID_RESOURCE_LINK_SWITCH)
+           .addSwitch(LIQID_RESOURCE_MEM_SWITCH)
+           .addSwitch(LIQID_RESOURCE_SSD_SWITCH)
+           .addSwitch(LOGGING_SWITCH)
+           .addSwitch(K8S_PROXY_URL_SWITCH)
+           .addSwitch(ALL_SWITCH)
+           .addSwitch(FORCE_SWITCH)
+           .addSwitch(NO_UPDATE_SWITCH)
+           .addSwitch(TIMEOUT_SWITCH)
+           .addMutualExclusion(K8S_NODE_NAME_SWITCH, ALL_SWITCH)
+           .addRequirementSet(CV_UNLABEL, unlabelReqSet)
+           .addCommandArgument(COMMAND_ARG);
+
+        var result = clh.processCommandLine(args);
+        if (result.hasErrors() || result.hasWarnings()) {
+            for (var msg : result._messages) {
+                System.err.println(msg);
+            }
+            System.err.println("Use --help for usage assistance");
+            if (result.hasErrors()) {
                 return null;
             }
-
-            return result;
-        } catch (KomandoException ex) {
-            System.out.println("Internal error:" + ex.getMessage());
-            ex.printStackTrace();
+        } else if (result.isHelpRequested()) {
+            clh.displayUsage("");
+            return null;
+        } else if (result.isVersionRequested()) {
+            System.out.println("k8sIntegration Version " + Constants.VERSION);
             return null;
         }
+
+        return result;
     }
 
     // ------------------------------------------------------------------------
@@ -481,10 +484,35 @@ public class Main {
 
     //TODO testing
     static String[] tempArgs = {
-        "resources",
-        "-px", "http://192.168.1.220:8001",
+//        "resources",
+//        "-px", "http://192.168.1.220:8001",
 //        "-a",
-        "-l",
+//        "-l",
+
+//        "nodes",
+//        "-px", "http://192.168.1.220:8001",
+//        "-a",
+//        "-l",
+
+//        "unlabel",
+//        "-px", "http://192.168.1.220:8001",
+//        "--node-name", "kub4",
+//        "--all",
+//        "-no",
+//        "-l",
+
+//        "link",
+//        "-px", "http://192.168.1.220:8001",
+//        "-ip", "192.168.1.1",
+//        "-g", "Kirika",
+//        "-no",
+//        "-f",
+//        "-l",
+
+//        "unlink",
+//        "-px", "http://192.168.1.220:8001",
+//        "-no",
+//        "-l",
     };
 
     public static void main(
@@ -508,34 +536,36 @@ public class Main {
                 _logger.catching(ex);
                 System.err.println("An internal error has been detected in the application.");
                 System.err.println("Please collect logging information and contact Liqid Support.");
-            } catch (K8SJSONError ex) {
-                _logger.catching(ex);
+            } catch (K8SJSONError kex) {
+                _logger.catching(kex);
                 System.err.println("Something went wrong while parsing JSON data from the Kubernetes cluster.");
                 System.err.println("Please collect logging information and contact Liqid Support.");
-            } catch (K8SHTTPError ex) {
-                _logger.catching(ex);
-                var code = ex.getResponseCode();
+            } catch (K8SHTTPError kex) {
+                _logger.catching(kex);
+                var code = kex.getResponseCode();
                 System.err.printf("Received unexpected %d HTTP response from the Kubernetes API server.\n", code);
                 System.err.println("Please verify that you have provided the correct IP address and port information,");
                 System.err.println("and that the API server (or proxy server) is up and running.");
-            } catch (K8SRequestError ex) {
-                _logger.catching(ex);
+            } catch (K8SRequestError kex) {
+                _logger.catching(kex);
                 System.err.println("Could not complete the request to the Kubernetes API server.");
-                System.err.println("Error: " + ex.getMessage());
+                System.err.println("Error: " + kex.getMessage());
                 System.err.println("Please verify that you have provided the correct IP address and port information,");
                 System.err.println("and that the API server (or proxy server) is up and running.");
-            } catch (K8SException ex) {
-                _logger.catching(ex);
+            } catch (K8SException kex) {
+                _logger.catching(kex);
                 System.err.println("Could not communicate with the Kubernetes API server.");
-                System.err.println("Error: " + ex.getMessage());
+                System.err.println("Error: " + kex.getMessage());
                 System.err.println("Please verify that you have provided the correct IP address and port information,");
                 System.err.println("and that the API server (or proxy server) is up and running.");
-            } catch (LiqidException ex) {
-                _logger.catching(ex);
+            } catch (LiqidException lex) {
+                _logger.catching(lex);
                 System.err.println("Could not complete the request due to an error communicating with the Liqid Cluster.");
-                System.err.println("Error: " + ex.getMessage());
+                System.err.println("Error: " + lex.getMessage());
                 System.err.println("Please verify that you have provided the correct IP address and port information,");
                 System.err.println("and that the API server (or proxy server) is up and running.");
+            } catch (ProcessingException pex) {
+                System.err.println("Previous errors prevent further processing.");
             } catch (Throwable t) {
                 // just in case anything else gets through
                 System.out.println("Caught " + t.getMessage());

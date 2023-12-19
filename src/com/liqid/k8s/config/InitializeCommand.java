@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 class InitializeCommand extends Command {
@@ -174,7 +175,7 @@ class InitializeCommand extends Command {
         releaseDevicesFromGroups(plan, allDevStats);
 
         // Move all called-out resources to the newly-created group.
-        var names = allDevStats.stream().map(DeviceStatus::getName).collect(Collectors.toCollection(LinkedList::new));
+        var names = allDevStats.stream().map(DeviceStatus::getName).collect(Collectors.toCollection(TreeSet::new));
         plan.addAction(new AssignToGroup().setGroupName(_liqidGroupName).setDeviceNames(names));
 
         // Create machines for all the called-out compute resources and move the compute resources into those machines.
@@ -211,9 +212,8 @@ class InitializeCommand extends Command {
                 machineName = machineName.substring(0, 22);
             }
 
-            var devNames = Collections.singletonList(devName);
             plan.addAction(new CreateMachine().setMachineName(machineName).setGroupName(_liqidGroupName));
-            plan.addAction(new AssignToMachine().setMachineName(machineName).setDeviceNames(devNames));
+            plan.addAction(new AssignToMachine().setMachineName(machineName).addDeviceName(devName));
             plan.addAction(new SetUserDescription().setDeviceName(devName).setDescription(nodeName));
             plan.addAction(new AnnotateNode().setNodeName(nodeName)
                                              .addAnnotation(Constants.K8S_ANNOTATION_MACHINE_NAME, machineName));
@@ -317,7 +317,7 @@ class InitializeCommand extends Command {
                     } else {
                         var devNames = devsToRemove.stream()
                                                    .map(DeviceStatus::getName)
-                                                   .collect(Collectors.toCollection(LinkedList::new));
+                                                   .collect(Collectors.toCollection(TreeSet::new));
                         plan.addAction(new RemoveFromMachine().setMachineName(machine.getMachineName())
                                                               .setDeviceNames(devNames));
                     }
@@ -348,7 +348,9 @@ class InitializeCommand extends Command {
                     if (devsToRemove.size() == grpDevs.size()) {
                         plan.addAction(new DeleteGroup().setGroupName(group.getGroupName()));
                     } else {
-                        var names = devsToRemove.stream().map(DeviceStatus::getName).collect(Collectors.toCollection(LinkedList::new));
+                        var names = devsToRemove.stream()
+                                                .map(DeviceStatus::getName)
+                                                .collect(Collectors.toCollection(TreeSet::new));
                         plan.addAction(new RemoveFromGroup().setGroupName(group.getGroupName()).setDeviceNames(names));
                     }
                 }

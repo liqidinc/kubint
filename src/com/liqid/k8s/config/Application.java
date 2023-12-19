@@ -706,7 +706,8 @@ public class Application {
             }
         }
 
-        System.out.printf("--- %s command completed successfully ---\n", _commandType.getToken());
+        var noUpStr = _noUpdate ? "with no update " : "";
+        System.out.printf("--- %s command completed successfully %s---\n", _commandType.getToken(), noUpStr);
         _logger.trace("Exiting %s", fn);
     }
 }

@@ -15,6 +15,10 @@ import com.liqid.sdk.LiqidException;
  */
 public class ProcessingException extends ScriptException {
 
+    public ProcessingException() {
+        super("Processing Exception");
+    }
+
     public ProcessingException(final String message) {
         super(message);
     }

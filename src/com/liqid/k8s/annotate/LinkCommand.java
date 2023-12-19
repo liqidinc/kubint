@@ -5,16 +5,17 @@
 
 package com.liqid.k8s.annotate;
 
-import com.bearsnake.k8sclient.K8SHTTPError;
-import com.bearsnake.k8sclient.K8SJSONError;
-import com.bearsnake.k8sclient.K8SRequestError;
+import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
 import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.k8s.plan.Plan;
+import com.liqid.k8s.plan.actions.CreateGroup;
+import com.liqid.k8s.plan.actions.CreateLinkage;
+import com.liqid.k8s.plan.actions.RemoveAllAnnotations;
+import com.liqid.k8s.plan.actions.RemoveLinkage;
 import com.liqid.sdk.LiqidException;
-
-import static com.liqid.k8s.annotate.CommandType.LINK;
 
 class LinkCommand extends Command {
 
@@ -32,83 +33,85 @@ class LinkCommand extends Command {
     LinkCommand setLiqidPassword(final String value) { _liqidPassword = value; return this; }
     LinkCommand setLiqidUsername(final String value) { _liqidUsername = value; return this; }
 
+    private boolean preCheck(
+        final Plan plan
+    ) throws InternalErrorException, K8SException {
+        var fn = "preCheck";
+        _logger.trace("Entering %s", fn);
+
+        var errPrefix = getErrorPrefix();
+        var errors = false;
+
+        // check for existing linkage
+        if (hasLinkage()) {
+            var msg = "Linkage already exists between the Kubernetes Cluster and the Liqid Cluster";
+            System.err.printf("%s:%s\n", errPrefix, msg);
+            if (!_force) {
+                errors = true;
+            }
+
+            plan.addAction(new RemoveLinkage());
+        }
+
+        // check for existing annotations
+        var hasAnnotations = hasAnnotations();
+        if (hasAnnotations) {
+            var msg = "Liqid annotations already exist on nodes in the Kubernetes Cluster";
+            System.err.printf("%s:%s\n", errPrefix, msg);
+            if (!_force) {
+                errors = true;
+            }
+
+            plan.addAction(new RemoveAllAnnotations());
+        }
+
+
+        // can we talk to the Liqid cluster? does the indicated group exist?
+        try {
+            initLiqidClient();
+            var groups = _liqidClient.getGroups();
+            var groupExists = groups.stream().anyMatch(group -> group.getGroupName().equals(_liqidGroupName));
+            if (!groupExists) {
+                var msg = "Group " + _liqidGroupName + " does not exist on the Liqid Cluster";
+                System.err.printf("%s:%s\n", errPrefix, msg);
+                if (!_force) {
+                    errors = true;
+                }
+
+                plan.addAction(new CreateGroup().setGroupName(_liqidGroupName));
+            }
+        } catch (LiqidException lex) {
+            var msg = "Cannot communicate properly with the Liqid Cluster";
+            System.err.printf("%s:%s\n", errPrefix, msg);
+            if (!_force) {
+                errors = true;
+            }
+        }
+
+        var result = !errors;
+        _logger.trace("Exiting %s with %s", fn, result);
+        return result;
+    }
+
     @Override
-    public Plan process() throws InternalErrorException, K8SHTTPError, K8SJSONError, K8SRequestError {
+    public Plan process() throws InternalErrorException, K8SException, LiqidException, ProcessingException {
         var fn = this.getClass().getName() + ":process";
         _logger.trace("Entering %s", fn);
-        var plan = new Plan();
 
-//        if (_liqidAddress == null) {
-//            throw new InternalErrorException("Liqid Address is null");
-//        }
-//
-//        if (_liqidGroupName == null) {
-//            throw new InternalErrorException("Liqid Group name is null");
-//        }
-//
-//        if (!initK8sClient()) {
-//            _logger.trace("Exiting %s false", fn);
-//            return false;
-//        }
-//
-//        // There should not be any current linkages nor annotations
-//        if (!checkForExistingLinkage(LINK.getToken())) {
-//            _logger.trace("Exiting %s false", fn);
-//            return false;
-//        }
-//
-//        if (!checkForExistingAnnotations(LINK.getToken())) {
-//            _logger.trace("Exiting %s false", fn);
-//            return false;
-//        }
-//
-//        // Now go verify that the link is correct (i.e., that we can contact the Liqid Director)
-//        try {
-//            if (!initLiqidClient()) {
-//                if (_force) {
-//                    System.err.println("WARNING:Cannot connect to the Liqid Cluster, but proceeding anyway.");
-//                } else {
-//                    System.err.println("ERROR:Cannot connect to the Liqid Cluster - stopping.");
-//                    _logger.trace("Exiting %s false", fn);
-//                    return false;
-//                }
-//            } else {
-//                // Logged in - see if the indicated group exists.
-//                var groups = _liqidClient.getGroups();
-//                boolean found = false;
-//                for (var group : groups) {
-//                    if (group.getGroupName().equals(_liqidGroupName)) {
-//                        found = true;
-//                        break;
-//                    }
-//                }
-//
-//                if (!found) {
-//                    if (_force) {
-//                        System.err.println("WARNING:Group " + _liqidGroupName + " does not exist on the Liqid Cluster and will be created");
-//                        _liqidClient.createGroup(_liqidGroupName);
-//                    } else {
-//                        System.err.println("ERROR:Group " + _liqidGroupName + " does not exist on the Liqid Cluster");
-//                        _logger.trace("Exiting %s false", fn);
-//                        return false;
-//                    }
-//                }
-//            }
-//        } catch (LiqidException ex) {
-//            _logger.catching(ex);
-//            if (_force) {
-//                System.err.println("WARNING:Cannot connect to Liqid Cluster - proceeding anyway due to force being set");
-//            } else {
-//                System.err.println("ERROR:Cannot connect to Liqid Cluster - stopping");
-//                _logger.trace("Exiting %s false", fn);
-//                return false;
-//            }
-//        }
-//
-//        createLinkage();
-//
-//        // All done
-//        logoutFromLiqidCluster();
+        initK8sClient();
+
+        var plan = new Plan();
+        if (!preCheck(plan)) {
+            var ex = new ProcessingException();
+            _logger.throwing(ex);
+            throw ex;
+        }
+
+        plan.addAction(new CreateLinkage().setLiqidAddress(_liqidAddress)
+                                          .setLiqidGroupName(_liqidGroupName)
+                                          .setLiqidUsername(_liqidUsername)
+                                          .setLiqidPassword(_liqidPassword));
+
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;
     }

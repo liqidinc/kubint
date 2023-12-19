@@ -23,7 +23,10 @@ import com.bearsnake.komando.values.StringValue;
 import com.bearsnake.komando.values.Value;
 import com.bearsnake.komando.values.ValueType;
 import com.liqid.k8s.Constants;
+import com.liqid.k8s.exceptions.ConfigurationDataException;
+import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.sdk.LiqidException;
 
 import java.io.IOException;
@@ -343,46 +346,40 @@ public class Main {
     private static Result parseCommandLine(
         final String[] args
     ) {
-        try {
-            CommandLineHandler clh = new CommandLineHandler();
-            clh.addCanonicalHelpSwitch()
-               .addCanonicalVersionSwitch()
-               .addSwitch(LIQID_ADDRESS_SWITCH)
-               .addSwitch(LIQID_GROUP_SWITCH)
-               .addSwitch(LIQID_USERNAME_SWITCH)
-               .addSwitch(LIQID_PASSWORD_SWITCH)
-               .addSwitch(LOGGING_SWITCH)
-               .addSwitch(K8S_PROXY_URL_SWITCH)
-               .addSwitch(TIMEOUT_SWITCH)
-               .addSwitch(FORCE_SWITCH)
-               .addSwitch(NO_UPDATE_SWITCH)
-               .addSwitch(PROCESSORS_SWITCH)
-               .addSwitch(RESOURCES_SWITCH)
-               .addCommandArgument(COMMAND_ARG);
+        CommandLineHandler clh = new CommandLineHandler();
+        clh.addCanonicalHelpSwitch()
+           .addCanonicalVersionSwitch()
+           .addSwitch(LIQID_ADDRESS_SWITCH)
+           .addSwitch(LIQID_GROUP_SWITCH)
+           .addSwitch(LIQID_USERNAME_SWITCH)
+           .addSwitch(LIQID_PASSWORD_SWITCH)
+           .addSwitch(LOGGING_SWITCH)
+           .addSwitch(K8S_PROXY_URL_SWITCH)
+           .addSwitch(TIMEOUT_SWITCH)
+           .addSwitch(FORCE_SWITCH)
+           .addSwitch(NO_UPDATE_SWITCH)
+           .addSwitch(PROCESSORS_SWITCH)
+           .addSwitch(RESOURCES_SWITCH)
+           .addCommandArgument(COMMAND_ARG);
 
-            var result = clh.processCommandLine(args);
-            if (result.hasErrors() || result.hasWarnings()) {
-                for (var msg : result._messages) {
-                    System.err.println(msg);
-                }
-                System.err.println("Use --help for usage assistance");
-                if (result.hasErrors()) {
-                    return null;
-                }
-            } else if (result.isHelpRequested()) {
-                clh.displayUsage("");
-                return null;
-            } else if (result.isVersionRequested()) {
-                System.out.println("k8sIntegration Version " + Constants.VERSION);
+        var result = clh.processCommandLine(args);
+        if (result.hasErrors() || result.hasWarnings()) {
+            for (var msg : result._messages) {
+                System.err.println(msg);
+            }
+            System.err.println("Use --help for usage assistance");
+            if (result.hasErrors()) {
                 return null;
             }
-
-            return result;
-        } catch (KomandoException ex) {
-            System.out.println("Internal error:" + ex.getMessage());
-            ex.printStackTrace();
+        } else if (result.isHelpRequested()) {
+            clh.displayUsage("");
+            return null;
+        } else if (result.isVersionRequested()) {
+            System.out.println("k8sIntegration Version " + Constants.VERSION);
             return null;
         }
+
+        return result;
     }
 
     // ------------------------------------------------------------------------
@@ -425,34 +422,48 @@ public class Main {
             try {
                 initLogging();
                 configureApplication(result).process();
-            } catch (K8SJSONError ex) {
+            } catch (ConfigurationDataException ex) {
                 _logger.catching(ex);
+                System.err.println("Configuration Data inconsistency(ies) prevent further processing.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
+            } catch (ConfigurationException ex) {
+                _logger.catching(ex);
+                System.err.println("Configuration inconsistency(ies) prevent further processing.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
+            } catch (InternalErrorException ex) {
+                _logger.catching(ex);
+                System.err.println("An internal error has been detected in the application.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
+            } catch (K8SJSONError kex) {
+                _logger.catching(kex);
                 System.err.println("Something went wrong while parsing JSON data from the Kubernetes cluster.");
                 System.err.println("Please collect logging information and contact Liqid Support.");
-            } catch (K8SHTTPError ex) {
-                _logger.catching(ex);
-                var code = ex.getResponseCode();
+            } catch (K8SHTTPError kex) {
+                _logger.catching(kex);
+                var code = kex.getResponseCode();
                 System.err.printf("Received unexpected %d HTTP response from the Kubernetes API server.\n", code);
                 System.err.println("Please verify that you have provided the correct IP address and port information,");
                 System.err.println("and that the API server (or proxy server) is up and running.");
-            } catch (K8SRequestError ex) {
-                _logger.catching(ex);
+            } catch (K8SRequestError kex) {
+                _logger.catching(kex);
                 System.err.println("Could not complete the request to the Kubernetes API server.");
-                System.err.println("Error: " + ex.getMessage());
+                System.err.println("Error: " + kex.getMessage());
                 System.err.println("Please verify that you have provided the correct IP address and port information,");
                 System.err.println("and that the API server (or proxy server) is up and running.");
-            } catch (K8SException ex) {
-                _logger.catching(ex);
+            } catch (K8SException kex) {
+                _logger.catching(kex);
                 System.err.println("Could not communicate with the Kubernetes API server.");
-                System.err.println("Error: " + ex.getMessage());
+                System.err.println("Error: " + kex.getMessage());
                 System.err.println("Please verify that you have provided the correct IP address and port information,");
                 System.err.println("and that the API server (or proxy server) is up and running.");
-            } catch (LiqidException ex) {
-                _logger.catching(ex);
+            } catch (LiqidException lex) {
+                _logger.catching(lex);
                 System.err.println("Could not complete the request due to an error communicating with the Liqid Cluster.");
-                System.err.println("Error: " + ex.getMessage());
+                System.err.println("Error: " + lex.getMessage());
                 System.err.println("Please verify that you have provided the correct IP address and port information,");
                 System.err.println("and that the API server (or proxy server) is up and running.");
+            } catch (ProcessingException pex) {
+                System.err.println("Previous errors prevent further processing.");
             } catch (Throwable t) {
                 // just in case anything else gets through
                 System.out.println("Caught " + t.getMessage());

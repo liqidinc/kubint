@@ -11,19 +11,21 @@ import com.liqid.k8s.plan.ExecutionContext;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
-import java.util.LinkedList;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class AssignToGroup extends Action {
 
     private String _groupName;
-    private Collection<String> _deviceNames;
+    private Set<String> _deviceNames;
 
     public AssignToGroup(
     ) {
         super(ActionType.ASSIGN_RESOURCES_TO_GROUP);
     }
 
-    public AssignToGroup setDeviceNames(final Collection<String> list) { _deviceNames = new LinkedList<>(list); return this; }
+    public AssignToGroup addDeviceName(final String value) { _deviceNames.add(value); return this; }
+    public AssignToGroup setDeviceNames(final Collection<String> list) { _deviceNames = new TreeSet<>(list); return this; }
     public AssignToGroup setGroupName(final String value) { _groupName = value; return this; }
 
     @Override

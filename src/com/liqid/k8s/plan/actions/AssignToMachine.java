@@ -12,19 +12,21 @@ import com.liqid.k8s.plan.ExecutionContext;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
-import java.util.LinkedList;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class AssignToMachine extends Action {
 
     private String _machineName;
     private String _nodeName;
-    private Collection<String> _deviceNames;
+    private Set<String> _deviceNames;
 
     public AssignToMachine() {
         super(ActionType.ASSIGN_RESOURCES_TO_MACHINE);
     }
 
-    public AssignToMachine setDeviceNames(final Collection<String> list) { _deviceNames = new LinkedList<>(list); return this; }
+    public AssignToMachine addDeviceName(final String value) { _deviceNames.add(value); return this; }
+    public AssignToMachine setDeviceNames(final Collection<String> list) { _deviceNames = new TreeSet<>(list); return this; }
     public AssignToMachine setMachineName(final String value) { _machineName = value; return this; }
     public AssignToMachine setNodeName(final String value) { _nodeName = value; return this; }
 

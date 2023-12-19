@@ -224,49 +224,6 @@ public abstract class Command {
 //    }
 
 //    /**
-//     * Clears all the Liqid annotations from all the nodes
-//     */
-//    protected void clearAnnotations() throws K8SHTTPError, K8SJSONError, K8SRequestError {
-//        var fn = "clearAnnotations";
-//        _logger.trace("Entering %s", fn);
-//
-//        var nodes = _k8sClient.getNodes();
-//        for (var node : nodes) {
-//            removeAnnotationsFromNode(node);
-//        }
-//
-//        _logger.trace("Exiting %s", fn);
-//    }
-
-//    /**
-//     * Clears linkage from the Kubernetes cluster and the Liqid Cluster.
-//     * Includes configMap, secret, and all worker node annotations.
-//     */
-//    protected void clearLinkage() throws K8SHTTPError, K8SJSONError, K8SRequestError {
-//        var fn = "clearLinkage";
-//        _logger.trace("Entering %s", fn);
-//
-//        try {
-//            clearAnnotations();
-//            _k8sClient.deleteConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
-//        } catch (K8SHTTPError ex) {
-//            if (ex.getResponseCode() != 404) {
-//                throw ex;
-//            }
-//        }
-//
-//        try {
-//            _k8sClient.deleteSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
-//        } catch (K8SHTTPError ex) {
-//            if (ex.getResponseCode() != 404) {
-//                throw ex;
-//            }
-//        }
-//
-//        _logger.trace("Exiting %s", fn);
-//    }
-
-//    /**
 //     * Helpful wrapper to create a full annotation key
 //     */
 //    protected String createAnnotationKeyFor(
@@ -282,51 +239,6 @@ public abstract class Command {
 //        final GeneralType genType
 //    ) {
 //        return createAnnotationKeyFor(ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType));
-//    }
-
-//    /**
-//     * Creates linkage between Kubernetes and Liqid.
-//     * Deletes any existing configMap and secret, then creates new configMap and optionally a secet.
-//     */
-//    protected void createLinkage(
-//    ) throws K8SHTTPError, K8SRequestError {
-//        var fn = "createLinkage";
-//        _logger.trace("Entering %s", fn);
-//
-//        try {
-//            _k8sClient.deleteConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
-//        } catch (K8SHTTPError ex) {
-//            if (ex.getResponseCode() != 404) {
-//                throw ex;
-//            }
-//        }
-//
-//        try {
-//            _k8sClient.deleteSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
-//        } catch (K8SHTTPError ex) {
-//            if (ex.getResponseCode() != 404) {
-//                throw ex;
-//            }
-//        }
-//
-//        // Write the configMap
-//        var cfgMapData = new HashMap<String, String>();
-//        cfgMapData.put(K8S_CONFIG_MAP_IP_ADDRESS_KEY, _liqidAddress);
-//        cfgMapData.put(K8S_CONFIG_MAP_GROUP_NAME_KEY, _liqidGroupName);
-//        var cmMetadata = new NamespacedMetadata().setNamespace(K8S_CONFIG_NAMESPACE).setName(K8S_CONFIG_NAME);
-//        var newCfgMap = new ConfigMapPayload().setMetadata(cmMetadata).setData(cfgMapData);
-//        _k8sClient.createConfigMap(newCfgMap);
-//
-//        // If there are credentials, write a secret
-//        if (_liqidUsername != null) {
-//            var mangled = new Credentials(_liqidUsername, _liqidPassword).getMangledString();
-//            var secretData = Collections.singletonMap(K8S_SECRET_CREDENTIALS_KEY, mangled);
-//            var secretMetadata = new NamespacedMetadata().setNamespace(K8S_SECRET_NAMESPACE).setName(K8S_SECRET_NAME);
-//            var newSecret = new SecretPayload().setMetadata(secretMetadata).setData(secretData);
-//            _k8sClient.createSecret(newSecret);
-//        }
-//
-//        _logger.trace("Exiting %s", fn);
 //    }
 
     /**
@@ -625,49 +537,4 @@ public abstract class Command {
 
         _logger.trace("Exiting %s", fn);
     }
-
-//    /**
-//     * Logs out from the Liqid Cluster *if* we have a LiqidClient established which is logged in.
-//     * Does nothing otherwise.
-//     */
-//    protected void logoutFromLiqidCluster() {
-//        if ((_liqidClient != null) && (_liqidClient.isLoggedIn())) {
-//            try {
-//                _liqidClient.logout();
-//            } catch (LiqidException ex) {
-//                _logger.catching(ex);
-//                System.err.println("WARNING:Failed to logout of Liqid Cluster:" + ex);
-//            }
-//        }
-//    }
-
-//    /**
-//     * Removes all liqid-related annotations from a particular node.
-//     * Note that we remove *anything* with the K8S liqid prefix, even if we don't recognize the full key.
-//     * This means that we actually have to have the node, in order to iterate over the existing annotations.
-//     * @param node the node in question
-//     * @return true if we removed any annotations, else false
-//     */
-//    protected boolean removeAnnotationsFromNode(
-//        final Node node
-//    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
-//        var fn = "removeAnnotationsFromNode";
-//        _logger.trace("Entering %s", fn);
-//
-//        var annotations = node.metadata.annotations;
-//        var changed = false;
-//        for (java.util.Map.Entry<String, String> entry : annotations.entrySet()) {
-//            if (entry.getKey().startsWith(K8S_ANNOTATION_PREFIX)) {
-//                annotations.put(entry.getKey(), null);
-//                changed = true;
-//            }
-//        }
-//        if (changed) {
-//            System.out.println("Removing annotations for worker '" + node.getName() + "'...");
-//            _k8sClient.updateAnnotationsForNode(node.getName(), annotations);
-//        }
-//
-//        _logger.trace("Exiting %s with %s", fn, changed);
-//        return changed;
-//    }
 }

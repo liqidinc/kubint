@@ -11,16 +11,27 @@ import com.bearsnake.k8sclient.K8SRequestError;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.k8s.plan.ExecutionContext;
 
+import java.util.Collection;
+import java.util.Set;
+import java.util.TreeSet;
+
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 
-public class RemoveAllAnnotations extends Action {
+public class RemoveAnnotations extends Action {
 
-    public RemoveAllAnnotations() {
-        super(ActionType.REMOVE_ALL_ANNOTATIONS);
+    private Set<String> _nodeNames = new TreeSet<>();
+
+    public RemoveAnnotations() {
+        super(ActionType.REMOVE_ANNOTATIONS);
     }
 
+    public RemoveAnnotations addNodeName(final String value) { _nodeNames.add(value); return this; }
+    public RemoveAnnotations setNodeNames(final Collection<String> list) { _nodeNames = new TreeSet<>(list); return this; }
+
     @Override
-    public void checkParameters() {}
+    public void checkParameters() throws InternalErrorException {
+        checkForNull("NodeNames", _nodeNames);
+    }
 
     @Override
     public void perform(
@@ -49,6 +60,8 @@ public class RemoveAllAnnotations extends Action {
 
     @Override
     public String toString() {
-        return "Remove all Liqid annotations from Kubernetes nodes";
+        return String.format("Remove all Liqid annotations from Kubernetes node%s %s",
+                             (_nodeNames.size() == 1) ? "" : "s",
+                             String.join(", ", _nodeNames));
     }
 }

@@ -12,7 +12,8 @@ import com.liqid.k8s.plan.ExecutionContext;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
-import java.util.LinkedList;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Removes one or more resources from a Liqid Machine, optionally *after* cordoning a k8s node.
@@ -21,13 +22,14 @@ public class RemoveFromMachine extends Action {
 
     private String _machineName;
     private String _nodeName;
-    private Collection<String> _deviceNames;
+    private Set<String> _deviceNames;
 
     public RemoveFromMachine() {
         super(ActionType.REMOVE_RESOURCES_FROM_MACHINE);
     }
 
-    public RemoveFromMachine setDeviceNames(final Collection<String> list) { _deviceNames = new LinkedList<>(list); return this; }
+    public RemoveFromMachine addDeviceName(final String value) { _deviceNames.add(value); return this; }
+    public RemoveFromMachine setDeviceNames(final Collection<String> list) { _deviceNames = new TreeSet<>(list); return this; }
     public RemoveFromMachine setMachineName(final String value) { _machineName = value; return this; }
     public RemoveFromMachine setNodeName(final String value) { _nodeName = value; return this; }
 

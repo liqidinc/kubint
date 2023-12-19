@@ -18,7 +18,7 @@ import static com.liqid.k8s.Constants.K8S_SECRET_NAMESPACE;
 public class RemoveLinkage extends Action {
 
     public RemoveLinkage() {
-        super(ActionType.CREATE_LINKAGE);
+        super(ActionType.REMOVE_LINKAGE);
     }
 
     @Override

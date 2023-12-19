@@ -80,7 +80,9 @@ public class Application {
                 .setLiqidUsername(_liqidUsername);
             case NODES -> new NodesCommand(_logger, _proxyURL, _force, _timeoutInSeconds);
             case RESOURCES -> new ResourcesCommand(_logger, _proxyURL, _force, _timeoutInSeconds).setAll(_all);
-            case UNLABEL -> new UnlabelCommand(_logger, _proxyURL, _force, _timeoutInSeconds).setNodeName(_k8sNodeName);
+            case UNLABEL -> new UnlabelCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
+                .setNodeName(_k8sNodeName)
+                .setAll(_all);
             case UNLINK -> new UnlinkCommand(_logger, _proxyURL, _force, _timeoutInSeconds);
         };
 
@@ -101,7 +103,8 @@ public class Application {
             }
         }
 
-        System.out.printf("--- %s command completed successfully ---\n", _commandType.getToken());
+        var noUpStr = _noUpdate ? "with no update " : "";
+        System.out.printf("--- %s command completed successfully %s---\n", _commandType.getToken(), noUpStr);
         _logger.trace("Exiting %s", fn);
     }
 }

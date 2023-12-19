@@ -5,12 +5,17 @@
 
 package com.liqid.k8s.annotate;
 
+import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.k8sclient.K8SHTTPError;
 import com.bearsnake.k8sclient.K8SJSONError;
 import com.bearsnake.k8sclient.K8SRequestError;
+import com.bearsnake.k8sclient.Node;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Command;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
+import com.liqid.k8s.exceptions.ConfigurationException;
+import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.k8s.plan.Plan;
 import com.liqid.sdk.LiqidException;
 
@@ -182,44 +187,31 @@ class LabelCommand extends Command {
     @Override
     public Plan process(
     ) throws ConfigurationDataException,
-             K8SHTTPError,
-             K8SJSONError,
-             K8SRequestError,
-             LiqidException {
+             ConfigurationException,
+             InternalErrorException,
+             K8SException,
+             LiqidException,
+             ProcessingException {
         var fn = this.getClass().getName() + ":process";
         _logger.trace("Entering %s", fn);
-        var plan = new Plan();
 
-//        if (!initK8sClient()) {
-//            _logger.trace("Exiting %s false", fn);
-//            return false;
-//        }
-//
-//        Node node;
-//        try {
-//            node = _k8sClient.getNode(_nodeName);
-//        } catch (K8SHTTPError ex) {
-//            if (ex.getResponseCode() == 404) {
-//                System.err.printf("ERROR:Worker node '%s' does not exist\n", _nodeName);
-//                _logger.trace("Exiting %s false", fn);
-//                return false;
-//            } else {
-//                throw ex;
-//            }
-//        }
-//
-//        if (!getLiqidLinkage()) {
-//            _logger.trace("Exiting %s false", fn);
-//            return false;
-//        }
-//
-//        if (!initLiqidClient()) {
-//            _logger.trace("Exiting %s false", fn);
-//            return false;
-//        }
-//
-//        _liqidInventory = getLiqidInventory(_liqidClient, _logger);
-//
+        initK8sClient();
+
+        Node node;
+        try {
+            node = _k8sClient.getNode(_nodeName);
+        } catch (K8SHTTPError ex) {
+            if (ex.getResponseCode() == 404) {
+                throw new ProcessingException(String.format("Worker node '%s' does not exist", _nodeName));
+            } else {
+                throw ex;
+            }
+        }
+
+        getLiqidLinkage();
+        initLiqidClient();
+        getLiqidInventory();
+
 //        var errPrefix = getErrorPrefix();
 //        var errors = false;
 //        var annotations = new HashMap<String, String>();
