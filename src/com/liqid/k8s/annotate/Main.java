@@ -5,17 +5,31 @@
 
 package com.liqid.k8s.annotate;
 
+import com.bearsnake.k8sclient.K8SException;
+import com.bearsnake.k8sclient.K8SHTTPError;
+import com.bearsnake.k8sclient.K8SJSONError;
+import com.bearsnake.k8sclient.K8SRequestError;
+import com.bearsnake.klog.FileWriter;
+import com.bearsnake.klog.Level;
+import com.bearsnake.klog.LevelMask;
+import com.bearsnake.klog.Logger;
+import com.bearsnake.klog.PrefixEntity;
+import com.bearsnake.klog.StdOutWriter;
 import com.bearsnake.komando.*;
 import com.bearsnake.komando.exceptions.*;
 import com.bearsnake.komando.values.*;
 import com.liqid.k8s.Constants;
+import com.liqid.k8s.exceptions.ConfigurationDataException;
+import com.liqid.k8s.exceptions.ConfigurationException;
+import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.sdk.LiqidException;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.liqid.k8s.annotate.Application.LOG_FILE_NAME;
 import static com.liqid.k8s.annotate.CommandType.AUTO;
 import static com.liqid.k8s.annotate.CommandType.LABEL;
 import static com.liqid.k8s.annotate.CommandType.LINK;
@@ -65,6 +79,9 @@ public class Main {
     annotate resources
         -px,--proxy-url={proxy_url}
      */
+
+    private static final String LOGGER_NAME = "Annotate";
+    private static final String LOG_FILE_NAME = "liq-annotate.log";
 
     private static final CommandValue CV_AUTO = new CommandValue(AUTO.getToken());
     private static final CommandValue CV_LABEL = new CommandValue(CommandType.LABEL.getToken());
@@ -313,6 +330,9 @@ public class Main {
         }
     }
 
+    private static Logger _logger = null;
+    private static boolean _logging = false;
+
     // ------------------------------------------------------------------------
     // helper functions
     // ------------------------------------------------------------------------
@@ -347,101 +367,182 @@ public class Main {
     }
 
     /**
-     * Converts command line nonsense into configuration values which make sense.
+     * Creates an Application object and loads it with the stuff we pulled from the command line
      */
-//    private static boolean configureApplication(
-//        final Application application,
-//        final String[] args
-//    ) {
-//        try {
-//            CommandLineHandler clh = new CommandLineHandler();
-//            clh.addCanonicalHelpSwitch()
-//               .addCanonicalVersionSwitch()
-//               .addSwitch(K8S_NODE_NAME_SWITCH)
-//               .addSwitch(LIQID_ADDRESS_SWITCH)
-//               .addSwitch(LIQID_GROUP_SWITCH)
-//               .addSwitch(LIQID_MACHINE_SWITCH)
-//               .addSwitch(LIQID_USERNAME_SWITCH)
-//               .addSwitch(LIQID_PASSWORD_SWITCH)
-//               .addSwitch(LIQID_RESOURCE_FPGA_SWITCH)
-//               .addSwitch(LIQID_RESOURCE_GPU_SWITCH)
-//               .addSwitch(LIQID_RESOURCE_LINK_SWITCH)
-//               .addSwitch(LIQID_RESOURCE_MEM_SWITCH)
-//               .addSwitch(LIQID_RESOURCE_SSD_SWITCH)
-//               .addSwitch(LOGGING_SWITCH)
-//               .addSwitch(K8S_PROXY_URL_SWITCH)
-//               .addSwitch(ALL_SWITCH)
-//               .addSwitch(FORCE_SWITCH)
-//               .addSwitch(NO_UPDATE_SWITCH)
-//               .addSwitch(TIMEOUT_SWITCH)
-//               .addMutualExclusion(NO_UPDATE_SWITCH, FORCE_SWITCH)
-//               .addCommandArgument(COMMAND_ARG);
-//
-//            var result = clh.processCommandLine(args);
-//            if (result.hasErrors() || result.hasWarnings()) {
-//                for (var msg : result._messages) {
-//                    System.err.println(msg);
-//                }
-//                System.err.println("Use --help for usage assistance");
-//                if (result.hasErrors()) {
-//                    return false;
-//                }
-//            } else if (result.isHelpRequested()) {
-//                clh.displayUsage("");
-//                return false;
-//            } else if (result.isVersionRequested()) {
-//                System.out.println("k8sIntegration Version " + Constants.VERSION);
-//                return false;
-//            }
-//
-//            application.setLogging(result._switchSpecifications.containsKey(LOGGING_SWITCH))
-//                       .setCommandType(CommandType.get(result._commandValue.getValue()))
-//                       .setLiqidAddress(getSingleString(result._switchSpecifications.get(LIQID_ADDRESS_SWITCH)))
-//                       .setLiqidFPGASpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_FPGA_SWITCH)))
-//                       .setLiqidGPUSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_GPU_SWITCH)))
-//                       .setLiqidGroupName(getSingleString(result._switchSpecifications.get(LIQID_GROUP_SWITCH)))
-//                       .setLiqidLinkSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_LINK_SWITCH)))
-//                       .setLiqidMachineName(getSingleString(result._switchSpecifications.get(LIQID_MACHINE_SWITCH)))
-//                       .setLiqidMemorySpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_MEM_SWITCH)))
-//                       .setLiqidPassword(getSingleString(result._switchSpecifications.get(LIQID_PASSWORD_SWITCH)))
-//                       .setLiqidSSDSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_SSD_SWITCH)))
-//                       .setLiqidUsername(getSingleString(result._switchSpecifications.get(LIQID_USERNAME_SWITCH)))
-//                       .setK8SNodeName(getSingleString(result._switchSpecifications.get(K8S_NODE_NAME_SWITCH)))
-//                       .setProxyURL(getSingleString(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)))
-//                       .setAll(result._switchSpecifications.containsKey(ALL_SWITCH))
-//                       .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH))
-//                       .setNoUpdate(result._switchSpecifications.containsKey(NO_UPDATE_SWITCH));
-//
-//           var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
-//            if ((values != null) && !values.isEmpty()) {
-//                application.setTimeoutInSeconds((int) (long) ((FixedPointValue) values.get(0)).getValue());
-//            }
-//
-//            return true;
-//        } catch (KomandoException ex) {
-//            System.out.println("Internal error:" + ex.getMessage());
-//            return false;
-//        }
-//    }
+    private static Application configureApplication(
+        final Result result
+    ) {
+        var app = new Application().setCommandType(CommandType.get(result._commandValue.getValue()))
+                                   .setLiqidAddress(getSingleString(result._switchSpecifications.get(LIQID_ADDRESS_SWITCH)))
+                                   .setLiqidFPGASpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_FPGA_SWITCH)))
+                                   .setLiqidGPUSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_GPU_SWITCH)))
+                                   .setLiqidGroupName(getSingleString(result._switchSpecifications.get(LIQID_GROUP_SWITCH)))
+                                   .setLiqidLinkSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_LINK_SWITCH)))
+                                   .setLiqidMachineName(getSingleString(result._switchSpecifications.get(LIQID_MACHINE_SWITCH)))
+                                   .setLiqidMemorySpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_MEM_SWITCH)))
+                                   .setLiqidPassword(getSingleString(result._switchSpecifications.get(LIQID_PASSWORD_SWITCH)))
+                                   .setLiqidSSDSpecifications(getStringCollection(result._switchSpecifications.get(LIQID_RESOURCE_SSD_SWITCH)))
+                                   .setLiqidUsername(getSingleString(result._switchSpecifications.get(LIQID_USERNAME_SWITCH)))
+                                   .setLogger(_logger)
+                                   .setK8SNodeName(getSingleString(result._switchSpecifications.get(K8S_NODE_NAME_SWITCH)))
+                                   .setProxyURL(getSingleString(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)))
+                                   .setAll(result._switchSpecifications.containsKey(ALL_SWITCH))
+                                   .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH))
+                                   .setNoUpdate(result._switchSpecifications.containsKey(NO_UPDATE_SWITCH));
+
+        var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
+        if ((values != null) && !values.isEmpty()) {
+            app.setTimeoutInSeconds((int) (long) ((FixedPointValue) values.get(0)).getValue());
+        }
+
+        return app;
+    }
+
+    private static void initLogging() throws InternalErrorException {
+        try {
+            var level = _logging ? Level.TRACE : Level.ERROR;
+            _logger = new Logger(LOGGER_NAME);
+            _logger.setLevel(level);
+
+            _logger.addWriter(new StdOutWriter(Level.ERROR));
+            if (_logging) {
+                var fw = new FileWriter(new LevelMask(level), LOG_FILE_NAME, false);
+                fw.addPrefixEntity(PrefixEntity.SOURCE_CLASS);
+                fw.addPrefixEntity(PrefixEntity.SOURCE_METHOD);
+                fw.addPrefixEntity(PrefixEntity.SOURCE_LINE_NUMBER);
+                _logger.addWriter(fw);
+            }
+        } catch (IOException ex) {
+            throw new InternalErrorException(ex.toString());
+        }
+    }
+
+    /**
+     * Converts command line nonsense into configuration values which make sense.
+     * Since this bit determines logging levels, we cannot initialize logging until after we return.
+     * @return reference to command line handler result if successful,
+     *          null if we failed or if we were asked for version or help.
+     */
+    private static Result parseCommandLine(
+        final String[] args
+    ) {
+        try {
+            CommandLineHandler clh = new CommandLineHandler();
+            clh.addCanonicalHelpSwitch()
+               .addCanonicalVersionSwitch()
+               .addSwitch(K8S_NODE_NAME_SWITCH)
+               .addSwitch(LIQID_ADDRESS_SWITCH)
+               .addSwitch(LIQID_GROUP_SWITCH)
+               .addSwitch(LIQID_MACHINE_SWITCH)
+               .addSwitch(LIQID_USERNAME_SWITCH)
+               .addSwitch(LIQID_PASSWORD_SWITCH)
+               .addSwitch(LIQID_RESOURCE_FPGA_SWITCH)
+               .addSwitch(LIQID_RESOURCE_GPU_SWITCH)
+               .addSwitch(LIQID_RESOURCE_LINK_SWITCH)
+               .addSwitch(LIQID_RESOURCE_MEM_SWITCH)
+               .addSwitch(LIQID_RESOURCE_SSD_SWITCH)
+               .addSwitch(LOGGING_SWITCH)
+               .addSwitch(K8S_PROXY_URL_SWITCH)
+               .addSwitch(ALL_SWITCH)
+               .addSwitch(FORCE_SWITCH)
+               .addSwitch(NO_UPDATE_SWITCH)
+               .addSwitch(TIMEOUT_SWITCH)
+               .addMutualExclusion(NO_UPDATE_SWITCH, FORCE_SWITCH)
+               .addCommandArgument(COMMAND_ARG);
+
+            var result = clh.processCommandLine(args);
+            if (result.hasErrors() || result.hasWarnings()) {
+                for (var msg : result._messages) {
+                    System.err.println(msg);
+                }
+                System.err.println("Use --help for usage assistance");
+                if (result.hasErrors()) {
+                    return null;
+                }
+            } else if (result.isHelpRequested()) {
+                clh.displayUsage("");
+                return null;
+            } else if (result.isVersionRequested()) {
+                System.out.println("k8sIntegration Version " + Constants.VERSION);
+                return null;
+            }
+
+            return result;
+        } catch (KomandoException ex) {
+            System.out.println("Internal error:" + ex.getMessage());
+            ex.printStackTrace();
+            return null;
+        }
+    }
 
     // ------------------------------------------------------------------------
     // program entry point
     // ------------------------------------------------------------------------
 
+    //TODO testing
+    static String[] tempArgs = {
+        "resources",
+        "-px", "http://192.168.1.220:8001",
+//        "-a",
+        "-l",
+    };
+
     public static void main(
         final String[] args
     ) {
-//        try {
-//            var app = new Application();
-//            if (configureApplication(app, args)) {
-//                app.process();
-//            }
-//        } catch (Throwable t) {
-//            // Last resort - hopefully we never hit this one
-//            System.err.println("An internal error occurred from which the application cannot recover.");
-//            System.err.println("Please capture this (and the following) information and report it to Liqid support.");
-//            System.err.println("Catching:" + t.getMessage());
-//            t.printStackTrace();
-//        }
+        var result = parseCommandLine(tempArgs);
+        if (result != null) {
+            _logging = result._switchSpecifications.containsKey(LOGGING_SWITCH);
+            try {
+                initLogging();
+                configureApplication(result).process();
+            } catch (ConfigurationDataException ex) {
+                _logger.catching(ex);
+                System.err.println("Configuration Data inconsistency(ies) prevent further processing.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
+            } catch (ConfigurationException ex) {
+                _logger.catching(ex);
+                System.err.println("Configuration inconsistency(ies) prevent further processing.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
+            } catch (InternalErrorException ex) {
+                _logger.catching(ex);
+                System.err.println("An internal error has been detected in the application.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
+            } catch (K8SJSONError ex) {
+                _logger.catching(ex);
+                System.err.println("Something went wrong while parsing JSON data from the Kubernetes cluster.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
+            } catch (K8SHTTPError ex) {
+                _logger.catching(ex);
+                var code = ex.getResponseCode();
+                System.err.printf("Received unexpected %d HTTP response from the Kubernetes API server.\n", code);
+                System.err.println("Please verify that you have provided the correct IP address and port information,");
+                System.err.println("and that the API server (or proxy server) is up and running.");
+            } catch (K8SRequestError ex) {
+                _logger.catching(ex);
+                System.err.println("Could not complete the request to the Kubernetes API server.");
+                System.err.println("Error: " + ex.getMessage());
+                System.err.println("Please verify that you have provided the correct IP address and port information,");
+                System.err.println("and that the API server (or proxy server) is up and running.");
+            } catch (K8SException ex) {
+                _logger.catching(ex);
+                System.err.println("Could not communicate with the Kubernetes API server.");
+                System.err.println("Error: " + ex.getMessage());
+                System.err.println("Please verify that you have provided the correct IP address and port information,");
+                System.err.println("and that the API server (or proxy server) is up and running.");
+            } catch (LiqidException ex) {
+                _logger.catching(ex);
+                System.err.println("Could not complete the request due to an error communicating with the Liqid Cluster.");
+                System.err.println("Error: " + ex.getMessage());
+                System.err.println("Please verify that you have provided the correct IP address and port information,");
+                System.err.println("and that the API server (or proxy server) is up and running.");
+            } catch (Throwable t) {
+                // just in case anything else gets through
+                System.out.println("Caught " + t.getMessage());
+                t.printStackTrace();
+                System.err.println("An internal error has been detected in the application.");
+                System.err.println("Please collect logging information and contact Liqid Support.");
+            }
+        }
     }
 }

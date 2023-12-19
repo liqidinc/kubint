@@ -697,6 +697,15 @@ public class Application {
                 plan.execute(command.getK8SClient(), command.getLiqidClient(), _logger);
             }
         }
+
+        if ((command.getLiqidClient() != null) && (command.getLiqidClient().isLoggedIn())) {
+            try {
+                command.getLiqidClient().logout();
+            } catch (LiqidException lex) {
+                _logger.catching(lex);
+            }
+        }
+
         System.out.printf("--- %s command completed successfully ---\n", _commandType.getToken());
         _logger.trace("Exiting %s", fn);
     }

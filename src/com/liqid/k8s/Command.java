@@ -38,8 +38,11 @@ import static com.liqid.k8s.Constants.K8S_ANNOTATION_LINK_ENTRY;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_MEMORY_ENTRY;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_SSD_ENTRY;
+import static com.liqid.k8s.Constants.K8S_CONFIG_MAP_GROUP_NAME_KEY;
+import static com.liqid.k8s.Constants.K8S_CONFIG_MAP_IP_ADDRESS_KEY;
 import static com.liqid.k8s.Constants.K8S_CONFIG_NAME;
 import static com.liqid.k8s.Constants.K8S_CONFIG_NAMESPACE;
+import static com.liqid.k8s.Constants.K8S_SECRET_CREDENTIALS_KEY;
 import static com.liqid.k8s.Constants.K8S_SECRET_NAME;
 import static com.liqid.k8s.Constants.K8S_SECRET_NAMESPACE;
 import static com.liqid.k8s.Constants.LIQID_SDK_LABEL;
@@ -365,6 +368,12 @@ public abstract class Command {
         }
 
         for (var ds : _liqidInventory._deviceStatusByName.values()) {
+            if (group != null) {
+                if (!_liqidInventory._deviceStatusByGroupId.get(group.getGroupId()).contains(ds)) {
+                    continue;
+                }
+            }
+
             var di = _liqidInventory._deviceInfoById.get(ds.getDeviceId());
             var str1 = String.format("%-10s  %-8s  0x%08x  %-22s  %-16s",
                                      ds.getDeviceType(),
@@ -427,10 +436,12 @@ public abstract class Command {
                                   mach.getMachineId(),
                                   devNamesStr);
             } else {
-                System.out.printf("  %-22s  0x%08x  %s\n",
-                                  mach.getMachineName(),
-                                  mach.getMachineId(),
-                                  devNamesStr);
+                if (mach.getGroupId().equals(group.getGroupId())) {
+                    System.out.printf("  %-22s  0x%08x  %s\n",
+                                      mach.getMachineName(),
+                                      mach.getMachineId(),
+                                      devNamesStr);
+                }
             }
         }
 
@@ -465,68 +476,49 @@ public abstract class Command {
         _liqidInventory = LiqidInventory.getLiqidInventory(_liqidClient, _logger);
     }
 
-//    /**
-//     * This code solicits the information we need to interact with the Liqid Cluster from the k8s database.
-//     * It presumes that the k8s cluster is suitably linked to a Liqid Cluster.
-//     * Such linkage exists in the form of a ConfigMap and an optional Secret.
-//     * The specific bits of information returned include:
-//     *      IP address of the Liqid Cluster (actually, of the director)
-//     *      Group name of the Liqid Cluster group to which all relevant resources do, or should, belong.
-//     *      Username credential if basic authentication is enabled for the Liqid cluster
-//     *      Password credential if basic authentication is enabled for the Liqid cluster,
-//     *          although we do account for the possibility of a null password for a sadly unprotected username.
-//     * @return true if we successfully obtained the linkage information
-//     * @throws ConfigurationDataException Indicates something is wrong in the actual bits of information stored in
-//     *                                      the configmap or the secret.
-//     * @throws K8SHTTPError If any unexpected HTTP responses are received. Generally, we expect only 200s.
-//     * @throws K8SJSONError If information received from k8s cannot be converted from JSON into the expected data
-//     *                          structs. This generally indicates a programming error on our part, but it could also
-//     *                          result from gratuitous changes in k8s, which does unfortunately occur.
-//     * @throws K8SRequestError Indicates some other error during processing, from within the k8sClient module.
-//     */
-//    protected boolean getLiqidLinkage(
-//    ) throws ConfigurationDataException, K8SHTTPError, K8SJSONError, K8SRequestError {
-//        var fn = "getLiqidLinkage";
-//        _logger.trace("Entering %s", fn);
-//
-//        try {
-//            var cfgMap = _k8sClient.getConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
-//            _liqidAddress = cfgMap.data.get(K8S_CONFIG_MAP_IP_ADDRESS_KEY);
-//            _liqidGroupName = cfgMap.data.get(K8S_CONFIG_MAP_GROUP_NAME_KEY);
-//        } catch (K8SHTTPError ex) {
-//            if (ex.getResponseCode() == 404) {
-//                //  We will get a 404 if there is no linkage
-//                System.err.println("ERROR:No linkage configured for this Kubernetes Cluster");
-//                var result = false;
-//                _logger.trace("Exiting %s with %s", fn, result);
-//                return result;
-//            } else {
-//                //  Anything else is a legitimate problem.
-//                _logger.throwing(ex);
-//                throw ex;
-//            }
-//        }
-//
-//        try {
-//            var secret = _k8sClient.getSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
-//            var creds = new Credentials(secret.data.get(K8S_SECRET_CREDENTIALS_KEY));
-//            _liqidUsername = creds.getUsername();
-//            _liqidPassword = creds.getPassword();
-//        } catch (K8SHTTPError ex) {
-//            //  A 404 could indicate no linkage, but we wouldn't be here in that case.
-//            //  Thus, if we get here *now* with a 404, it simply means no credentials are configured,
-//            //  and that might be correct, so we just continue.
-//            //  Anything else is a legitimate problem.
-//            if (ex.getResponseCode() != 404) {
-//                _logger.throwing(ex);
-//                throw ex;
-//            }
-//        }
-//
-//        var result = true;
-//        _logger.trace("Exiting %s with %s", fn, result);
-//        return result;
-//    }
+    /**
+     * This code solicits the information we need to interact with the Liqid Cluster from the k8s database.
+     * It presumes that the k8s cluster is suitably linked to a Liqid Cluster.
+     * Such linkage exists in the form of a ConfigMap and an optional Secret.
+     * The specific bits of information returned include:
+     *      IP address of the Liqid Cluster (actually, of the director)
+     *      Group name of the Liqid Cluster group to which all relevant resources do, or should, belong.
+     *      Username credential if basic authentication is enabled for the Liqid cluster
+     *      Password credential if basic authentication is enabled for the Liqid cluster,
+     *          although we do account for the possibility of a null password for a sadly unprotected username.
+     * @throws ConfigurationDataException Indicates something is wrong in the actual bits of information stored in
+     *                                      the configmap or the secret.
+     * @throws K8SHTTPError If any unexpected HTTP responses are received. Generally, we expect only 200s.
+     * @throws K8SJSONError If information received from k8s cannot be converted from JSON into the expected data
+     *                          structs. This generally indicates a programming error on our part, but it could also
+     *                          result from gratuitous changes in k8s, which does unfortunately occur.
+     * @throws K8SRequestError Indicates some other error during processing, from within the k8sClient module.
+     */
+    protected void getLiqidLinkage(
+    ) throws ConfigurationDataException, K8SHTTPError, K8SJSONError, K8SRequestError {
+        var fn = "getLiqidLinkage";
+        _logger.trace("Entering %s", fn);
+
+        var cfgMap = _k8sClient.getConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
+        _liqidAddress = cfgMap.data.get(K8S_CONFIG_MAP_IP_ADDRESS_KEY);
+        _liqidGroupName = cfgMap.data.get(K8S_CONFIG_MAP_GROUP_NAME_KEY);
+
+        _liqidUsername = null;
+        _liqidPassword = null;
+        try {
+            var secret = _k8sClient.getSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
+            var creds = new CredentialMangler(secret.data.get(K8S_SECRET_CREDENTIALS_KEY));
+            _liqidUsername = creds.getUsername();
+            _liqidPassword = creds.getPassword();
+        } catch (K8SHTTPError kex) {
+            // a 404 is okay - there might not be any credentials. Anything else gets rethrown.
+            if (kex.getResponseCode() != 404) {
+                throw kex;
+            }
+        }
+
+        _logger.trace("Exiting %s", fn);
+    }
 
     protected boolean hasAnnotations() throws K8SHTTPError, K8SJSONError, K8SRequestError {
         var fn = "hasAnnotations";

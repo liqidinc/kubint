@@ -23,8 +23,6 @@ import com.bearsnake.komando.values.StringValue;
 import com.bearsnake.komando.values.Value;
 import com.bearsnake.komando.values.ValueType;
 import com.liqid.k8s.Constants;
-import com.liqid.k8s.exceptions.ConfigurationDataException;
-import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.sdk.LiqidException;
 
@@ -162,7 +160,7 @@ public class Main {
                 new SimpleSwitch.Builder().setShortName("l")
                                           .setLongName("logging")
                                           .addDescription("Enables logging for error diagnostics.")
-                                          .addDescription("Information will be written to " + com.liqid.k8s.annotate.Application.LOG_FILE_NAME)
+                                          .addDescription("Information will be written to " + LOG_FILE_NAME)
                                           .build();
             PROCESSORS_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("pr")
@@ -427,18 +425,6 @@ public class Main {
             try {
                 initLogging();
                 configureApplication(result).process();
-            } catch (ConfigurationDataException ex) {
-                _logger.catching(ex);
-                System.err.println("Configuration Data inconsistency(ies) prevent further processing.");
-                System.err.println("Please collect logging information and contact Liqid Support.");
-            } catch (ConfigurationException ex) {
-                _logger.catching(ex);
-                System.err.println("Configuration inconsistency(ies) prevent further processing.");
-                System.err.println("Please collect logging information and contact Liqid Support.");
-            } catch (InternalErrorException ex) {
-                _logger.catching(ex);
-                System.err.println("An internal error has been detected in the application.");
-                System.err.println("Please collect logging information and contact Liqid Support.");
             } catch (K8SJSONError ex) {
                 _logger.catching(ex);
                 System.err.println("Something went wrong while parsing JSON data from the Kubernetes cluster.");
