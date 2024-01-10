@@ -12,63 +12,36 @@ import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
 
-public class Application {
-
-    private CommandType _commandType;
-    private int _timeoutInSeconds = 300;
-
-    private String _liqidAddress;
-    private String _liqidGroupName;
-    private String _liqidPassword;
-    private String _liqidUsername;
-
-    private Boolean _force;
-    private Logger _logger;
-    private Boolean _noUpdate;
-    private String _proxyURL;
-    private Collection<String> _processorSpecs;
-    private Collection<String> _resourceSpecs;
-
-    Application setCommandType(final CommandType value) { _commandType = value; return this; }
-    Application setForce(final Boolean value) { _force = value; return this; }
-    Application setLiqidAddress(final String value) { _liqidAddress = value; return this; }
-    Application setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
-    Application setLiqidPassword(final String value) { _liqidPassword = value; return this; }
-    Application setLiqidUsername(final String value) { _liqidUsername = value; return this; }
-    Application setLogger(final Logger value) { _logger = value; return this; }
-    Application setNoUpdate(final boolean flag) { _noUpdate = flag; return this; }
-    Application setProxyURL(final String value) { _proxyURL = value; return this; }
-    Application setProcessorSpecs(final Collection<String> list) { _processorSpecs = list; return this; }
-    Application setResourceSpecs(final Collection<String> list) { _resourceSpecs = list; return this; }
-    Application setTimeoutInSeconds(final int value) { _timeoutInSeconds = value; return this; }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+//public class Application {
+//
+//    private CommandType _commandType;
+//    private int _timeoutInSeconds = 300;
+//
+//    private String _liqidAddress;
+//    private String _liqidGroupName;
+//    private String _liqidPassword;
+//    private String _liqidUsername;
+//
+//    private Boolean _force;
+//    private Logger _logger;
+//    private Boolean _noUpdate;
+//    private String _proxyURL;
+//    private Collection<String> _processorSpecs;
+//    private Collection<String> _resourceSpecs;
+//
+//    Application setCommandType(final CommandType value) { _commandType = value; return this; }
+//    Application setForce(final Boolean value) { _force = value; return this; }
+//    Application setLiqidAddress(final String value) { _liqidAddress = value; return this; }
+//    Application setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
+//    Application setLiqidPassword(final String value) { _liqidPassword = value; return this; }
+//    Application setLiqidUsername(final String value) { _liqidUsername = value; return this; }
+//    Application setLogger(final Logger value) { _logger = value; return this; }
+//    Application setNoUpdate(final boolean flag) { _noUpdate = flag; return this; }
+//    Application setProxyURL(final String value) { _proxyURL = value; return this; }
+//    Application setProcessorSpecs(final Collection<String> list) { _processorSpecs = list; return this; }
+//    Application setResourceSpecs(final Collection<String> list) { _resourceSpecs = list; return this; }
+//    Application setTimeoutInSeconds(final int value) { _timeoutInSeconds = value; return this; }
+//
 
     // ------------------------------------------------------------------------
     // helper functions
@@ -710,4 +683,4 @@ public class Application {
 //        System.out.printf("--- %s command completed successfully %s---\n", _commandType.getToken(), noUpStr);
 //        _logger.trace("Exiting %s", fn);
 //    }
-}
+//}

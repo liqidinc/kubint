@@ -12,17 +12,19 @@ import com.liqid.k8s.plan.ExecutionContext;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Removes one or more resources from a Liqid Machine, optionally *after* cordoning a k8s node.
+ * Removes one or more resources from a Liqid Machine.
+ * If a node name is specified, we cordon/uncordon the node as part of this process.
  */
 public class RemoveFromMachine extends Action {
 
     private String _machineName;
     private String _nodeName;
-    private Set<String> _deviceNames;
+    private Set<String> _deviceNames = new HashSet<>();
 
     public RemoveFromMachine() {
         super(ActionType.REMOVE_RESOURCES_FROM_MACHINE);
@@ -62,6 +64,7 @@ public class RemoveFromMachine extends Action {
             machineId = machine.getMachineId();
 
             if (_nodeName != null) {
+                System.out.printf("Cordoning node %s...\n", _nodeName);
                 context.getK8SClient().cordonNode(_nodeName);
                 nodeCordoned = true;
                 context.getK8SClient().evictPodsForNode(_nodeName, true);
@@ -80,6 +83,7 @@ public class RemoveFromMachine extends Action {
             editInProgress = false;
 
             if (nodeCordoned) {
+                System.out.printf("Uncordoning node %s...\n", _nodeName);
                 context.getK8SClient().uncordonNode(_nodeName);
                 nodeCordoned = false;
             }
@@ -107,6 +111,7 @@ public class RemoveFromMachine extends Action {
 
             if (nodeCordoned && !editInProgress) {
                 try {
+                    System.out.printf("Uncordoning node %s...\n", _nodeName);
                     context.getK8SClient().uncordonNode(_nodeName);
                 } catch (K8SException kex) {
                     // cannot fix this either

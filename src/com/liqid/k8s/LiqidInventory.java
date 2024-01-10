@@ -16,6 +16,7 @@ import com.liqid.sdk.Machine;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -49,8 +50,10 @@ public class LiqidInventory {
     public final Map<Integer, DeviceStatus> _deviceStatusById = new HashMap<>();
     public final Map<Integer, LinkedList<DeviceStatus>> _deviceStatusByMachineId = new HashMap<>();
     public final Map<String, DeviceStatus> _deviceStatusByName = new HashMap<>();
+    public final Map<Integer, Group> _groupsByDeviceId = new HashMap<>();
     public final Map<Integer, Group> _groupsById = new HashMap<>();
     public final Map<String, Group> _groupsByName = new HashMap<>();
+    public final Map<Integer, Machine> _machinesByDeviceId = new HashMap<>();
     public final Map<Integer, Machine> _machinesById = new HashMap<>();
     public final Map<String, Machine> _machinesByName = new HashMap<>();
 
@@ -107,9 +110,11 @@ public class LiqidInventory {
                 inv._deviceStatusByGroupId.get(group.getGroupId()).add(devStat);
                 var devRel = new DeviceRelation(devStat.getDeviceId(), preDev.getGroupId(), preDev.getMachineId());
                 inv._deviceRelationsByDeviceId.put(devRel._deviceId, devRel);
+                inv._groupsByDeviceId.put(devStat.getDeviceId(), group);
 
                 if (devRel._machineId != null) {
                     inv._deviceStatusByMachineId.get(devRel._machineId).add(devStat);
+                    inv._machinesByDeviceId.put(devStat.getDeviceId(), inv._machinesById.get(devRel._machineId));
                 }
             }
         }
@@ -148,6 +153,8 @@ public class LiqidInventory {
             _deviceStatusByGroupId.get(oldGroupId).remove(ds);
         }
 
+        _groupsByDeviceId.put(deviceId, _groupsById.get(newGroupId));
+
         if (_deviceStatusByGroupId.containsKey(newGroupId)) {
             _deviceStatusByGroupId.get(newGroupId).add(ds);
         }
@@ -168,6 +175,9 @@ public class LiqidInventory {
         var newGroupId = _machinesById.get(newMachineId).getGroupId();
         dr._groupId = newGroupId;
         dr._machineId = newMachineId;
+
+        _groupsByDeviceId.put(deviceId, _groupsById.get(newGroupId));
+        _machinesByDeviceId.put(deviceId, _machinesById.get(newMachineId));
 
         if (_deviceStatusByGroupId.containsKey(oldGroupId)) {
             _deviceStatusByGroupId.get(oldGroupId).remove(ds);
@@ -193,6 +203,9 @@ public class LiqidInventory {
         dr._machineId = null;
         dr._groupId = null;
 
+        _groupsByDeviceId.remove(deviceId);
+        _machinesByDeviceId.remove(deviceId);
+
         if (_deviceStatusByGroupId.containsKey(groupId)) {
             _deviceStatusByGroupId.get(groupId).remove(ds);
         }
@@ -211,6 +224,8 @@ public class LiqidInventory {
         var machId = dr._machineId;
         dr._machineId = null;
 
+        _machinesByDeviceId.remove(deviceId);
+
         if (_deviceStatusByMachineId.containsKey(machId)) {
             _deviceStatusByMachineId.get(machId).remove(ds);
         }
@@ -228,6 +243,17 @@ public class LiqidInventory {
         final Integer groupId
     ) {
         var group = _groupsById.get(groupId);
+
+        var gIter = _groupsByDeviceId.entrySet().iterator();
+        while (gIter.hasNext()) {
+            var entry = gIter.next();
+            var itGroup = entry.getValue();
+            if (Objects.equals(itGroup.getGroupId(), groupId)) {
+                gIter.remove();
+                var devId = entry.getKey();
+                _machinesByDeviceId.remove(devId);
+            }
+        }
 
         var deadMachines = _machinesById.values()
                                         .stream()
@@ -265,6 +291,15 @@ public class LiqidInventory {
         final Integer machineId
     ) {
         var machine = _machinesById.get(machineId);
+
+        var mIter = _machinesByDeviceId.entrySet().iterator();
+        while (mIter.hasNext()) {
+            var entry = mIter.next();
+            var itMachine = entry.getValue();
+            if (Objects.equals(itMachine.getMachineId(), machineId)) {
+                mIter.remove();
+            }
+        }
 
         if (machine != null) {
             _machinesById.remove(machineId);

@@ -341,9 +341,9 @@ public abstract class Command {
 
         for (var mach : _liqidInventory._machinesById.values()) {
             var devNames = _liqidInventory._deviceStatusByMachineId.get(mach.getMachineId())
-                                                   .stream()
-                                                   .map(DeviceStatus::getName)
-                                                   .collect(Collectors.toCollection(TreeSet::new));
+                                                                   .stream()
+                                                                   .map(DeviceStatus::getName)
+                                                                   .collect(Collectors.toCollection(TreeSet::new));
             var devNamesStr = String.join(" ", devNames);
 
             if (group == null) {
@@ -364,6 +364,19 @@ public abstract class Command {
         }
 
         _logger.trace("Exiting %s", fn);
+    }
+
+    /**
+     * Presuming _liqidInventory is populated, we find the compute device for a given machine.
+     */
+    protected DeviceStatus getComputeDeviceStatusForMachine(
+        final Integer machineId
+    ) {
+        return _liqidInventory._deviceStatusByMachineId.get(machineId)
+                                                       .stream()
+                                                       .filter(ds -> ds.getDeviceType() == DeviceType.COMPUTE)
+                                                       .findFirst()
+                                                       .orElse(null);
     }
 
     protected String getErrorPrefix() {
@@ -448,6 +461,17 @@ public abstract class Command {
         }
 
         _logger.trace("Exiting %s", fn);
+    }
+
+    /**
+     * Assuming _liqidInventory is populated *and* the given deviceStatus is a CPU device
+     * *and* its user description has been populated with a corresponding K8s node name...
+     * we return that node name.
+     */
+    protected String getK8sNodeNameFromComputeDevice(
+        final DeviceStatus deviceStatus
+    ) {
+        return _liqidInventory._deviceInfoById.get(deviceStatus.getDeviceId()).getUserDescription();
     }
 
     protected boolean hasAnnotations() throws K8SHTTPError, K8SJSONError, K8SRequestError {

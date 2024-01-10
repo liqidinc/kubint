@@ -11,6 +11,7 @@ import com.liqid.k8s.commands.CommandType;
 import com.liqid.k8s.commands.InitializeCommand;
 import com.liqid.k8s.commands.LinkCommand;
 import com.liqid.k8s.commands.NodesCommand;
+import com.liqid.k8s.commands.ReleaseCommand;
 import com.liqid.k8s.commands.ResetCommand;
 import com.liqid.k8s.commands.ResourcesCommand;
 import com.liqid.k8s.commands.UnlinkCommand;
@@ -666,6 +667,10 @@ public class Application {
                     .setProxyURL(_proxyURL);
 //            case RECONFIGURE ->
 //                new ReconfigureCommand(_logger, _proxyURL, _timeoutInSeconds);
+            case RELEASE ->
+                new ReleaseCommand(_logger, _force, _timeoutInSeconds)
+                    .setProxyURL(_proxyURL)
+                    .setResourceSpecs(_resourceSpecs);
             case RESET ->
                 new ResetCommand(_logger, _force, _timeoutInSeconds)
                     .setLiqidAddress(_liqidAddress)

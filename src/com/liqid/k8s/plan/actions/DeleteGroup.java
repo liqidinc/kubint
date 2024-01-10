@@ -10,7 +10,9 @@ import com.liqid.k8s.plan.ExecutionContext;
 import com.liqid.sdk.LiqidException;
 
 /**
- * Deletes a group from the Liqid cluster
+ * Deletes a Liqid group.
+ * ALWAYS invoke RemoveFromMachine or DeleteMachine before invoking here, to make sure we properly
+ * cordon/uncordon worker nodes.
  */
 public class DeleteGroup extends Action {
 

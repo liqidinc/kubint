@@ -5,33 +5,13 @@
 
 package com.liqid.k8s;
 
-import com.bearsnake.k8sclient.K8SException;
-import com.bearsnake.k8sclient.K8SHTTPError;
-import com.bearsnake.k8sclient.K8SJSONError;
-import com.bearsnake.k8sclient.K8SRequestError;
-import com.bearsnake.klog.FileWriter;
-import com.bearsnake.klog.Level;
-import com.bearsnake.klog.LevelMask;
-import com.bearsnake.klog.Logger;
-import com.bearsnake.klog.PrefixEntity;
-import com.bearsnake.klog.StdOutWriter;
-import com.bearsnake.komando.ArgumentSwitch;
-import com.bearsnake.komando.CommandArgument;
-import com.bearsnake.komando.CommandLineHandler;
-import com.bearsnake.komando.Result;
-import com.bearsnake.komando.SimpleSwitch;
-import com.bearsnake.komando.Switch;
-import com.bearsnake.komando.exceptions.KomandoException;
-import com.bearsnake.komando.values.CommandValue;
-import com.bearsnake.komando.values.FixedPointValue;
-import com.bearsnake.komando.values.StringValue;
-import com.bearsnake.komando.values.Value;
-import com.bearsnake.komando.values.ValueType;
+import com.bearsnake.k8sclient.*;
+import com.bearsnake.klog.*;
+import com.bearsnake.komando.*;
+import com.bearsnake.komando.exceptions.*;
+import com.bearsnake.komando.values.*;
 import com.liqid.k8s.commands.CommandType;
-import com.liqid.k8s.exceptions.ConfigurationDataException;
-import com.liqid.k8s.exceptions.ConfigurationException;
-import com.liqid.k8s.exceptions.InternalErrorException;
-import com.liqid.k8s.exceptions.ProcessingException;
+import com.liqid.k8s.exceptions.*;
 import com.liqid.sdk.LiqidException;
 
 import java.io.IOException;
@@ -41,7 +21,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.liqid.k8s.commands.CommandType.*;
-import static com.liqid.k8s.config.CommandType.RESET;
 
 /*
     adopt TODO
@@ -96,7 +75,6 @@ import static com.liqid.k8s.config.CommandType.RESET;
 
     release TODO
         -px,--proxy-url={proxy_url}
-        -pr,--processors={pcpu_name}[,...]
         -r,--resources={name}[,...]
         [ -f,--force ]
         [ -no,--no-update ]
@@ -171,6 +149,7 @@ public class Main {
     private static final CommandValue CV_INITIALIZE = new CommandValue(INITIALIZE.getToken());
     private static final CommandValue CV_LINK = new CommandValue(LINK.getToken());
     private static final CommandValue CV_NODES = new CommandValue(NODES.getToken());
+    private static final CommandValue CV_RELEASE = new CommandValue(RELEASE.getToken());
     private static final CommandValue CV_RESET = new CommandValue(RESET.getToken());
     private static final CommandValue CV_RESOURCES = new CommandValue(RESOURCES.getToken());
     private static final CommandValue CV_UNLINK = new CommandValue(UNLINK.getToken());
@@ -203,24 +182,12 @@ public class Main {
                                           .setLongName("force")
                                           .addAffinity(CV_INITIALIZE)
                                           .addAffinity(CV_LINK)
+                                          .addAffinity(CV_RELEASE)
                                           .addAffinity(CV_RESET)
                                           .addAffinity(CV_UNLINK)
                                           .addDescription("Forces command to be executed in spite of certain (not all) detected problems.")
                                           .addDescription("In these cases, the detected problems are flagged as warnings rather than errors.")
                                           .build();
-            PROXY_URL_SWITCH =
-                new ArgumentSwitch.Builder().setShortName("px")
-                                            .setLongName("proxy-url")
-                                            .setIsRequired(true)
-                                            .addAffinity(CV_INITIALIZE)
-                                            .addAffinity(CV_LINK)
-                                            .addAffinity(CV_NODES)
-                                            .addAffinity(CV_RESET)
-                                            .addAffinity(CV_UNLINK)
-                                            .setValueName("k8x_proxy_url")
-                                            .setValueType(ValueType.STRING)
-                                            .addDescription("Specifies the URL for the kubectl proxy server.")
-                                            .build();
             LIQID_ADDRESS_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("ip")
                                             .setLongName("liqid-ip-address")
@@ -283,6 +250,7 @@ public class Main {
                                           .setLongName("no-update")
                                           .addAffinity(CV_INITIALIZE)
                                           .addAffinity(CV_LINK)
+                                          .addAffinity(CV_RELEASE)
                                           .addAffinity(CV_RESET)
                                           .addAffinity(CV_UNLINK)
                                           .addDescription("Indicates that no action should be taken; however, the script will display what action")
@@ -303,6 +271,20 @@ public class Main {
                                             .addDescription("example:")
                                             .addDescription("  -pr=pcpu0:worker1,pcpu1:worker2,pcpu2:worker3")
                                             .build();
+            PROXY_URL_SWITCH =
+                new ArgumentSwitch.Builder().setShortName("px")
+                                            .setLongName("proxy-url")
+                                            .setIsRequired(true)
+                                            .addAffinity(CV_INITIALIZE)
+                                            .addAffinity(CV_LINK)
+                                            .addAffinity(CV_NODES)
+                                            .addAffinity(CV_RELEASE)
+                                            .addAffinity(CV_RESET)
+                                            .addAffinity(CV_UNLINK)
+                                            .setValueName("k8x_proxy_url")
+                                            .setValueType(ValueType.STRING)
+                                            .addDescription("Specifies the URL for the kubectl proxy server.")
+                                            .build();
             RESOURCES_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("r")
                                             .setLongName("resources")
@@ -311,10 +293,12 @@ public class Main {
                                             .setIsRequired(true)
                                             .setIsMultiple(true)
                                             .addAffinity(CV_INITIALIZE)
+                                            .addAffinity(CV_RELEASE)
                                             .addDescription("List of non-compute resources which are to be considered candidates for attaching to")
                                             .addDescription("the compute resources associated with the Kubernetes Cluster.")
                                             .addDescription("example:")
                                             .addDescription("  -r=gpu0,gpu1,gpu2,mem0,mem1,mem2")
+                                            .addDescription("For the " + RESET.getToken() + " command, this list may also include processor resources.")
                                             .build();
             TIMEOUT_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("t")
@@ -343,6 +327,9 @@ public class Main {
                                              .addDescription("    Liqid Cluster resource group name identifying the resource group which is assigned to this Kubernetes cluster")
                                              .addDescription(NODES.getToken())
                                              .addDescription("  Displays existing Liqid-related configMap information and node annotations.")
+                                             .addDescription(RELEASE.getToken())
+                                             .addDescription("  Releases resources (including compute resources) from the Kubernetes Cluster,")
+                                             .addDescription("  as well as removing them from the Liqid Cluster group (if they still exist there).")
                                              .addDescription(RESET.getToken())
                                              .addDescription("  Entirely resets the configuration of the Liqid Cluster by deleting all groups and machines.")
                                              .addDescription("  Removes all Liqid annotations and other configuration information from the Kubernetes Cluster.")
@@ -355,6 +342,7 @@ public class Main {
                                              .addCommandValue(CV_INITIALIZE)
                                              .addCommandValue(CV_LINK)
                                              .addCommandValue(CV_NODES)
+                                             .addCommandValue(CV_RELEASE)
                                              .addCommandValue(CV_RESET)
                                              .addCommandValue(CV_RESOURCES)
                                              .addCommandValue(CV_UNLINK)

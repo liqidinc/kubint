@@ -11,13 +11,19 @@ import com.liqid.k8s.plan.ExecutionContext;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
 
+/**
+ * Removes devices from a group.
+ * ALWAYS invoke RemoveFromMachine or DeleteMachine before invoking here, to make sure we properly
+ * cordon/uncordon worker nodes.
+ */
 public class RemoveFromGroup extends Action {
 
     private String _groupName;
-    private Set<String> _deviceNames;
+    private Set<String> _deviceNames = new HashSet<>();
 
     public RemoveFromGroup(
     ) {

@@ -5,36 +5,14 @@
 
 package com.liqid.k8s.commands;
 
-import com.bearsnake.k8sclient.K8SException;
-import com.bearsnake.k8sclient.K8SHTTPError;
-import com.bearsnake.k8sclient.K8SJSONError;
-import com.bearsnake.k8sclient.K8SRequestError;
-import com.bearsnake.k8sclient.Node;
+import com.bearsnake.k8sclient.*;
 import com.bearsnake.klog.Logger;
-import com.liqid.k8s.Constants;
-import com.liqid.k8s.LiqidGeneralType;
-import com.liqid.k8s.exceptions.ConfigurationException;
-import com.liqid.k8s.exceptions.InternalErrorException;
-import com.liqid.k8s.exceptions.ProcessingException;
-import com.liqid.k8s.plan.Plan;
-import com.liqid.k8s.plan.actions.AnnotateNode;
-import com.liqid.k8s.plan.actions.AssignToGroup;
-import com.liqid.k8s.plan.actions.AssignToMachine;
-import com.liqid.k8s.plan.actions.CreateGroup;
-import com.liqid.k8s.plan.actions.CreateLinkage;
-import com.liqid.k8s.plan.actions.CreateMachine;
-import com.liqid.k8s.plan.actions.DeleteGroup;
-import com.liqid.k8s.plan.actions.DeleteMachine;
-import com.liqid.k8s.plan.actions.RemoveAllAnnotations;
-import com.liqid.k8s.plan.actions.RemoveFromGroup;
-import com.liqid.k8s.plan.actions.RemoveFromMachine;
-import com.liqid.k8s.plan.actions.RemoveLinkage;
-import com.liqid.k8s.plan.actions.SetUserDescription;
+import com.liqid.k8s.*;
+import com.liqid.k8s.exceptions.*;
+import com.liqid.k8s.plan.*;
+import com.liqid.k8s.plan.actions.*;
 import com.liqid.sdk.DeviceStatus;
-import com.liqid.sdk.DeviceType;
-import com.liqid.sdk.Group;
 import com.liqid.sdk.LiqidException;
-import com.liqid.sdk.Machine;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -256,7 +234,7 @@ public class InitializeCommand extends Command {
     private Plan createPlan(
         final Map<DeviceStatus, Node> computeDevices,
         final Collection<DeviceStatus> resourceDevices
-    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
+    ) {
         var fn = "createPlan";
         _logger.trace("Entering %s with computeDevices=%s, resourceDevices=%s",
                       fn, computeDevices, resourceDevices);
