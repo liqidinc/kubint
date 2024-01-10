@@ -297,10 +297,7 @@ public class InitializeCommand extends Command {
 
         // Allocate, if requested
         if (_allocate) {
-            var group = _liqidInventory._groupsByName.get(_liqidGroupName);
-            var nodes = getLiqidWorkerNodes();
             allocateEqually(plan, computeDevices, resourceDevices);
-            // TODO create step to recompose
         }
 
         _logger.trace("Exiting %s with %s", fn, plan);
