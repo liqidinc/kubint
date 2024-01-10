@@ -469,9 +469,7 @@ public class Main {
                 System.err.println(msg);
             }
             System.err.println("Use --help for usage assistance");
-            if (result.hasErrors()) {
-                return null;
-            }
+            return null;
         } else if (result.isHelpRequested()) {
             clh.displayUsage("");
             return null;
