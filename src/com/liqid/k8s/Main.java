@@ -40,8 +40,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.liqid.k8s.annotate.CommandType.LINK;
-import static com.liqid.k8s.annotate.CommandType.UNLINK;
 import static com.liqid.k8s.commands.CommandType.*;
 
 /*
@@ -59,16 +57,19 @@ import static com.liqid.k8s.commands.CommandType.*;
         [ -p,--liqid-password={password} ]
 
     compose
+        -px,--proxy-url={proxy_url}
         [ -f,--force ]
         [ -no,--no-update ]
 
     initialize
+        -px,--proxy-url={proxy_url}
         -ip,--liqid-ip-address={ip_address}
         [ -u,--liqid-username={user_name} ]
         [ -p,--liqid-password={password} ]
         -g,--liqid-group={group_name}
-        -pr,--processors={pcpu_name=worker_node_name}[,...]
+        -pr,--processors={pcpu_name:worker_node_name}[,...]
         -r,--resources={name}[,...]
+        [ -al,--allocate ]
         [ -f,--force ]
         [ -no,--no-update ]
 
@@ -164,31 +165,52 @@ public class Main {
     private static final String LOGGER_NAME = "Config";
     private static final String LOG_FILE_NAME = "liq-config.log";
 
+    private static final CommandValue CV_INITIALIZE = new CommandValue(INITIALIZE.getToken());
     private static final CommandValue CV_LINK = new CommandValue(LINK.getToken());
     private static final CommandValue CV_NODES = new CommandValue(NODES.getToken());
     private static final CommandValue CV_RESOURCES = new CommandValue(RESOURCES.getToken());
     private static final CommandValue CV_UNLINK = new CommandValue(UNLINK.getToken());
 
-    private static final Switch K8S_PROXY_URL_SWITCH;
-
+    private static final CommandArgument COMMAND_ARG;
+    private static final Switch ALLOCATE_SWITCH;
+    private static final Switch FORCE_SWITCH;
     private static final Switch LIQID_ADDRESS_SWITCH;
     private static final Switch LIQID_GROUP_SWITCH;
     private static final Switch LIQID_PASSWORD_SWITCH;
     private static final Switch LIQID_USERNAME_SWITCH;
-
-    private static final Switch FORCE_SWITCH;
     private static final Switch LOGGING_SWITCH;
     private static final Switch NO_UPDATE_SWITCH;
+    private static final Switch PROCESSORS_SWITCH;
+    private static final Switch PROXY_URL_SWITCH;
+    private static final Switch RESOURCES_SWITCH;
     private static final Switch TIMEOUT_SWITCH;
-    private static final CommandArgument COMMAND_ARG;
 
     static {
         try {
-            K8S_PROXY_URL_SWITCH =
+            ALLOCATE_SWITCH =
+                new SimpleSwitch.Builder().setShortName("al")
+                                          .setLongName("allocate")
+                                          .addAffinity(CV_INITIALIZE)
+                                          .addDescription("Causes the initialize process to create annotations and subsequently")
+                                          .addDescription("allocate resources to worker nodes, as equally as possible per type.")
+                                          .build();
+            FORCE_SWITCH =
+                new SimpleSwitch.Builder().setShortName("f")
+                                          .setLongName("force")
+                                          .addAffinity(CV_INITIALIZE)
+                                          .addAffinity(CV_LINK)
+                                          .addAffinity(CV_UNLINK)
+                                          .addDescription("Forces command to be executed in spite of certain (not all) detected problems.")
+                                          .addDescription("In these cases, the detected problems are flagged as warnings rather than errors.")
+                                          .build();
+            PROXY_URL_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("px")
                                             .setLongName("proxy-url")
                                             .setIsRequired(true)
-                                            .addAffinity(CV_LINK).addAffinity(CV_NODES).addAffinity(CV_UNLINK)
+                                            .addAffinity(CV_INITIALIZE)
+                                            .addAffinity(CV_LINK)
+                                            .addAffinity(CV_NODES)
+                                            .addAffinity(CV_UNLINK)
                                             .setValueName("k8x_proxy_url")
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the URL for the kubectl proxy server.")
@@ -197,7 +219,9 @@ public class Main {
                 new ArgumentSwitch.Builder().setShortName("ip")
                                             .setLongName("liqid-ip-address")
                                             .setIsRequired(true)
-                                            .addAffinity(CV_LINK).addAffinity(CV_RESOURCES)
+                                            .addAffinity(CV_INITIALIZE)
+                                            .addAffinity(CV_LINK)
+                                            .addAffinity(CV_RESOURCES)
                                             .setValueName("ip_address_or_dns_name")
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the URL for the director of the Liqid Cluster.")
@@ -206,6 +230,7 @@ public class Main {
                 new ArgumentSwitch.Builder().setShortName("g")
                                             .setLongName("liqid-group")
                                             .setIsRequired(true)
+                                            .addAffinity(CV_INITIALIZE)
                                             .addAffinity(CV_LINK)
                                             .setValueName("group_name")
                                             .setValueType(ValueType.STRING)
@@ -220,7 +245,9 @@ public class Main {
                 new ArgumentSwitch.Builder().setShortName("p")
                                             .setLongName("liqid-password")
                                             .setIsRequired(false)
-                                            .addAffinity(CV_LINK).addAffinity(CV_RESOURCES)
+                                            .addAffinity(CV_INITIALIZE)
+                                            .addAffinity(CV_LINK)
+                                            .addAffinity(CV_RESOURCES)
                                             .setValueName("password")
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the password credential for the Liqid Directory.")
@@ -229,18 +256,13 @@ public class Main {
                 new ArgumentSwitch.Builder().setShortName("u")
                                             .setLongName("liqid-username")
                                             .setIsRequired(false)
-                                            .addAffinity(CV_LINK).addAffinity(CV_RESOURCES)
+                                            .addAffinity(CV_INITIALIZE)
+                                            .addAffinity(CV_LINK)
+                                            .addAffinity(CV_RESOURCES)
                                             .setValueName("username")
                                             .setValueType(ValueType.STRING)
                                             .addDescription("Specifies the username credential for the Liqid Directory.")
                                             .build();
-            FORCE_SWITCH =
-                new SimpleSwitch.Builder().setShortName("f")
-                                          .setLongName("force")
-                                          .addAffinity(CV_LINK).addAffinity(CV_UNLINK)
-                                          .addDescription("Forces command to be executed in spite of certain (not all) detected problems.")
-                                          .addDescription("In these cases, the detected problems are flagged as warnings rather than errors.")
-                                          .build();
             LOGGING_SWITCH =
                 new SimpleSwitch.Builder().setShortName("l")
                                           .setLongName("logging")
@@ -250,10 +272,40 @@ public class Main {
             NO_UPDATE_SWITCH =
                 new SimpleSwitch.Builder().setShortName("no")
                                           .setLongName("no-update")
-                                          .addAffinity(CV_LINK).addAffinity(CV_UNLINK)
+                                          .addAffinity(CV_INITIALIZE)
+                                          .addAffinity(CV_LINK)
+                                          .addAffinity(CV_UNLINK)
                                           .addDescription("Indicates that no action should be taken; however, the script will display what action")
                                           .addDescription("/would/ be taken in the absence of this switch.")
                                           .build();
+            PROCESSORS_SWITCH =
+                new ArgumentSwitch.Builder().setShortName("pr")
+                                            .setLongName("processors")
+                                            .setValueType(ValueType.STRING)
+                                            .setValueName("spec")
+                                            .setIsRequired(true)
+                                            .setIsMultiple(true)
+                                            .addAffinity(CV_INITIALIZE)
+                                            .addDescription("List of processor (compute) resources and the corresponding worker node names as known")
+                                            .addDescription("to the Kubernetes Cluster.")
+                                            .addDescription("{spec} format is:")
+                                            .addDescription("  {pcpu_name} ':' {node_name}")
+                                            .addDescription("example:")
+                                            .addDescription("  -pr=pcpu0:worker1,pcpu1:worker2,pcpu2:worker3")
+                                            .build();
+            RESOURCES_SWITCH =
+                new ArgumentSwitch.Builder().setShortName("r")
+                                            .setLongName("resources")
+                                            .setValueType(ValueType.STRING)
+                                            .setValueName("resource_name")
+                                            .setIsRequired(true)
+                                            .setIsMultiple(true)
+                                            .addAffinity(CV_INITIALIZE)
+                                            .addDescription("List of non-compute resources which are to be considered candidates for attaching to")
+                                            .addDescription("the compute resources associated with the Kubernetes Cluster.")
+                                            .addDescription("example:")
+                                            .addDescription("  -r=gpu0,gpu1,gpu2,mem0,mem1,mem2")
+                                            .build();
             TIMEOUT_SWITCH =
                 new ArgumentSwitch.Builder().setShortName("t")
                                             .setLongName("timeout")
@@ -263,7 +315,14 @@ public class Main {
                                             .addDescription("Timeout value for back-end network communication in seconds.")
                                             .build();
             COMMAND_ARG =
-                new CommandArgument.Builder().addDescription(LINK.getToken())
+                new CommandArgument.Builder().addDescription(INITIALIZE.getToken())
+                                             .addDescription("  Configures the Liqid Cluster for use in a Kubernetes Cluster.")
+                                             .addDescription("    Creates a resource group if it does not exist.")
+                                             .addDescription("    Moves the listed compute nodes into the group, adding the worker node names to the description fields.")
+                                             .addDescription("    Moves the listed resources into the group.")
+                                             .addDescription("  The Liqid Cluster nodes referenced on the command line must already be configured and running")
+                                             .addDescription("  as worker nodes, and should have no resources assigned to them.")
+                                             .addDescription(LINK.getToken())
                                              .addDescription("  Links a particular Liqid Cluster to the targeted Kubernetes Cluster.")
                                              .addDescription("  Linking consists of storing certain Liqid Cluster information in the Kubernetes etcd database.")
                                              .addDescription("  Such information includes:")
@@ -280,6 +339,7 @@ public class Main {
                                              .addDescription("  Unlinks a particular Liqid Cluster from the targeted Kubernetes Cluster.")
                                              .addDescription("  Removes the Liqid Cluster information provided via the " + LINK.getToken() + " command (listed above).")
                                              .addDescription("  Cannot be invoked so long as there are any existing node->machine labels.")
+                                             .addCommandValue(CV_INITIALIZE)
                                              .addCommandValue(CV_LINK)
                                              .addCommandValue(CV_NODES)
                                              .addCommandValue(CV_RESOURCES)
@@ -333,14 +393,17 @@ public class Main {
         final Result result
     ) {
         var app = new Application().setCommandType(CommandType.get(result._commandValue.getValue()))
+                                   .setAllocate(result._switchSpecifications.containsKey(ALLOCATE_SWITCH))
                                    .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH))
                                    .setLiqidAddress(getSingleString(result._switchSpecifications.get(LIQID_ADDRESS_SWITCH)))
                                    .setLiqidGroupName(getSingleString(result._switchSpecifications.get(LIQID_GROUP_SWITCH)))
                                    .setLiqidPassword(getSingleString(result._switchSpecifications.get(LIQID_PASSWORD_SWITCH)))
                                    .setLiqidUsername(getSingleString(result._switchSpecifications.get(LIQID_USERNAME_SWITCH)))
                                    .setLogger(_logger)
-                                   .setProxyURL(getSingleString(result._switchSpecifications.get(K8S_PROXY_URL_SWITCH)))
-                                   .setNoUpdate(result._switchSpecifications.containsKey(NO_UPDATE_SWITCH));
+                                   .setNoUpdate(result._switchSpecifications.containsKey(NO_UPDATE_SWITCH))
+                                   .setProcessorSpecs(getStringCollection(result._switchSpecifications.get(PROCESSORS_SWITCH)))
+                                   .setProxyURL(getSingleString(result._switchSpecifications.get(PROXY_URL_SWITCH)))
+                                   .setResourceSpecs(getStringCollection(result._switchSpecifications.get(RESOURCES_SWITCH)));
 
         var values = result._switchSpecifications.get(TIMEOUT_SWITCH);
         if ((values != null) && !values.isEmpty()) {
@@ -384,7 +447,7 @@ public class Main {
         CommandLineHandler clh = new CommandLineHandler();
         clh.addCanonicalHelpSwitch()
            .addCanonicalVersionSwitch()
-           .addSwitch(K8S_PROXY_URL_SWITCH)
+           .addSwitch(ALLOCATE_SWITCH)
            .addSwitch(LIQID_ADDRESS_SWITCH)
            .addSwitch(LIQID_GROUP_SWITCH)
            .addSwitch(LIQID_USERNAME_SWITCH)
@@ -393,6 +456,9 @@ public class Main {
            .addSwitch(TIMEOUT_SWITCH)
            .addSwitch(FORCE_SWITCH)
            .addSwitch(NO_UPDATE_SWITCH)
+           .addSwitch(PROCESSORS_SWITCH)
+           .addSwitch(PROXY_URL_SWITCH)
+           .addSwitch(RESOURCES_SWITCH)
            .addCommandArgument(COMMAND_ARG);
 
         var result = clh.processCommandLine(args);

@@ -12,6 +12,7 @@ import com.liqid.k8s.plan.ExecutionContext;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -19,7 +20,7 @@ public class AssignToMachine extends Action {
 
     private String _machineName;
     private String _nodeName;
-    private Set<String> _deviceNames;
+    private Set<String> _deviceNames = new HashSet<>();
 
     public AssignToMachine() {
         super(ActionType.ASSIGN_RESOURCES_TO_MACHINE);

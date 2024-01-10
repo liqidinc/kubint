@@ -8,6 +8,7 @@ package com.liqid.k8s;
 import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.commands.CommandType;
+import com.liqid.k8s.commands.InitializeCommand;
 import com.liqid.k8s.commands.LinkCommand;
 import com.liqid.k8s.commands.NodesCommand;
 import com.liqid.k8s.commands.ResourcesCommand;
@@ -15,26 +16,27 @@ import com.liqid.k8s.commands.UnlinkCommand;
 import com.liqid.k8s.exceptions.ScriptException;
 import com.liqid.sdk.LiqidException;
 
+import java.util.Collection;
+
 public class Application {
 
     private CommandType _commandType;
     private int _timeoutInSeconds = 300;
 
+    private Boolean _allocate;
+    private Boolean _force;
     private String _liqidAddress;
     private String _liqidGroupName;
     private String _liqidPassword;
     private String _liqidUsername;
-
-    private String _proxyURL;
-
-    private Boolean _force;
     private Logger _logger;
     private Boolean _noUpdate;
-//    private String _proxyURL;
-//    private Collection<String> _processorSpecs;
-//    private Collection<String> _resourceSpecs;
+    private Collection<String> _processorSpecs;
+    private String _proxyURL;
+    private Collection<String> _resourceSpecs;
 
-    Application setCommandType(final CommandType value) {_commandType = value; return this; }
+    Application setAllocate(final Boolean value) { _allocate = value; return this; }
+    Application setCommandType(final CommandType value) { _commandType = value; return this; }
     Application setForce(final Boolean value) { _force = value; return this; }
     Application setLiqidAddress(final String value) { _liqidAddress = value; return this; }
     Application setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
@@ -43,8 +45,8 @@ public class Application {
     Application setLogger(final Logger value) { _logger = value; return this; }
     Application setNoUpdate(final boolean flag) { _noUpdate = flag; return this; }
     Application setProxyURL(final String value) { _proxyURL = value; return this; }
-//    Application setProcessorSpecs(final Collection<String> list) { _processorSpecs = list; return this; }
-//    Application setResourceSpecs(final Collection<String> list) { _resourceSpecs = list; return this; }
+    Application setProcessorSpecs(final Collection<String> list) { _processorSpecs = list; return this; }
+    Application setResourceSpecs(final Collection<String> list) {_resourceSpecs = list; return this; }
     Application setTimeoutInSeconds(final int value) { _timeoutInSeconds = value; return this; }
 
     // ------------------------------------------------------------------------
@@ -641,13 +643,16 @@ public class Application {
         var command = switch (_commandType) {
 //            case COMPOSE ->
 //                new ComposeCommand(_logger, _proxyURL, _timeoutInSeconds);
-//            case INITIALIZE -> new InitializeCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
-//                .setLiqidAddress(_liqidAddress)
-//                .setLiqidGroupName(_liqidGroupName)
-//                .setLiqidPassword(_liqidPassword)
-//                .setLiqidUsername(_liqidUsername)
-//                .setProcessorSpecs(_processorSpecs)
-//                .setResourceSpecs(_resourceSpecs);
+            case INITIALIZE ->
+                new InitializeCommand(_logger, _force, _timeoutInSeconds)
+                    .setAllocate(_allocate)
+                    .setLiqidAddress(_liqidAddress)
+                    .setLiqidGroupName(_liqidGroupName)
+                    .setLiqidPassword(_liqidPassword)
+                    .setLiqidUsername(_liqidUsername)
+                    .setProcessorSpecs(_processorSpecs)
+                    .setProxyURL(_proxyURL)
+                    .setResourceSpecs(_resourceSpecs);
             case LINK ->
                 new LinkCommand(_logger, _force, _timeoutInSeconds)
                     .setLiqidAddress(_liqidAddress)

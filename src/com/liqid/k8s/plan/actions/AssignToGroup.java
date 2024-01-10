@@ -11,13 +11,14 @@ import com.liqid.k8s.plan.ExecutionContext;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
 
 public class AssignToGroup extends Action {
 
     private String _groupName;
-    private Set<String> _deviceNames;
+    private Set<String> _deviceNames = new HashSet<>();
 
     public AssignToGroup(
     ) {

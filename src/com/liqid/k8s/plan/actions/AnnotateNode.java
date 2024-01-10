@@ -64,6 +64,11 @@ public class AnnotateNode extends Action {
 
     @Override
     public String toString() {
-        return "Update annotations for Kubernetes node " + _nodeName;
+        var sb = new StringBuilder();
+        sb.append("Update annotations for Kubernetes node ").append(_nodeName);
+        for (var entry : _annotations.entrySet()) {
+            sb.append("\n      ").append(entry.getKey()).append(":").append(entry.getValue());
+        }
+        return sb.toString();
     }
 }

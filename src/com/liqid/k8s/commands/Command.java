@@ -10,6 +10,7 @@ import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.k8sclient.K8SHTTPError;
 import com.bearsnake.k8sclient.K8SJSONError;
 import com.bearsnake.k8sclient.K8SRequestError;
+import com.bearsnake.k8sclient.Node;
 import com.bearsnake.klog.Logger;
 import com.bearsnake.klog.StdErrWriter;
 import com.bearsnake.klog.StdOutWriter;
@@ -21,7 +22,9 @@ import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.k8s.plan.Plan;
+import com.liqid.k8s.plan.actions.AnnotateNode;
 import com.liqid.sdk.DeviceStatus;
+import com.liqid.sdk.DeviceType;
 import com.liqid.sdk.Group;
 import com.liqid.sdk.LiqidClient;
 import com.liqid.sdk.LiqidClientBuilder;
@@ -30,6 +33,7 @@ import com.liqid.sdk.LiqidException;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.TreeSet;
@@ -38,6 +42,7 @@ import java.util.stream.Collectors;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_FPGA_ENTRY;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_GPU_ENTRY;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_LINK_ENTRY;
+import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_MEMORY_ENTRY;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_SSD_ENTRY;
@@ -390,6 +395,18 @@ public abstract class Command {
     }
 
     /**
+     * Grab all nodes from k8s, and return a collection of those which are annotated with
+     * a machine name.
+     */
+    protected Collection<Node> getLiqidWorkerNodes() throws K8SHTTPError, K8SJSONError, K8SRequestError {
+        var nodes = _k8sClient.getNodes();
+        var searchKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
+        return nodes.stream()
+                    .filter(node -> node.metadata.annotations.keySet().stream().anyMatch(key -> key.equals(searchKey)))
+                    .collect(Collectors.toCollection(LinkedList::new));
+    }
+
+    /**
      * This code solicits the information we need to interact with the Liqid Cluster from the k8s database.
      * It presumes that the k8s cluster is suitably linked to a Liqid Cluster.
      * Such linkage exists in the form of a ConfigMap and an optional Secret.
@@ -537,5 +554,25 @@ public abstract class Command {
         }
 
         _logger.trace("Exiting %s", fn);
+    }
+
+    /**
+     * Generates plan actions to recompose devices according to the current configuration and annotations,
+     * subject to modifications which (might) exist in the current plan.
+     */
+    protected void recompose(
+        final Plan plan
+    ) {
+        // Determine current allocations according to the Liqid cluster
+        //TODO
+
+        // Modify allocations according to existing annotations
+        //TODO
+
+        // Further modify allocations according to any AnnotateNode actions in the current plan
+        //TODO
+
+        // Now generate actions to effect the final desired configuration
+        //TODO
     }
 }
