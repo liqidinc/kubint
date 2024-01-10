@@ -76,22 +76,18 @@ public class InitializeCommand extends Command {
      * in the containing group, and *not* already assigned to any machines.
      */
     private boolean allocateEqually(
+        final Plan plan,
         final Map<DeviceStatus, Node> computeDevices,
-        final Group group,
-        final Plan plan
+        final Collection<DeviceStatus> resourceDevices
     ) {
         var fn = "allocateEqually";
-        _logger.trace("Entering %s with group=%s", fn, group);
+        _logger.trace("Entering %s", fn);
 
         var devsByType = new HashMap<LiqidGeneralType, LinkedList<DeviceStatus>>();
-        for (var ds : _liqidInventory._deviceStatusByGroupId.get(group.getGroupId())) {
-            if (ds.getDeviceType() != DeviceType.COMPUTE) {
-                var genType = LiqidGeneralType.fromDeviceType(ds.getDeviceType());
-                if (!devsByType.containsKey(genType)) {
-                    devsByType.put(genType, new LinkedList<>());
-                }
-                devsByType.get(genType).add(ds);
-            }
+        for (var dev : resourceDevices) {
+            var genType = LiqidGeneralType.fromDeviceType(dev.getDeviceType());
+            devsByType.computeIfAbsent(genType, k -> new LinkedList<>());
+            devsByType.get(genType).add(dev);
         }
 
         // we're going to loop by device type, but we want to act by machine.
@@ -303,7 +299,7 @@ public class InitializeCommand extends Command {
         if (_allocate) {
             var group = _liqidInventory._groupsByName.get(_liqidGroupName);
             var nodes = getLiqidWorkerNodes();
-            allocateEqually(computeDevices, group, plan);
+            allocateEqually(plan, computeDevices, resourceDevices);
             // TODO create step to recompose
         }
 
