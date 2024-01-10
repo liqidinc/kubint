@@ -41,22 +41,17 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.liqid.k8s.commands.CommandType.*;
+import static com.liqid.k8s.config.CommandType.RESET;
 
 /*
-    adopt
+    adopt TODO
         -px,--proxy-url={proxy_url}
         -pr,--processors={pcpu_name=worker_node_name}[,...]
         -r,--resources={name}[,...]
         [ -f,--force ]
         [ -no,--no-update ]
 
-    clear
-        -px,--proxy-url={proxy_url}
-        -ip,--liqid-ip-address={ip_address}
-        [ -u,--liqid-username={user_name} ]
-        [ -p,--liqid-password={password} ]
-
-    compose
+    compose TODO
         -px,--proxy-url={proxy_url}
         [ -f,--force ]
         [ -no,--no-update ]
@@ -73,7 +68,7 @@ import static com.liqid.k8s.commands.CommandType.*;
         [ -f,--force ]
         [ -no,--no-update ]
 
-    label
+    label TODO
         -px,--proxy-url={proxy_url}
         -a,--automatic
         -n,--worker-node={worker_node_name}
@@ -99,10 +94,18 @@ import static com.liqid.k8s.commands.CommandType.*;
     nodes
         -px,--proxy-url={proxy_url}
 
-    release
+    release TODO
         -px,--proxy-url={proxy_url}
         -pr,--processors={pcpu_name}[,...]
         -r,--resources={name}[,...]
+        [ -f,--force ]
+        [ -no,--no-update ]
+
+    reset
+        -px,--proxy-url={proxy_url}
+        -ip,--liqid-ip-address={ip_address}
+        [ -u,--liqid-username={user_name} ]
+        [ -p,--liqid-password={password} ]
         [ -f,--force ]
         [ -no,--no-update ]
 
@@ -168,6 +171,7 @@ public class Main {
     private static final CommandValue CV_INITIALIZE = new CommandValue(INITIALIZE.getToken());
     private static final CommandValue CV_LINK = new CommandValue(LINK.getToken());
     private static final CommandValue CV_NODES = new CommandValue(NODES.getToken());
+    private static final CommandValue CV_RESET = new CommandValue(RESET.getToken());
     private static final CommandValue CV_RESOURCES = new CommandValue(RESOURCES.getToken());
     private static final CommandValue CV_UNLINK = new CommandValue(UNLINK.getToken());
 
@@ -199,6 +203,7 @@ public class Main {
                                           .setLongName("force")
                                           .addAffinity(CV_INITIALIZE)
                                           .addAffinity(CV_LINK)
+                                          .addAffinity(CV_RESET)
                                           .addAffinity(CV_UNLINK)
                                           .addDescription("Forces command to be executed in spite of certain (not all) detected problems.")
                                           .addDescription("In these cases, the detected problems are flagged as warnings rather than errors.")
@@ -210,6 +215,7 @@ public class Main {
                                             .addAffinity(CV_INITIALIZE)
                                             .addAffinity(CV_LINK)
                                             .addAffinity(CV_NODES)
+                                            .addAffinity(CV_RESET)
                                             .addAffinity(CV_UNLINK)
                                             .setValueName("k8x_proxy_url")
                                             .setValueType(ValueType.STRING)
@@ -221,6 +227,7 @@ public class Main {
                                             .setIsRequired(true)
                                             .addAffinity(CV_INITIALIZE)
                                             .addAffinity(CV_LINK)
+                                            .addAffinity(CV_RESET)
                                             .addAffinity(CV_RESOURCES)
                                             .setValueName("ip_address_or_dns_name")
                                             .setValueType(ValueType.STRING)
@@ -247,6 +254,7 @@ public class Main {
                                             .setIsRequired(false)
                                             .addAffinity(CV_INITIALIZE)
                                             .addAffinity(CV_LINK)
+                                            .addAffinity(CV_RESET)
                                             .addAffinity(CV_RESOURCES)
                                             .setValueName("password")
                                             .setValueType(ValueType.STRING)
@@ -258,6 +266,7 @@ public class Main {
                                             .setIsRequired(false)
                                             .addAffinity(CV_INITIALIZE)
                                             .addAffinity(CV_LINK)
+                                            .addAffinity(CV_RESET)
                                             .addAffinity(CV_RESOURCES)
                                             .setValueName("username")
                                             .setValueType(ValueType.STRING)
@@ -274,6 +283,7 @@ public class Main {
                                           .setLongName("no-update")
                                           .addAffinity(CV_INITIALIZE)
                                           .addAffinity(CV_LINK)
+                                          .addAffinity(CV_RESET)
                                           .addAffinity(CV_UNLINK)
                                           .addDescription("Indicates that no action should be taken; however, the script will display what action")
                                           .addDescription("/would/ be taken in the absence of this switch.")
@@ -333,6 +343,9 @@ public class Main {
                                              .addDescription("    Liqid Cluster resource group name identifying the resource group which is assigned to this Kubernetes cluster")
                                              .addDescription(NODES.getToken())
                                              .addDescription("  Displays existing Liqid-related configMap information and node annotations.")
+                                             .addDescription(RESET.getToken())
+                                             .addDescription("  Entirely resets the configuration of the Liqid Cluster by deleting all groups and machines.")
+                                             .addDescription("  Removes all Liqid annotations and other configuration information from the Kubernetes Cluster.")
                                              .addDescription(RESOURCES.getToken())
                                              .addDescription("  Displays the resources and machines available on the Liqid Cluster.")
                                              .addDescription(UNLINK.getToken())
@@ -342,6 +355,7 @@ public class Main {
                                              .addCommandValue(CV_INITIALIZE)
                                              .addCommandValue(CV_LINK)
                                              .addCommandValue(CV_NODES)
+                                             .addCommandValue(CV_RESET)
                                              .addCommandValue(CV_RESOURCES)
                                              .addCommandValue(CV_UNLINK)
                                              .build();

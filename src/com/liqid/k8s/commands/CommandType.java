@@ -11,6 +11,7 @@ public enum CommandType {
     INITIALIZE("initialize"),
     LINK("link"),
     NODES("nodes"),
+    RESET("reset"),
     RESOURCES("resources"),
     UNLINK("unlink")
     ;
