@@ -5,11 +5,7 @@
 
 package com.liqid.k8s;
 
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
-
-public class MachineInfo {
+public class ObsoleteMachineInfo {
 //
 //    private final String _k8sNodeName;
 //    private final String _machineName;

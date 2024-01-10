@@ -1,12 +1,15 @@
 <component name="ArtifactManager">
-  <artifact build-on-make="true" name="k8s-integration:jar">
+  <artifact type="jar" build-on-make="true" name="k8s-integration:jar">
     <output-path>$PROJECT_DIR$/artifacts/</output-path>
-    <root id="root">
-      <element id="archive" name="k8s-integration.jar">
-        <element id="module-output" name="k8s-integration" />
-      </element>
-      <element id="library" level="project" name="fasterxml.jackson.core.annotations" />
-      <element id="library" level="project" name="fasterxml.jackson.core.databind" />
+    <root id="archive" name="k8s-integration.jar">
+      <element id="module-output" name="k8s-integration" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/jackson-databind-2.13.3.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/jackson-annotations-2.13.3.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/jackson-core-2.13.3.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/liqid-sdk.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/k8sclient.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/komando.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/klog.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>

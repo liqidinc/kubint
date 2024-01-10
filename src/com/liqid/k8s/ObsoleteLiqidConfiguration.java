@@ -5,21 +5,6 @@
 
 package com.liqid.k8s;
 
-import com.liqid.sdk.DeviceStatus;
-import com.liqid.sdk.Group;
-import com.liqid.sdk.LiqidClient;
-import com.liqid.sdk.LiqidException;
-import com.liqid.sdk.Machine;
-import com.liqid.sdk.PreDevice;
-import com.liqid.sdk.PreDeviceType;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
 /**
  * Represents the state of the basic configuration of a Liqid cluster.
  */

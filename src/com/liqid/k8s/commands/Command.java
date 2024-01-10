@@ -1,9 +1,9 @@
 /**
  * k8s-integration
- * Copyright 2023 by Liqid, Inc - All Rights Reserved
+ * Copyright 2023-2024 by Liqid, Inc - All Rights Reserved
  */
 
-package com.liqid.k8s;
+package com.liqid.k8s.commands;
 
 import com.bearsnake.k8sclient.K8SClient;
 import com.bearsnake.k8sclient.K8SException;
@@ -13,6 +13,9 @@ import com.bearsnake.k8sclient.K8SRequestError;
 import com.bearsnake.klog.Logger;
 import com.bearsnake.klog.StdErrWriter;
 import com.bearsnake.klog.StdOutWriter;
+import com.liqid.k8s.CredentialMangler;
+import com.liqid.k8s.LiqidGeneralType;
+import com.liqid.k8s.LiqidInventory;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
@@ -64,7 +67,6 @@ public abstract class Command {
     }
 
     protected final Logger _logger;
-    protected final String _proxyURL;
     protected final Boolean _force;
     protected final Integer _timeoutInSeconds;
 
@@ -72,6 +74,7 @@ public abstract class Command {
     protected String _liqidGroupName;
     protected String _liqidPassword;
     protected String _liqidUsername;
+    protected String _proxyURL;
 
     protected K8SClient _k8sClient;
     protected LiqidClient _liqidClient;
@@ -79,12 +82,10 @@ public abstract class Command {
 
     protected Command(
         final Logger logger,
-        final String proxyURL,
         final Boolean force,
         final Integer timeoutInSeconds
     ) {
         _logger = logger;
-        _proxyURL = proxyURL;
         _force = force;
         _timeoutInSeconds = timeoutInSeconds;
     }
@@ -223,23 +224,23 @@ public abstract class Command {
 //        return true;
 //    }
 
-//    /**
-//     * Helpful wrapper to create a full annotation key
-//     */
-//    protected String createAnnotationKeyFor(
-//        final String keySuffix
-//    ) {
-//        return String.format("%s/%s", K8S_ANNOTATION_PREFIX, keySuffix);
-//    }
+    /**
+     * Helpful wrapper to create a full annotation key
+     */
+    protected String createAnnotationKeyFor(
+        final String keySuffix
+    ) {
+        return String.format("%s/%s", K8S_ANNOTATION_PREFIX, keySuffix);
+    }
 
-//    /**
-//     * Helpful wrapper to create a full annotation key
-//     */
-//    protected String createAnnotationKeyForDeviceType(
-//        final GeneralType genType
-//    ) {
-//        return createAnnotationKeyFor(ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType));
-//    }
+    /**
+     * Helpful wrapper to create a full annotation key
+     */
+    protected String createAnnotationKeyForDeviceType(
+        final LiqidGeneralType genType
+    ) {
+        return createAnnotationKeyFor(ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType));
+    }
 
     /**
      * Creates a new Logger based on our current logger, which does NOT log to stdout or stderr.

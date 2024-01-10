@@ -7,60 +7,64 @@ package com.liqid.k8s.annotate;
 
 import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.k8sclient.K8SHTTPError;
-import com.bearsnake.k8sclient.K8SJSONError;
-import com.bearsnake.k8sclient.K8SRequestError;
 import com.bearsnake.k8sclient.Node;
 import com.bearsnake.klog.Logger;
-import com.liqid.k8s.Command;
+import com.liqid.k8s.commands.Command;
+import com.liqid.k8s.LiqidGeneralType;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.k8s.plan.Plan;
+import com.liqid.k8s.plan.actions.AnnotateNode;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 
-class LabelCommand extends Command {
+import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
 
-    private Collection<String> _fpgaSpecs;
-    private Collection<String> _gpuSpecs;
-    private Collection<String> _linkSpecs;
-    private String _machineName;
-    private Collection<String> _memorySpecs;
-    private String _nodeName;
-    private Boolean _noUpdate = false;
-    private Collection<String> _ssdSpecs;
-
-    LabelCommand(
-        final Logger logger,
-        final String proxyURL,
-        final Boolean force,
-        final Integer timeoutInSeconds
-    ) {
-        super(logger, proxyURL, force, timeoutInSeconds);
-    }
-
-    LabelCommand setFPGASpecifications(final Collection<String> list) { _fpgaSpecs = list; return this; }
-    LabelCommand setGPUSpecifications(final Collection<String> list) { _gpuSpecs = list; return this; }
-    LabelCommand setLinkSpecifications(final Collection<String> list) { _linkSpecs = list; return this; }
-    LabelCommand setMachineName(final String value) { _machineName = value; return this; }
-    LabelCommand setMemorySpecifications(final Collection<String> list) { _memorySpecs = list; return this; }
-    LabelCommand setNodeName(final String value) { _nodeName = value; return this; }
-    LabelCommand setNoUpdate(final Boolean value) { _noUpdate = value; return this; }
-    LabelCommand setSSDSpecifications(final Collection<String> list) { _ssdSpecs = list; return this; }
-
+//class LabelCommand extends Command {
+//
+//    private Collection<String> _fpgaSpecs;
+//    private Collection<String> _gpuSpecs;
+//    private Collection<String> _linkSpecs;
+//    private String _machineName;
+//    private Collection<String> _memorySpecs;
+//    private String _nodeName;
+//    private Boolean _noUpdate = false;
+//    private Collection<String> _ssdSpecs;
+//
+//    LabelCommand(
+//        final Logger logger,
+//        final String proxyURL,
+//        final Boolean force,
+//        final Integer timeoutInSeconds
+//    ) {
+//        super(logger, proxyURL, force, timeoutInSeconds);
+//    }
+//
+//    LabelCommand setFPGASpecifications(final Collection<String> list) { _fpgaSpecs = list; return this; }
+//    LabelCommand setGPUSpecifications(final Collection<String> list) { _gpuSpecs = list; return this; }
+//    LabelCommand setLinkSpecifications(final Collection<String> list) { _linkSpecs = list; return this; }
+//    LabelCommand setMachineName(final String value) { _machineName = value; return this; }
+//    LabelCommand setMemorySpecifications(final Collection<String> list) { _memorySpecs = list; return this; }
+//    LabelCommand setNodeName(final String value) { _nodeName = value; return this; }
+//    LabelCommand setNoUpdate(final Boolean value) { _noUpdate = value; return this; }
+//    LabelCommand setSSDSpecifications(final Collection<String> list) { _ssdSpecs = list; return this; }
+//
 //    private boolean processType(
-//        final GeneralType genType,
+//        final LiqidGeneralType genType,
 //        final Collection<String> specifications,
-//        final HashMap<String, String> annotations
+//        final Plan plan
 //    ) {
 //        var fn = "processType";
 //        _logger.trace("Entering %s genType=%s specifications=%s annotations=%s",
 //                      fn,
 //                      genType,
-//                      specifications,
-//                      annotations);
+//                      specifications);
 //
 //        var errors = false;
 //        var errPrefix = getErrorPrefix();
@@ -146,7 +150,7 @@ class LabelCommand extends Command {
 //        var annoKey = createAnnotationKeyForDeviceType(genType);
 //        if (vendorAndModel.isEmpty() && modelOnly.isEmpty() && (noSpecificity != null) && (noSpecificity == 0)) {
 //            System.out.printf("Any existing annotation for type %s will be removed\n", genType);
-//            annotations.put(annoKey, null);
+//            plan.addAction(new AnnotateNode().setNodeName(_nodeName).addAnnotation(annoKey, null));
 //        } else {
 //            var newSpecStrings = new LinkedList<String>();
 //            for (var entry : vendorAndModel.entrySet()) {
@@ -177,41 +181,41 @@ class LabelCommand extends Command {
 //            }
 //
 //            var newSpecString = String.join(",", newSpecStrings);
-//            annotations.put(annoKey, newSpecString);
+//            plan.addAction(new AnnotateNode().setNodeName(_nodeName).addAnnotation(annoKey, newSpecString));
 //        }
 //
 //        _logger.trace("Exiting %s with true", fn);
 //        return true;
 //    }
-
-    @Override
-    public Plan process(
-    ) throws ConfigurationDataException,
-             ConfigurationException,
-             InternalErrorException,
-             K8SException,
-             LiqidException,
-             ProcessingException {
-        var fn = this.getClass().getName() + ":process";
-        _logger.trace("Entering %s", fn);
-
-        initK8sClient();
-
-        Node node;
-        try {
-            node = _k8sClient.getNode(_nodeName);
-        } catch (K8SHTTPError ex) {
-            if (ex.getResponseCode() == 404) {
-                throw new ProcessingException(String.format("Worker node '%s' does not exist", _nodeName));
-            } else {
-                throw ex;
-            }
-        }
-
-        getLiqidLinkage();
-        initLiqidClient();
-        getLiqidInventory();
-
+//
+//    @Override
+//    public Plan process(
+//    ) throws ConfigurationDataException,
+//             ConfigurationException,
+//             InternalErrorException,
+//             K8SException,
+//             LiqidException,
+//             ProcessingException {
+//        var fn = this.getClass().getName() + ":process";
+//        _logger.trace("Entering %s", fn);
+//
+//        initK8sClient();
+//
+//        Node node;
+//        try {
+//            node = _k8sClient.getNode(_nodeName);
+//        } catch (K8SHTTPError ex) {
+//            if (ex.getResponseCode() == 404) {
+//                throw new ProcessingException(String.format("Worker node '%s' does not exist", _nodeName));
+//            } else {
+//                throw ex;
+//            }
+//        }
+//
+//        getLiqidLinkage();
+//        initLiqidClient();
+//        getLiqidInventory();
+//
 //        var errPrefix = getErrorPrefix();
 //        var errors = false;
 //        var annotations = new HashMap<String, String>();
@@ -237,63 +241,48 @@ class LabelCommand extends Command {
 //            }
 //        }
 //
+//        var plan = new Plan();
 //        var annoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
-//        annotations.put(annoKey, _machineName);
+//        plan.addAction(new AnnotateNode().setNodeName(_nodeName).addAnnotation(annoKey, _machineName));
 //
 //        if (_fpgaSpecs != null) {
-//            if (!processType(GeneralType.FPGA, _fpgaSpecs, annotations)) {
+//            if (!processType(LiqidGeneralType.FPGA, _fpgaSpecs, plan)) {
 //                errors = true;
 //            }
 //        }
 //
 //        if (_gpuSpecs != null) {
-//            if (!processType(GeneralType.GPU, _gpuSpecs, annotations)) {
+//            if (!processType(LiqidGeneralType.GPU, _gpuSpecs, plan)) {
 //                errors = true;
 //            }
 //        }
 //
 //        if (_linkSpecs != null) {
-//            if (!processType(GeneralType.LINK, _linkSpecs, annotations)) {
+//            if (!processType(LiqidGeneralType.LINK, _linkSpecs, plan)) {
 //                errors = true;
 //            }
 //        }
 //
 //        if (_memorySpecs != null) {
-//            if (!processType(GeneralType.MEMORY, _memorySpecs, annotations)) {
+//            if (!processType(LiqidGeneralType.MEMORY, _memorySpecs, plan)) {
 //                errors = true;
 //            }
 //        }
 //
 //        if (_ssdSpecs != null) {
-//            if (!processType(GeneralType.SSD, _ssdSpecs, annotations)) {
+//            if (!processType(LiqidGeneralType.SSD, _ssdSpecs, plan)) {
 //                errors = true;
 //            }
 //        }
 //
 //        if (errors) {
 //            System.err.println("Errors prevent further processing.");
-//            _logger.trace("Exiting %s false", fn);
-//            return false;
+//            _logger.trace("Exiting %s with null", fn);
+//            return null;
 //        }
 //
-//        // Show the user what we're going to do
-//        var verb = _noUpdate ? "would" : "will";
-//        System.out.println();
-//        System.out.printf("The following annotations %s be written for node '%s':\n", verb, node.getName());
-//        for (var anno : annotations.entrySet()) {
-//            System.out.printf("    %s=%s\n", anno.getKey(), anno.getValue());
-//        }
-//
-//        // Persist the annotations to Kubernetes
-//        if (!_noUpdate) {
-//            System.out.println();
-//            System.out.println("Writing annotations...");
-//            _k8sClient.updateAnnotationsForNode(node.getName(), annotations);
-//        }
-
-        // All done
-//        logoutFromLiqidCluster();
-        _logger.trace("Exiting %s with %s", fn, plan);
-        return plan;
-    }
-}
+//        // All done
+//        _logger.trace("Exiting %s with %s", fn, plan);
+//        return plan;
+//    }
+//}

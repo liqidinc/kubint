@@ -413,64 +413,64 @@ public class Main {
     };
     //TODO end testing
 
-    public static void main(
-        final String[] args
-    ) {
-        var result = parseCommandLine(tempArgs);
-        if (result != null) {
-            _logging = result._switchSpecifications.containsKey(LOGGING_SWITCH);
-            try {
-                initLogging();
-                configureApplication(result).process();
-            } catch (ConfigurationDataException ex) {
-                _logger.catching(ex);
-                System.err.println("Configuration Data inconsistency(ies) prevent further processing.");
-                System.err.println("Please collect logging information and contact Liqid Support.");
-            } catch (ConfigurationException ex) {
-                _logger.catching(ex);
-                System.err.println("Configuration inconsistency(ies) prevent further processing.");
-                System.err.println("Please collect logging information and contact Liqid Support.");
-            } catch (InternalErrorException ex) {
-                _logger.catching(ex);
-                System.err.println("An internal error has been detected in the application.");
-                System.err.println("Please collect logging information and contact Liqid Support.");
-            } catch (K8SJSONError kex) {
-                _logger.catching(kex);
-                System.err.println("Something went wrong while parsing JSON data from the Kubernetes cluster.");
-                System.err.println("Please collect logging information and contact Liqid Support.");
-            } catch (K8SHTTPError kex) {
-                _logger.catching(kex);
-                var code = kex.getResponseCode();
-                System.err.printf("Received unexpected %d HTTP response from the Kubernetes API server.\n", code);
-                System.err.println("Please verify that you have provided the correct IP address and port information,");
-                System.err.println("and that the API server (or proxy server) is up and running.");
-            } catch (K8SRequestError kex) {
-                _logger.catching(kex);
-                System.err.println("Could not complete the request to the Kubernetes API server.");
-                System.err.println("Error: " + kex.getMessage());
-                System.err.println("Please verify that you have provided the correct IP address and port information,");
-                System.err.println("and that the API server (or proxy server) is up and running.");
-            } catch (K8SException kex) {
-                _logger.catching(kex);
-                System.err.println("Could not communicate with the Kubernetes API server.");
-                System.err.println("Error: " + kex.getMessage());
-                System.err.println("Please verify that you have provided the correct IP address and port information,");
-                System.err.println("and that the API server (or proxy server) is up and running.");
-            } catch (LiqidException lex) {
-                _logger.catching(lex);
-                System.err.println("Could not complete the request due to an error communicating with the Liqid Cluster.");
-                System.err.println("Error: " + lex.getMessage());
-                System.err.println("Please verify that you have provided the correct IP address and port information,");
-                System.err.println("and that the API server (or proxy server) is up and running.");
-            } catch (ProcessingException pex) {
-                System.err.println("Previous errors prevent further processing.");
-            } catch (Throwable t) {
-                // just in case anything else gets through
-                System.out.println("Caught " + t.getMessage());
-                t.printStackTrace();
-                System.err.println("An internal error has been detected in the application.");
-                System.err.println("Please collect logging information and contact Liqid Support.");
-            }
-        }
-    }
+//    public static void main(
+//        final String[] args
+//    ) {
+//        var result = parseCommandLine(tempArgs);
+//        if (result != null) {
+//            _logging = result._switchSpecifications.containsKey(LOGGING_SWITCH);
+//            try {
+//                initLogging();
+//                configureApplication(result).process();
+//            } catch (ConfigurationDataException ex) {
+//                _logger.catching(ex);
+//                System.err.println("Configuration Data inconsistency(ies) prevent further processing.");
+//                System.err.println("Please collect logging information and contact Liqid Support.");
+//            } catch (ConfigurationException ex) {
+//                _logger.catching(ex);
+//                System.err.println("Configuration inconsistency(ies) prevent further processing.");
+//                System.err.println("Please collect logging information and contact Liqid Support.");
+//            } catch (InternalErrorException ex) {
+//                _logger.catching(ex);
+//                System.err.println("An internal error has been detected in the application.");
+//                System.err.println("Please collect logging information and contact Liqid Support.");
+//            } catch (K8SJSONError kex) {
+//                _logger.catching(kex);
+//                System.err.println("Something went wrong while parsing JSON data from the Kubernetes cluster.");
+//                System.err.println("Please collect logging information and contact Liqid Support.");
+//            } catch (K8SHTTPError kex) {
+//                _logger.catching(kex);
+//                var code = kex.getResponseCode();
+//                System.err.printf("Received unexpected %d HTTP response from the Kubernetes API server.\n", code);
+//                System.err.println("Please verify that you have provided the correct IP address and port information,");
+//                System.err.println("and that the API server (or proxy server) is up and running.");
+//            } catch (K8SRequestError kex) {
+//                _logger.catching(kex);
+//                System.err.println("Could not complete the request to the Kubernetes API server.");
+//                System.err.println("Error: " + kex.getMessage());
+//                System.err.println("Please verify that you have provided the correct IP address and port information,");
+//                System.err.println("and that the API server (or proxy server) is up and running.");
+//            } catch (K8SException kex) {
+//                _logger.catching(kex);
+//                System.err.println("Could not communicate with the Kubernetes API server.");
+//                System.err.println("Error: " + kex.getMessage());
+//                System.err.println("Please verify that you have provided the correct IP address and port information,");
+//                System.err.println("and that the API server (or proxy server) is up and running.");
+//            } catch (LiqidException lex) {
+//                _logger.catching(lex);
+//                System.err.println("Could not complete the request due to an error communicating with the Liqid Cluster.");
+//                System.err.println("Error: " + lex.getMessage());
+//                System.err.println("Please verify that you have provided the correct IP address and port information,");
+//                System.err.println("and that the API server (or proxy server) is up and running.");
+//            } catch (ProcessingException pex) {
+//                System.err.println("Previous errors prevent further processing.");
+//            } catch (Throwable t) {
+//                // just in case anything else gets through
+//                System.out.println("Caught " + t.getMessage());
+//                t.printStackTrace();
+//                System.err.println("An internal error has been detected in the application.");
+//                System.err.println("Please collect logging information and contact Liqid Support.");
+//            }
+//        }
+//    }
 }

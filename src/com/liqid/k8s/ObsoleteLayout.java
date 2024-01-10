@@ -5,21 +5,11 @@
 
 package com.liqid.k8s;
 
-import com.liqid.sdk.DeviceStatus;
-import com.liqid.sdk.PreDeviceType;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
 /**
  * A layout describes an association of liqid devices to liqid machines.
  * It is generally used as a road-map for creation of a Plan object.
  */
-public class Layout {
+public class ObsoleteLayout {
 
 //    public final Logger _logger;
 //    public final Map<String, MachineInfo> _machineInfos = new HashMap<>();

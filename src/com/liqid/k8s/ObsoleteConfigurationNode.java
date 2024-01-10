@@ -5,7 +5,7 @@
 
 package com.liqid.k8s;
 
-public class ConfigurationNode {
+public class ObsoleteConfigurationNode {
 
 //    public final String _k8sNodeName;
 //    public final boolean _isController;

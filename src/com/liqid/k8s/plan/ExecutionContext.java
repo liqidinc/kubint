@@ -1,6 +1,6 @@
 /**
  * k8s-integration
- * Copyright 2023 by Liqid, Inc - All Rights Reserved
+ * Copyright 2023-2024 by Liqid, Inc - All Rights Reserved
  */
 
 package com.liqid.k8s.plan;

@@ -5,11 +5,7 @@
 
 package com.liqid.k8s;
 
-import com.liqid.sdk.DeviceQueryType;
-import com.liqid.sdk.DeviceType;
-import com.liqid.sdk.PreDeviceType;
-
-public enum ResourceType {
+public enum ObsoleteResourceType {
 //    RT_CPU("CPU", DeviceQueryType.COMPUTE),
 //    RT_FPGA("FPGA", DeviceQueryType.FPGA),
 //    RT_GPU("GPU", DeviceQueryType.GPU),

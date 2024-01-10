@@ -5,14 +5,6 @@
 
 package com.liqid.k8s;
 
-import com.bearsnake.k8sclient.K8SClient;
-import com.bearsnake.k8sclient.K8SHTTPError;
-import com.bearsnake.k8sclient.K8SJSONError;
-import com.bearsnake.k8sclient.K8SRequestError;
-
-import java.util.Collection;
-import java.util.LinkedList;
-
 /**
  * Represents the information we're interested in, derived from a configuration file.
  */

@@ -1,16 +1,19 @@
 /**
  * k8s-integration
- * Copyright 2023 by Liqid, Inc - All Rights Reserved
+ * Copyright 2023-2024 by Liqid, Inc - All Rights Reserved
  */
 
-package com.liqid.k8s.config;
+package com.liqid.k8s;
 
 import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.klog.Logger;
+import com.liqid.k8s.commands.CommandType;
+import com.liqid.k8s.commands.LinkCommand;
+import com.liqid.k8s.commands.NodesCommand;
+import com.liqid.k8s.commands.ResourcesCommand;
+import com.liqid.k8s.commands.UnlinkCommand;
 import com.liqid.k8s.exceptions.ScriptException;
 import com.liqid.sdk.LiqidException;
-
-import java.util.Collection;
 
 public class Application {
 
@@ -22,14 +25,16 @@ public class Application {
     private String _liqidPassword;
     private String _liqidUsername;
 
+    private String _proxyURL;
+
     private Boolean _force;
     private Logger _logger;
     private Boolean _noUpdate;
-    private String _proxyURL;
-    private Collection<String> _processorSpecs;
-    private Collection<String> _resourceSpecs;
+//    private String _proxyURL;
+//    private Collection<String> _processorSpecs;
+//    private Collection<String> _resourceSpecs;
 
-    Application setCommandType(final CommandType value) { _commandType = value; return this; }
+    Application setCommandType(final CommandType value) {_commandType = value; return this; }
     Application setForce(final Boolean value) { _force = value; return this; }
     Application setLiqidAddress(final String value) { _liqidAddress = value; return this; }
     Application setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
@@ -38,37 +43,9 @@ public class Application {
     Application setLogger(final Logger value) { _logger = value; return this; }
     Application setNoUpdate(final boolean flag) { _noUpdate = flag; return this; }
     Application setProxyURL(final String value) { _proxyURL = value; return this; }
-    Application setProcessorSpecs(final Collection<String> list) { _processorSpecs = list; return this; }
-    Application setResourceSpecs(final Collection<String> list) { _resourceSpecs = list; return this; }
+//    Application setProcessorSpecs(final Collection<String> list) { _processorSpecs = list; return this; }
+//    Application setResourceSpecs(final Collection<String> list) { _resourceSpecs = list; return this; }
     Application setTimeoutInSeconds(final int value) { _timeoutInSeconds = value; return this; }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     // ------------------------------------------------------------------------
     // helper functions
@@ -657,11 +634,11 @@ public class Application {
 //        return result;
 //    }
 
-//    void process() throws K8SException, LiqidException, ScriptException {
-//        var fn = "process";
-//        _logger.trace("Entering %s", fn);
-//
-//        var command = switch (_commandType) {
+    void process() throws K8SException, LiqidException, ScriptException {
+        var fn = "process";
+        _logger.trace("Entering %s", fn);
+
+        var command = switch (_commandType) {
 //            case COMPOSE ->
 //                new ComposeCommand(_logger, _proxyURL, _timeoutInSeconds);
 //            case INITIALIZE -> new InitializeCommand(_logger, _proxyURL, _force, _timeoutInSeconds)
@@ -671,8 +648,16 @@ public class Application {
 //                .setLiqidUsername(_liqidUsername)
 //                .setProcessorSpecs(_processorSpecs)
 //                .setResourceSpecs(_resourceSpecs);
-//            case PLAN ->
-//                new PlanCommand(_logger, _proxyURL, _timeoutInSeconds);
+            case LINK ->
+                new LinkCommand(_logger, _force, _timeoutInSeconds)
+                    .setLiqidAddress(_liqidAddress)
+                    .setLiqidGroupName(_liqidGroupName)
+                    .setLiqidPassword(_liqidPassword)
+                    .setLiqidUsername(_liqidUsername)
+                    .setProxyURL(_proxyURL);
+            case NODES ->
+                new NodesCommand(_logger, _force, _timeoutInSeconds)
+                    .setProxyURL(_proxyURL);
 //            case RECONFIGURE ->
 //                new ReconfigureCommand(_logger, _proxyURL, _timeoutInSeconds);
 //            case RESET ->
@@ -680,34 +665,37 @@ public class Application {
 //                    .setLiqidAddress(_liqidAddress)
 //                    .setLiqidPassword(_liqidPassword)
 //                    .setLiqidUsername(_liqidUsername);
-//            case RESOURCES ->
-//                new ResourcesCommand(_logger, _proxyURL, _timeoutInSeconds)
-//                    .setLiqidAddress(_liqidAddress)
-//                    .setLiqidPassword(_liqidPassword)
-//                    .setLiqidUsername(_liqidUsername);
+            case RESOURCES ->
+                new ResourcesCommand(_logger, _force, _timeoutInSeconds)
+                    .setLiqidAddress(_liqidAddress)
+                    .setLiqidPassword(_liqidPassword)
+                    .setLiqidUsername(_liqidUsername);
+            case UNLINK ->
+                new UnlinkCommand(_logger, _force, _timeoutInSeconds)
+                    .setProxyURL(_proxyURL);
 //            case VALIDATE ->
 //                new ValidateCommand(_logger, _proxyURL, _timeoutInSeconds);
-//        };
-//
-//        var plan = command.process();
-//        if (plan != null) {
-//            // commands which do not update anything may not create a plan
-//            plan.show();
-//            if (!_noUpdate) {
-//                plan.execute(command.getK8SClient(), command.getLiqidClient(), _logger);
-//            }
-//        }
-//
-//        if ((command.getLiqidClient() != null) && (command.getLiqidClient().isLoggedIn())) {
-//            try {
-//                command.getLiqidClient().logout();
-//            } catch (LiqidException lex) {
-//                _logger.catching(lex);
-//            }
-//        }
-//
-//        var noUpStr = _noUpdate ? "with no update " : "";
-//        System.out.printf("--- %s command completed successfully %s---\n", _commandType.getToken(), noUpStr);
-//        _logger.trace("Exiting %s", fn);
-//    }
+        };
+
+        var plan = command.process();
+        if (plan != null) {
+            // commands which do not update anything may not create a plan
+            plan.show();
+            if (!_noUpdate) {
+                plan.execute(command.getK8SClient(), command.getLiqidClient(), _logger);
+            }
+        }
+
+        if ((command.getLiqidClient() != null) && (command.getLiqidClient().isLoggedIn())) {
+            try {
+                command.getLiqidClient().logout();
+            } catch (LiqidException lex) {
+                _logger.catching(lex);
+            }
+        }
+
+        var noUpStr = _noUpdate ? "with no update " : "";
+        System.out.printf("--- %s command completed successfully %s---\n", _commandType.getToken(), noUpStr);
+        _logger.trace("Exiting %s", fn);
+    }
 }
