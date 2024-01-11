@@ -3,7 +3,7 @@
  * Copyright 2023-2024 by Liqid, Inc - All Rights Reserved
  */
 
-package com.liqid.k8s;
+package com.liqid.k8s.layout;
 
 import com.bearsnake.klog.Logger;
 import com.liqid.sdk.DeviceInfo;

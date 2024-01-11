@@ -9,6 +9,7 @@ import com.bearsnake.k8sclient.*;
 import com.bearsnake.klog.*;
 import com.liqid.k8s.*;
 import com.liqid.k8s.exceptions.*;
+import com.liqid.k8s.layout.LiqidInventory;
 import com.liqid.k8s.plan.Plan;
 import com.liqid.k8s.plan.actions.*;
 import com.liqid.sdk.*;

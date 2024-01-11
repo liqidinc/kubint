@@ -368,6 +368,7 @@ public class AnnotateCommand extends Command {
             throw new ConfigurationException("No linkage exists from this Kubernetes Cluster to the Liqid Cluster.");
         }
 
+        getLiqidLinkage();
         initLiqidClient();
         getLiqidInventory();
 

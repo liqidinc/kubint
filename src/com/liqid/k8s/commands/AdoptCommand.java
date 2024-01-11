@@ -142,12 +142,11 @@ public class AdoptCommand extends Command {
             errors = true;
         }
 
-        var plan = createPlan(computeResources, otherResources);
-
         if (errors && !_force) {
             throw new ConfigurationException("Various configuration problems exist - processing will not continue.");
         }
 
+        var plan = createPlan(computeResources, otherResources);
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;
     }

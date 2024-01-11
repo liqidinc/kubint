@@ -199,7 +199,7 @@ public class Main {
                                             .addDescription("The vendor-name and model must exactly match what is reported by the " + RESOURCES.getToken() + " command.")
                                             .addDescription("If more than one specification is provided, the resources are additive. That is, one may enter")
                                             .addDescription("  -fs=acme:ft1000:2,acme:ft2000:1,5")
-                                            .addDescription("which assigned 2 model ft1000 FPGA, 1 model ft2000 FPGA, and 5 other FPGAs of any model.")
+                                            .addDescription("which assigns 2 model ft1000 FPGAs, 1 model ft2000 FPGA, and 5 other FPGAs of any model.")
                                             .addDescription("If not specified, no change is made to the relevant annotation.")
                                             .addDescription("To clear this value, enter '0' for the specification.")
                                             .build();
@@ -437,6 +437,7 @@ public class Main {
                                              .addDescription("  Cannot be invoked so long as there are any existing node->machine labels.")
                                              .addCommandValue(CV_ADOPT)
                                              .addCommandValue(CV_ANNOTATE)
+                                             .addCommandValue(CV_COMPOSE)
                                              .addCommandValue(CV_INITIALIZE)
                                              .addCommandValue(CV_LINK)
                                              .addCommandValue(CV_NODES)
