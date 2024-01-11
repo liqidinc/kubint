@@ -362,7 +362,12 @@ public class AnnotateCommand extends Command {
         _logger.trace("Entering %s", fn);
 
         initK8sClient();
-        getLiqidLinkage();
+
+        // If there is no linkage, tell the user and stop
+        if (!hasLinkage()) {
+            throw new ConfigurationException("No linkage exists from this Kubernetes Cluster to the Liqid Cluster.");
+        }
+
         initLiqidClient();
         getLiqidInventory();
 

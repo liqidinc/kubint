@@ -25,10 +25,10 @@ import java.util.stream.Collectors;
 import static com.liqid.k8s.commands.CommandType.*;
 
 /*
-    adopt TODO
+    adopt
         -px,--proxy-url={proxy_url}
-        -pr,--processors={pcpu_name=worker_node_name}[,...]
-        -r,--resources={name}[,...]
+        [ -pr,--processors={pcpu_name=worker_node_name}[,...] ]
+        [ -r,--resources={name}[,...] ]
         [ -f,--force ]
         [ -no,--no-update ]
 
@@ -50,7 +50,7 @@ import static com.liqid.k8s.commands.CommandType.*;
     annotate -n -cl
     annotate -n -m -fs -gs -ls -ms -ss
 
-    compose TODO
+    compose
         -px,--proxy-url={proxy_url}
         [ -f,--force ]
         [ -no,--no-update ]
@@ -105,54 +105,13 @@ import static com.liqid.k8s.commands.CommandType.*;
  */
 
 public class Main {
-    /*
-    OLD ANNOTATE COMMANDS
-    annotate auto
-        -px,--proxy-url={proxy_url}
-        [ -no,--no-update ]
-        [ -f,--force ]
-
-    annotate label
-        -px,--proxy-url={proxy_url}
-        -n,--worker-node={worker_node_name}
-        -m,--liqid-machine={liqid_machine}
-        [ -fs,--fpga-spec={spec}[,...] ]
-        [ -gs,--gpu-spec={spec}[,...] ]
-        [ -ls,--link-spec={spec}[,...] ]
-        [ -ms,--mem-spec={spec}[,...] ]
-        [ -ss,--ssd-spec={spec}[,...] ]
-        [ -f,--force ]
-
-    annotate unlabel
-        -px,--proxy-url={proxy_url}
-        [ -n,--worker-node={worker_node_name} ]
-        [ -a ]
-     */
-
-
-    /*
-    OLD CONFIG COMMANDS
-    config cleanup
-        -px,--proxy-url={proxy_url}
-
-    config execute
-        -px,--proxy-url={proxy_url}
-
-    config reset
-        -px,--proxy-url={proxy_url}
-        -ip,--liqid-ip-address={ip_address}
-        [ -u,--liqid-username={user_name} ]
-        [ -p,--liqid-password={password} ]
-        -f,--force
-
-    config validate
-        -px,--proxy-url={proxy_url}
-    */
 
     private static final String LOGGER_NAME = "Config";
     private static final String LOG_FILE_NAME = "liq-config.log";
 
+    private static final CommandValue CV_ADOPT = new CommandValue(ADOPT.getToken());
     private static final CommandValue CV_ANNOTATE = new CommandValue(ANNOTATE.getToken());
+    private static final CommandValue CV_COMPOSE = new CommandValue(COMPOSE.getToken());
     private static final CommandValue CV_INITIALIZE = new CommandValue(INITIALIZE.getToken());
     private static final CommandValue CV_LINK = new CommandValue(LINK.getToken());
     private static final CommandValue CV_NODES = new CommandValue(NODES.getToken());
@@ -212,6 +171,9 @@ public class Main {
             FORCE_SWITCH =
                 new SimpleSwitch.Builder().setShortName("f")
                                           .setLongName("force")
+                                          .addAffinity(CV_ADOPT)
+                                          .addAffinity(CV_ANNOTATE)
+                                          .addAffinity(CV_COMPOSE)
                                           .addAffinity(CV_INITIALIZE)
                                           .addAffinity(CV_LINK)
                                           .addAffinity(CV_RELEASE)
@@ -354,7 +316,9 @@ public class Main {
             NO_UPDATE_SWITCH =
                 new SimpleSwitch.Builder().setShortName("no")
                                           .setLongName("no-update")
+                                          .addAffinity(CV_ADOPT)
                                           .addAffinity(CV_ANNOTATE)
+                                          .addAffinity(CV_COMPOSE)
                                           .addAffinity(CV_INITIALIZE)
                                           .addAffinity(CV_LINK)
                                           .addAffinity(CV_RELEASE)
@@ -368,8 +332,9 @@ public class Main {
                                             .setLongName("processors")
                                             .setValueType(ValueType.STRING)
                                             .setValueName("spec")
-                                            .setIsRequired(true)
+                                            .setIsRequired(false)
                                             .setIsMultiple(true)
+                                            .addAffinity(CV_ADOPT)
                                             .addAffinity(CV_INITIALIZE)
                                             .addDescription("List of processor (compute) resources and the corresponding worker node names as known")
                                             .addDescription("to the Kubernetes Cluster.")
@@ -382,7 +347,9 @@ public class Main {
                 new ArgumentSwitch.Builder().setShortName("px")
                                             .setLongName("proxy-url")
                                             .setIsRequired(true)
+                                            .addAffinity(CV_ADOPT)
                                             .addAffinity(CV_ANNOTATE)
+                                            .addAffinity(CV_COMPOSE)
                                             .addAffinity(CV_INITIALIZE)
                                             .addAffinity(CV_LINK)
                                             .addAffinity(CV_NODES)
@@ -398,8 +365,9 @@ public class Main {
                                             .setLongName("resources")
                                             .setValueType(ValueType.STRING)
                                             .setValueName("resource_name")
-                                            .setIsRequired(true)
+                                            .setIsRequired(false)
                                             .setIsMultiple(true)
+                                            .addAffinity(CV_ADOPT)
                                             .addAffinity(CV_INITIALIZE)
                                             .addAffinity(CV_RELEASE)
                                             .addDescription("List of non-compute resources which are to be considered candidates for attaching to")
@@ -428,7 +396,12 @@ public class Main {
                                             .addDescription("Timeout value for back-end network communication in seconds.")
                                             .build();
             COMMAND_ARG =
-                new CommandArgument.Builder().addDescription(ANNOTATE.getToken())
+                new CommandArgument.Builder().addDescription(ADOPT.getToken())
+                                             .addDescription("  Adopts additional resources (compute or otherwise) into the targeted Kubernetes Cluster.")
+                                             .addDescription("  Specified compute resources must already be known to the Kubernetes Cluster as worker nodes.")
+                                             .addDescription("  Moves the listed compute nodes into the configured Liqid Cluster group, adding the appropriate ")
+                                             .addDescription("  worker node names to the description fields, and moves the listed resources into the group.")
+                                             .addDescription(ANNOTATE.getToken())
                                              .addDescription("  Creates annotations for a particular Kubernetes worker node which identify, for that node, the following:")
                                              .addDescription("    The Liqid Cluster machine which is associated with the Kubernetes worker node")
                                              .addDescription("    The number (and optionally the model) of various resources to be assigned to the node")
@@ -462,6 +435,7 @@ public class Main {
                                              .addDescription("  Unlinks a particular Liqid Cluster from the targeted Kubernetes Cluster.")
                                              .addDescription("  Removes the Liqid Cluster information provided via the " + LINK.getToken() + " command (listed above).")
                                              .addDescription("  Cannot be invoked so long as there are any existing node->machine labels.")
+                                             .addCommandValue(CV_ADOPT)
                                              .addCommandValue(CV_ANNOTATE)
                                              .addCommandValue(CV_INITIALIZE)
                                              .addCommandValue(CV_LINK)
@@ -665,9 +639,8 @@ public class Main {
                 System.err.println("Configuration Data inconsistency(ies) prevent further processing.");
                 System.err.println("Please collect logging information and contact Liqid Support.");
             } catch (ConfigurationException ex) {
-                _logger.catching(ex);
+                System.err.println(ex.getMessage());
                 System.err.println("Configuration inconsistency(ies) prevent further processing.");
-                System.err.println("Please collect logging information and contact Liqid Support.");
             } catch (InternalErrorException ex) {
                 _logger.catching(ex);
                 System.err.println("An internal error has been detected in the application.");

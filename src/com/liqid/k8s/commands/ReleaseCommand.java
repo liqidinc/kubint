@@ -9,6 +9,7 @@ import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.LiqidGeneralType;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
+import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.k8s.plan.Plan;
@@ -117,7 +118,8 @@ public class ReleaseCommand extends Command {
 
     @Override
     public Plan process(
-    ) throws ConfigurationDataException,
+    ) throws ConfigurationException,
+             ConfigurationDataException,
              InternalErrorException,
              K8SException,
              LiqidException,
@@ -129,9 +131,7 @@ public class ReleaseCommand extends Command {
 
         // If there is no linkage, tell the user and stop
         if (!hasLinkage()) {
-            System.err.println("WARNING:No linkage exists from this Kubernetes Cluster to the Liqid Cluster.");
-            _logger.trace("Exiting %s with null", fn);
-            return null;
+            throw new ConfigurationException("No linkage exists from this Kubernetes Cluster to the Liqid Cluster.");
         }
 
         getLiqidLinkage();

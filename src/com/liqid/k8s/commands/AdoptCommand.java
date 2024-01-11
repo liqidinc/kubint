@@ -5,11 +5,12 @@
 
 package com.liqid.k8s.commands;
 
-import com.bearsnake.k8sclient.*;
+import com.bearsnake.k8sclient.K8SException;
+import com.bearsnake.k8sclient.Node;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.exceptions.*;
-import com.liqid.k8s.plan.*;
-import com.liqid.k8s.plan.actions.*;
+import com.liqid.k8s.plan.Plan;
+import com.liqid.k8s.plan.actions.AssignToGroup;
 import com.liqid.sdk.DeviceStatus;
 import com.liqid.sdk.LiqidException;
 
@@ -20,16 +21,12 @@ import java.util.Map;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-public class InitializeCommand extends Command {
+public class AdoptCommand extends Command {
 
-    private boolean _allocate;
-    private boolean _hasAnnotations = false;
-    private boolean _hasGroup = false;
-    private boolean _hasLinkage = false;
     private Collection<String> _processorSpecs;
     private Collection<String> _resourceSpecs;
 
-    public InitializeCommand(
+    public AdoptCommand(
         final Logger logger,
         final Boolean force,
         final Integer timeoutInSeconds
@@ -37,14 +34,9 @@ public class InitializeCommand extends Command {
         super(logger, force, timeoutInSeconds);
     }
 
-    public InitializeCommand setAllocate(final Boolean value) { _allocate = value; return this; }
-    public InitializeCommand setLiqidAddress(final String value) { _liqidAddress = value; return this; }
-    public InitializeCommand setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
-    public InitializeCommand setLiqidPassword(final String value) { _liqidPassword = value; return this; }
-    public InitializeCommand setLiqidUsername(final String value) { _liqidUsername = value; return this; }
-    public InitializeCommand setProcessorSpecs(final Collection<String> list) { _processorSpecs = list; return this; }
-    public InitializeCommand setProxyURL(final String value) { _proxyURL = value; return this; }
-    public InitializeCommand setResourceSpecs(final Collection<String> list) { _resourceSpecs = list; return this; }
+    public AdoptCommand setProcessorSpecs(final Collection<String> list) {_processorSpecs = list; return this; }
+    public AdoptCommand setProxyURL(final String value) {_proxyURL = value; return this; }
+    public AdoptCommand setResourceSpecs(final Collection<String> list) {_resourceSpecs = list; return this; }
 
     /**
      * Checks the current Liqid and Kubernetes configuration to see if there is anything which would prevent
@@ -54,9 +46,7 @@ public class InitializeCommand extends Command {
     protected boolean checkConfiguration(
         final Map<DeviceStatus, Node> computeDevices,
         final Collection<DeviceStatus> resourceDevices
-    ) throws K8SHTTPError,
-             K8SJSONError,
-             K8SRequestError {
+    ) {
         var fn = "checkConfiguration";
         _logger.trace("Entering %s with computeDevices=%s, resourceDevices=%s",
                       fn, computeDevices, resourceDevices);
@@ -68,18 +58,7 @@ public class InitializeCommand extends Command {
             errors = true;
         }
 
-        _hasLinkage = hasLinkage();
-        _hasAnnotations = hasAnnotations();
-        if (_hasLinkage) {
-            System.err.printf("%s:Linkage already exists between the Kubernetes Cluster and the Liqid Cluster", errPrefix);
-            errors = true;
-        }
-        if (_hasAnnotations) {
-            System.err.printf("%s:One or more nodes in the Kubernetes Cluster has Liqid annotations", errPrefix);
-            errors = true;
-        }
-
-        // Are there any resources assigned to groups?
+        // Are any of the called-out resources assigned to groups?
         var allDevs = new LinkedList<>(computeDevices.keySet());
         allDevs.addAll(resourceDevices);
         for (var ds : allDevs) {
@@ -88,13 +67,6 @@ public class InitializeCommand extends Command {
                 System.err.printf("%s:Device %s is currently assigned to a group or machine\n", errPrefix, ds.getName());
                 errors = true;
             }
-        }
-
-        // Does the called-out group already exist?
-        if (_liqidInventory._groupsByName.containsKey(_liqidGroupName)) {
-            _hasGroup = true;
-            System.err.printf("%s:Group %s already exists.\n", errPrefix, _liqidGroupName);
-            errors = true;
         }
 
         var result = !errors;
@@ -111,22 +83,6 @@ public class InitializeCommand extends Command {
                       fn, computeDevices, resourceDevices);
 
         var plan = new Plan();
-        if (_hasLinkage) {
-            plan.addAction(new RemoveLinkage());
-        }
-        if (_hasAnnotations) {
-            plan.addAction(new RemoveAllAnnotations());
-        }
-        if (_hasGroup) {
-            plan.addAction(new DeleteGroup().setGroupName(_liqidGroupName));
-        }
-
-        plan.addAction(new CreateLinkage().setLiqidAddress(_liqidAddress)
-                                          .setLiqidGroupName(_liqidGroupName)
-                                          .setLiqidUsername(_liqidUsername)
-                                          .setLiqidPassword(_liqidPassword));
-
-        plan.addAction(new CreateGroup().setGroupName(_liqidGroupName));
 
         // Create consolidated list of all devices
         var allDevStats = new LinkedList<>(computeDevices.keySet());
@@ -137,19 +93,14 @@ public class InitializeCommand extends Command {
         releaseDevicesFromGroups(plan, allDevStats);
 
         // Move all called-out resources to the newly-created group.
-        var names = allDevStats.stream().map(DeviceStatus::getName).collect(Collectors.toCollection(TreeSet::new));
-        if (!names.isEmpty()) {
+        if (!allDevStats.isEmpty()) {
+            var names = allDevStats.stream().map(DeviceStatus::getName).collect(Collectors.toCollection(TreeSet::new));
             plan.addAction(new AssignToGroup().setGroupName(_liqidGroupName).setDeviceNames(names));
         }
 
         // Create machines for all the called-out compute resources and move the compute resources into those machines.
         // Set the device descriptions to refer to the k8s node names while we're here.
         createMachines(plan, computeDevices);
-
-        // Allocate, if requested
-        if (_allocate) {
-            allocateEqually(plan, computeDevices, resourceDevices);
-        }
 
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;
@@ -158,6 +109,7 @@ public class InitializeCommand extends Command {
     @Override
     public Plan process(
     ) throws ConfigurationException,
+             ConfigurationDataException,
              InternalErrorException,
              K8SException,
              LiqidException,
@@ -166,6 +118,12 @@ public class InitializeCommand extends Command {
         _logger.trace("Entering %s", fn);
 
         initK8sClient();
+
+        // If there is no linkage, tell the user and stop
+        if (!hasLinkage()) {
+            throw new ConfigurationException("No linkage exists from this Kubernetes Cluster to the Liqid Cluster.");
+        }
+
         initLiqidClient();
         getLiqidInventory();
 
@@ -184,11 +142,11 @@ public class InitializeCommand extends Command {
             errors = true;
         }
 
+        var plan = createPlan(computeResources, otherResources);
+
         if (errors && !_force) {
             throw new ConfigurationException("Various configuration problems exist - processing will not continue.");
         }
-
-        var plan = createPlan(computeResources, otherResources);
 
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;

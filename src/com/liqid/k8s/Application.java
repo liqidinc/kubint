@@ -7,15 +7,7 @@ package com.liqid.k8s;
 
 import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.klog.Logger;
-import com.liqid.k8s.commands.CommandType;
-import com.liqid.k8s.commands.InitializeCommand;
-import com.liqid.k8s.commands.AnnotateCommand;
-import com.liqid.k8s.commands.LinkCommand;
-import com.liqid.k8s.commands.NodesCommand;
-import com.liqid.k8s.commands.ReleaseCommand;
-import com.liqid.k8s.commands.ResetCommand;
-import com.liqid.k8s.commands.ResourcesCommand;
-import com.liqid.k8s.commands.UnlinkCommand;
+import com.liqid.k8s.commands.*;
 import com.liqid.k8s.exceptions.ScriptException;
 import com.liqid.sdk.LiqidException;
 
@@ -74,6 +66,7 @@ public class Application {
     // helper functions
     // ------------------------------------------------------------------------
 
+    // TODO remove the following
 //    /**
 //     * Checks aggregate variances (all variances added together per resource type)
 //     * comparing them to the number of free pool or group free pool devices to see
@@ -559,13 +552,8 @@ public class Application {
         _logger.trace("Entering %s", fn);
 
         var command = switch (_commandType) {
-            case INITIALIZE ->
-                new InitializeCommand(_logger, _force, _timeoutInSeconds)
-                    .setAllocate(_allocate)
-                    .setLiqidAddress(_liqidAddress)
-                    .setLiqidGroupName(_liqidGroupName)
-                    .setLiqidPassword(_liqidPassword)
-                    .setLiqidUsername(_liqidUsername)
+            case ADOPT ->
+                new AdoptCommand(_logger, _force, _timeoutInSeconds)
                     .setProcessorSpecs(_processorSpecs)
                     .setProxyURL(_proxyURL)
                     .setResourceSpecs(_resourceSpecs);
@@ -581,6 +569,19 @@ public class Application {
                     .setMemorySpecifications(_memorySpecs)
                     .setSSDSpecifications(_ssdSpecs)
                     .setProxyURL(_proxyURL);
+            case COMPOSE ->
+                new ComposeCommand(_logger, _force, _timeoutInSeconds)
+                    .setProxyURL(_proxyURL);
+            case INITIALIZE ->
+                new InitializeCommand(_logger, _force, _timeoutInSeconds)
+                    .setAllocate(_allocate)
+                    .setLiqidAddress(_liqidAddress)
+                    .setLiqidGroupName(_liqidGroupName)
+                    .setLiqidPassword(_liqidPassword)
+                    .setLiqidUsername(_liqidUsername)
+                    .setProcessorSpecs(_processorSpecs)
+                    .setProxyURL(_proxyURL)
+                    .setResourceSpecs(_resourceSpecs);
             case LINK ->
                 new LinkCommand(_logger, _force, _timeoutInSeconds)
                     .setLiqidAddress(_liqidAddress)

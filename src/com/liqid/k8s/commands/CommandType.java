@@ -8,7 +8,9 @@ package com.liqid.k8s.commands;
 import java.util.Arrays;
 
 public enum CommandType {
+    ADOPT("adopt"),
     ANNOTATE("annotate"),
+    COMPOSE("compose"),
     INITIALIZE("initialize"),
     LINK("link"),
     NODES("nodes"),

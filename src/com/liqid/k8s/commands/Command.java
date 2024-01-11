@@ -5,56 +5,24 @@
 
 package com.liqid.k8s.commands;
 
-import com.bearsnake.k8sclient.K8SClient;
-import com.bearsnake.k8sclient.K8SException;
-import com.bearsnake.k8sclient.K8SHTTPError;
-import com.bearsnake.k8sclient.K8SJSONError;
-import com.bearsnake.k8sclient.K8SRequestError;
-import com.bearsnake.k8sclient.Node;
-import com.bearsnake.klog.Logger;
-import com.bearsnake.klog.StdErrWriter;
-import com.bearsnake.klog.StdOutWriter;
-import com.liqid.k8s.CredentialMangler;
-import com.liqid.k8s.LiqidGeneralType;
-import com.liqid.k8s.LiqidInventory;
-import com.liqid.k8s.exceptions.ConfigurationDataException;
-import com.liqid.k8s.exceptions.ConfigurationException;
-import com.liqid.k8s.exceptions.InternalErrorException;
-import com.liqid.k8s.exceptions.ProcessingException;
+import com.bearsnake.k8sclient.*;
+import com.bearsnake.klog.*;
+import com.liqid.k8s.*;
+import com.liqid.k8s.exceptions.*;
 import com.liqid.k8s.plan.Plan;
-import com.liqid.k8s.plan.actions.AnnotateNode;
-import com.liqid.k8s.plan.actions.AssignToMachine;
-import com.liqid.sdk.DeviceStatus;
-import com.liqid.sdk.DeviceType;
-import com.liqid.sdk.Group;
-import com.liqid.sdk.LiqidClient;
-import com.liqid.sdk.LiqidClientBuilder;
-import com.liqid.sdk.LiqidException;
+import com.liqid.k8s.plan.actions.*;
+import com.liqid.sdk.*;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_FPGA_ENTRY;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_GPU_ENTRY;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_LINK_ENTRY;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_MEMORY_ENTRY;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_SSD_ENTRY;
-import static com.liqid.k8s.Constants.K8S_CONFIG_MAP_GROUP_NAME_KEY;
-import static com.liqid.k8s.Constants.K8S_CONFIG_MAP_IP_ADDRESS_KEY;
-import static com.liqid.k8s.Constants.K8S_CONFIG_NAME;
-import static com.liqid.k8s.Constants.K8S_CONFIG_NAMESPACE;
-import static com.liqid.k8s.Constants.K8S_SECRET_CREDENTIALS_KEY;
-import static com.liqid.k8s.Constants.K8S_SECRET_NAME;
-import static com.liqid.k8s.Constants.K8S_SECRET_NAMESPACE;
-import static com.liqid.k8s.Constants.LIQID_SDK_LABEL;
+import static com.liqid.k8s.Constants.*;
 
 /**
  * Abstract class for all command handlers.
@@ -121,114 +89,6 @@ public abstract class Command {
 
     public K8SClient getK8SClient() { return _k8sClient; }
     public LiqidClient getLiqidClient() { return _liqidClient; }
-
-//    /**
-//     * This is invoked in situations where worker node annotations should not exist.
-//     * We check all the worker nodes in the k8s cluster to see if any of them have any liqid-related annotations.
-//     * If any annotations exist, we do the following:
-//     *      If we are not forcing, we display the list of offending worker nodes and return false.
-//     *          This is considered an error and the invoker should not proceed with processing.
-//     *      If we are forcing, we note the existence of annotations on the nodes as warnings,
-//     *          delete the annotations, then return true. The invoker may continue processing.
-//     * @param command The command which was issued - this is merely for nice-formatting the error/warning messages.
-//     * @return true if the invoker may continue, false if processing should stop.
-//     * @throws K8SHTTPError If any unexpected HTTP responses are received. Generally, we expect only 200s.
-//     * @throws K8SJSONError If information received from k8s cannot be converted from JSON into the expected data
-//     *                          structs. This generally indicates a programming error on our part, but it could also
-//     *                          result from gratuitous changes in k8s, which does unfortunately occur.
-//     * @throws K8SRequestError Indicates some other error during processing, from within the k8sClient module.
-//     */
-//    protected boolean checkForExistingAnnotations(
-//        final String command
-//    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
-//        var fn = "checkForExistingAnnotations";
-//        _logger.trace("Entering %s command=%s", fn, command);
-//
-//        var result = true;
-//        var nodeEntities = _k8sClient.getNodes();
-//        for (var node : nodeEntities) {
-//            var annos = node.metadata.annotations;
-//            for (var key : annos.keySet()) {
-//                if (key.startsWith(K8S_ANNOTATION_PREFIX)) {
-//                    if (_force) {
-//                        System.err.printf("WARNING:Deleting Liqid annotations from worker %s...\n", node.getName());
-//                        removeAnnotationsFromNode(node);
-//                    } else {
-//                        System.err.printf("ERROR:Worker node %s has Liqid annotations\n", node.getName());
-//                        result = false;
-//                    }
-//                }
-//            }
-//        }
-//
-//        _logger.trace("Exiting %s with %s", fn, result);
-//        return result;
-//    }
-
-//    /**
-//     * This is invoked in situations where linkage (configmaps and secrets) should not exist.
-//     * If any linkage exists, we do the following:
-//     *      If we are not forcing, we display the problem and return false.
-//     *          This is considered an error and the invoker should not proceed with processing.
-//     *      If we are forcing, we note the existence of the linkage and remove it, then return true.
-//     *          The invoker may continue processing.
-//     * @param command The command which was issued - this is merely for nice-formatting the error/warning messages.
-//     * @return true if the invoker may continue, false if processing should stop.
-//     * @throws K8SHTTPError If any unexpected HTTP responses are received. Generally, we expect only 200s.
-//     * @throws K8SJSONError If information received from k8s cannot be converted from JSON into the expected data
-//     *                          structs. This generally indicates a programming error on our part, but it could also
-//     *                          result from gratuitous changes in k8s, which does unfortunately occur.
-//     * @throws K8SRequestError Indicates some other error during processing, from within the k8sClient module.
-//     */
-//    protected boolean checkForExistingLinkage(
-//        final String command
-//    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
-//        var fn = "checkForExistingLinkage";
-//        _logger.trace("Entering %s with command=%s", fn, command);
-//
-//        ConfigMapPayload cfgMap = null;
-//        try {
-//            cfgMap = _k8sClient.getConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
-//        } catch (K8SHTTPError ex) {
-//            //  We *should* get here with a 404. Anything other than a 404 is a Bad Thing.
-//            if (ex.getResponseCode() != 404) {
-//                throw ex;
-//            }
-//        }
-//
-//        SecretPayload secret = null;
-//        try {
-//            secret = _k8sClient.getSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
-//        } catch (K8SHTTPError ex) {
-//            //  We *should* get here with a 404. Anything other than a 404 is a Bad Thing.
-//            if (ex.getResponseCode() != 404) {
-//                throw ex;
-//            }
-//        }
-//
-//        if ((cfgMap != null) || (secret != null)) {
-//            if (!_force) {
-//                System.err.println("ERROR:A link already exists between the Kubernetes Cluster and the Liqid Cluster.");
-//                _logger.trace("Exiting %s false", fn);
-//                return false;
-//            }
-//
-//            System.err.println("WARNING:A link already exists between the Kubernetes Cluster and the Liqid Cluster.");
-//        }
-//
-//        if (cfgMap != null) {
-//            System.err.println("WARNING:Deleting config map entry...");
-//            _k8sClient.deleteConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
-//        }
-//
-//        if (secret != null) {
-//            System.err.println("WARNING:Deleting secret entry...");
-//            _k8sClient.deleteSecret(K8S_SECRET_NAMESPACE, K8S_SECRET_NAME);
-//        }
-//
-//        _logger.trace("Exiting %s true", fn);
-//        return true;
-//    }
 
     /**
      * Creates steps to allocate resources as equally as possible among the known worker nodes.
@@ -309,6 +169,40 @@ public abstract class Command {
     }
 
     /**
+     * Checks the current Liqid and Kubernetes configuration to see if there is anything which would prevent
+     * us from executing the requested command. Some problems can be warnings if _force is set.
+     * In any case where processing cannot continue, we will throw an exception.
+     * This is common code for the Initialize and Adopt commands.
+     */
+    protected boolean checkConfiguration(
+        final Map<DeviceStatus, Node> computeDevices
+    ) {
+        var fn = "checkConfiguration";
+        _logger.trace("Entering %s", fn);
+
+        // Are there any compute device descriptions which contradict the node names?
+        var errors = false;
+        var errPrefix = getErrorPrefix();
+        for (var entry : computeDevices.entrySet()) {
+            var ds = entry.getKey();
+            var node = entry.getValue();
+            var di = _liqidInventory._deviceInfoById.get(entry.getKey().getDeviceId());
+            var desc = di.getUserDescription();
+            if (!(desc.equals("n/a") || desc.equals(node.getName()))) {
+                System.err.printf("%s:Description for resource %s conflicts with node name %s",
+                                  errPrefix,
+                                  ds.getName(),
+                                  node.getName());
+                errors = true;
+            }
+        }
+
+        var result = !errors;
+        _logger.trace("Exiting %s with %s", fn, result);
+        return result;
+    }
+
+    /**
      * Helpful wrapper to create a full annotation key
      */
     protected String createAnnotationKeyFor(
@@ -341,6 +235,37 @@ public abstract class Command {
         }
 
         return machName;
+    }
+
+    /**
+     * Create machine, add compute device to machine, set compute device description to node name
+     * machine name is limited to 22 characters, may not contain spaces, and must start with an alpha character.
+     * We assume the compute devices have already been added to the targeted group.
+     */
+    protected void createMachines(
+        final Plan plan,
+        final Map<DeviceStatus, Node> computeDevices
+    ) {
+        // We're going to do it in order by pcpu{n} name, just because it is cleaner.
+        var orderedMap = new TreeMap<Integer, DeviceStatus>();
+        for (var ds : computeDevices.keySet()) {
+            Integer key = Integer.parseInt(ds.getName().substring(4));
+            orderedMap.put(key, ds);
+        }
+
+        for (var entry : orderedMap.entrySet()) {
+            var ds = entry.getValue();
+            var node = computeDevices.get(ds);
+            var devName = ds.getName();
+            var nodeName = node.getName();
+            var machineName = createMachineName(ds, node);
+
+            plan.addAction(new CreateMachine().setMachineName(machineName).setGroupName(_liqidGroupName));
+            plan.addAction(new AssignToMachine().setMachineName(machineName).addDeviceName(devName));
+            plan.addAction(new SetUserDescription().setDeviceName(devName).setDescription(nodeName));
+            plan.addAction(new AnnotateNode().setNodeName(nodeName)
+                                             .addAnnotation(Constants.K8S_ANNOTATION_MACHINE_NAME, machineName));
+        }
     }
 
     /**
@@ -441,108 +366,6 @@ public abstract class Command {
     }
 
     /**
-     * Displays devices based on the current known liqid inventory (see getLiqidInventory())
-     * @param group Reference to Group if we want to limit the display to resources in that group, else null
-     */
-    protected void displayDevices(
-        final Group group
-    ) {
-        var fn = "displayDevices";
-        _logger.trace("Entering %s", fn);
-
-        System.out.println();
-        if (group == null) {
-            System.out.println("All Resources:");
-            System.out.println("  ---TYPE---  --NAME--  ----ID----  --------VENDOR--------  -----MODEL------  "
-                                   + "-------MACHINE--------  -------------GROUP--------------  --DESCRIPTION--");
-        } else {
-            System.out.printf("Resources for group '%s':\n", group.getGroupName());
-            System.out.println("  ---TYPE---  --NAME--  ----ID----  --------VENDOR--------  -----MODEL------  "
-                                   + "-------MACHINE--------  --DESCRIPTION--");
-        }
-
-        for (var ds : _liqidInventory._deviceStatusByName.values()) {
-            if (group != null) {
-                if (!_liqidInventory._deviceStatusByGroupId.get(group.getGroupId()).contains(ds)) {
-                    continue;
-                }
-            }
-
-            var di = _liqidInventory._deviceInfoById.get(ds.getDeviceId());
-            var str1 = String.format("%-10s  %-8s  0x%08x  %-22s  %-16s",
-                                     ds.getDeviceType(),
-                                     ds.getName(),
-                                     ds.getDeviceId(),
-                                     di.getVendor(),
-                                     di.getModel());
-
-            var dr = _liqidInventory._deviceRelationsByDeviceId.get(ds.getDeviceId());
-            var machStr = "<none>";
-            if (dr._machineId != null) {
-                machStr = _liqidInventory._machinesById.get(dr._machineId).getMachineName();
-            }
-
-            var grpStr = "";
-            if (group == null) {
-                var temp = (dr._groupId == null)
-                    ? "<none>"
-                    : _liqidInventory._groupsById.get(dr._groupId).getGroupName();
-                grpStr = String.format("  %-32s", temp);
-            }
-
-            System.out.printf("  %s  %-22s%s  %s\n", str1, machStr, grpStr, di.getUserDescription());
-        }
-
-        _logger.trace("Exiting %s", fn);
-    }
-
-    /**
-     * Displays machines based on the current known liqid inventory (see getLiqidInventory())
-     * @param group Reference to Group if we want to limit the display to machines in that group, else null
-     */
-    protected void displayMachines(
-        final Group group
-    ) {
-        var fn = "displayMachines";
-        _logger.trace("Entering %s", fn);
-
-        System.out.println();
-        if (group == null) {
-            System.out.println("All Machines:");
-            System.out.println("  -------------GROUP--------------  -------MACHINE--------  ----ID----  --------DEVICES---------");
-        } else {
-            System.out.printf("Machines for group '%s':\n", group.getGroupName());
-            System.out.println("  -------MACHINE--------  ----ID----  --------DEVICES---------");
-        }
-
-        for (var mach : _liqidInventory._machinesById.values()) {
-            var devNames = _liqidInventory._deviceStatusByMachineId.get(mach.getMachineId())
-                                                                   .stream()
-                                                                   .map(DeviceStatus::getName)
-                                                                   .collect(Collectors.toCollection(TreeSet::new));
-            var devNamesStr = String.join(" ", devNames);
-
-            if (group == null) {
-                var grp = _liqidInventory._groupsById.get(mach.getGroupId());
-                System.out.printf("  %-32s  %-22s  0x%08x  %s\n",
-                                  grp.getGroupName(),
-                                  mach.getMachineName(),
-                                  mach.getMachineId(),
-                                  devNamesStr);
-            } else {
-                if (mach.getGroupId().equals(group.getGroupId())) {
-                    System.out.printf("  %-22s  0x%08x  %s\n",
-                                      mach.getMachineName(),
-                                      mach.getMachineId(),
-                                      devNamesStr);
-                }
-            }
-        }
-
-        _logger.trace("Exiting %s", fn);
-    }
-
-    /**
      * Presuming _liqidInventory is populated, we find the compute device for a given machine.
      */
     protected DeviceStatus getComputeDeviceStatusForMachine(
@@ -581,18 +404,6 @@ public abstract class Command {
      */
     protected void getLiqidInventory() throws LiqidException {
         _liqidInventory = LiqidInventory.getLiqidInventory(_liqidClient, _logger);
-    }
-
-    /**
-     * Grab all nodes from k8s, and return a collection of those which are annotated with
-     * a machine name.
-     */
-    protected Collection<Node> getLiqidWorkerNodes() throws K8SHTTPError, K8SJSONError, K8SRequestError {
-        var nodes = _k8sClient.getNodes();
-        var searchKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
-        return nodes.stream()
-                    .filter(node -> node.metadata.annotations.keySet().stream().anyMatch(key -> key.equals(searchKey)))
-                    .collect(Collectors.toCollection(LinkedList::new));
     }
 
     /**
@@ -715,7 +526,6 @@ public abstract class Command {
         var fn = "initK8sClient";
         _logger.trace("Entering %s", fn);
 
-        var result = true;
         try {
             _k8sClient = new K8SClient(_proxyURL, createSubLogger(_logger.getName()));
         } catch (IOException ex) {
@@ -757,22 +567,72 @@ public abstract class Command {
     }
 
     /**
-     * Generates plan actions to recompose devices according to the current configuration and annotations,
-     * subject to modifications which (might) exist in the current plan.
+     * Adds actions to the given plan to efficiently release all indicated devices from their containing groups.
      */
-    protected void recompose(
-        final Plan plan
+    protected void releaseDevicesFromGroups(
+        final Plan plan,
+        final Collection<DeviceStatus> devices
     ) {
-        // Determine current allocations according to the Liqid cluster
-        //TODO
+        // Iterate over the groups so that we can do multiple devices per group.
+        // In the case where we're removing all the devices for a group, just delete the group.
+        for (var entry : _liqidInventory._deviceStatusByGroupId.entrySet()) {
+            // If this group's name matches the liqid group name, we're going to delete it anyway.
+            var groupId = entry.getKey();
+            var group = _liqidInventory._groupsById.get(groupId);
+            if (!group.getGroupName().equals(_liqidGroupName)) {
+                var grpDevs = entry.getValue();
+                var devsToRemove = new LinkedList<DeviceStatus>();
+                getIntersection(devices, grpDevs, devsToRemove);
 
-        // Modify allocations according to existing annotations
-        //TODO
+                if (!devsToRemove.isEmpty()) {
+                    if (devsToRemove.size() == grpDevs.size()) {
+                        plan.addAction(new DeleteGroup().setGroupName(group.getGroupName()));
+                    } else {
+                        var names = devsToRemove.stream()
+                                                .map(DeviceStatus::getName)
+                                                .collect(Collectors.toCollection(TreeSet::new));
+                        plan.addAction(new RemoveFromGroup().setGroupName(group.getGroupName()).setDeviceNames(names));
+                    }
+                }
+            }
+        }
+    }
 
-        // Further modify allocations according to any AnnotateNode actions in the current plan
-        //TODO
+    /**
+     * Adds actions to the given plan to efficiently release all indicated devices from their containing machines.
+     */
+    protected void releaseDevicesFromMachines(
+        final Plan plan,
+        final Collection<DeviceStatus> devices
+    ) {
+        // Iterate over the machines so that we can do multiple devices per machine.
+        // In the case where we're removing all the devices for a machine, just delete the machine.
 
-        // Now generate actions to effect the final desired configuration
-        //TODO
+        for (var entry : _liqidInventory._deviceStatusByMachineId.entrySet()) {
+            // Find the group to which this machine belongs.
+            // If that group's name matches _liqidGroupName, the whole group is going to be deleted,
+            // and we don't need to do this mess for this machine.
+            var machId = entry.getKey();
+            var machine = _liqidInventory._machinesById.get(machId);
+            var grpId = machine.getGroupId();
+            var group = _liqidInventory._groupsById.get(grpId);
+            if (!group.getGroupName().equals(_liqidGroupName)) {
+                var machDevs = entry.getValue();
+                var devsToRemove = new LinkedList<DeviceStatus>();
+                getIntersection(devices, machDevs, devsToRemove);
+
+                if (!devsToRemove.isEmpty()) {
+                    if (devsToRemove.size() == machDevs.size()) {
+                        plan.addAction(new DeleteMachine().setMachineName(machine.getMachineName()));
+                    } else {
+                        var devNames = devsToRemove.stream()
+                                                   .map(DeviceStatus::getName)
+                                                   .collect(Collectors.toCollection(TreeSet::new));
+                        plan.addAction(new RemoveFromMachine().setMachineName(machine.getMachineName())
+                                                              .setDeviceNames(devNames));
+                    }
+                }
+            }
+        }
     }
 }
