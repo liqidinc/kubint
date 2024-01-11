@@ -15,8 +15,8 @@ import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.k8s.exceptions.ProcessingException;
-import com.liqid.k8s.layout.Layout;
-import com.liqid.k8s.layout.MachineLayout;
+import com.liqid.k8s.layout.ClusterLayout;
+import com.liqid.k8s.layout.MachineProfile;
 import com.liqid.k8s.plan.Plan;
 import com.liqid.sdk.LiqidException;
 
@@ -34,7 +34,7 @@ public class ComposeCommand extends Command {
 
     public ComposeCommand setProxyURL(final String value) {_proxyURL = value; return this; }
 
-    public Layout createDesiredLayout(
+    public ClusterLayout createDesiredLayout(
     ) throws K8SRequestError, K8SJSONError, K8SHTTPError {
         var fn = "createDesiredLayout";
         _logger.trace("Entering %s", fn);
@@ -42,7 +42,7 @@ public class ComposeCommand extends Command {
         var errors = false;
         var errPrefix = getErrorPrefix();
 
-        var layout = new Layout();
+        var layout = new ClusterLayout();
         var nodes = _k8sClient.getNodes();
         for (var node : nodes) {
             var machKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
@@ -55,7 +55,7 @@ public class ComposeCommand extends Command {
                     errors = true;
                 }
 
-                var machLayout = new MachineLayout(machine);
+                var machLayout = new MachineProfile(machine);
                 for (var gType : LiqidGeneralType.values()) {
                     if (gType != LiqidGeneralType.CPU) {
                         var annoKey = createAnnotationKeyForDeviceType(gType);
@@ -70,7 +70,7 @@ public class ComposeCommand extends Command {
                                     //  just an integer (we hope)
                                     try {
                                         var count = Integer.parseInt(split[0]);
-                                        machLayout.getProfile().injectGenericCount(gType, count);
+                                        machLayout.injectGenericCount(gType, count);
                                     } catch (NumberFormatException ex) {
                                         fmtError = true;
                                     }
@@ -80,7 +80,7 @@ public class ComposeCommand extends Command {
                                         var vendorName = split[0];
                                         var modelName = split[1];
                                         var count = Integer.parseInt(split[0]);
-                                        machLayout.getProfile().injectCount(gType, vendorName, modelName, count);
+                                        machLayout.injectCount(gType, vendorName, modelName, count);
                                     } catch (NumberFormatException ex) {
                                         fmtError = true;
                                     }
@@ -110,9 +110,16 @@ public class ComposeCommand extends Command {
         return layout;
     }
 
+    private boolean checkDesiredLayout(
+        final ClusterLayout existingClusterLayout,
+        final ClusterLayout desiredClusterLayout
+    ) {
+        return true; //TODO
+    }
+
     private Plan createPlan(
-        final Layout existingLayout,
-        final Layout desiredLayout
+        final ClusterLayout existingClusterLayout,
+        final ClusterLayout desiredClusterLayout
     ) {
         var fn = "createPlan";
         _logger.trace("Entering %s", fn);
@@ -147,7 +154,7 @@ public class ComposeCommand extends Command {
         getLiqidInventory();
 
         var groupId = _liqidInventory._groupsByName.get(_liqidGroupName).getGroupId();
-        var currentLayout = Layout.createFromInventory(_liqidInventory, groupId);
+        var currentLayout = ClusterLayout.createFromInventory(_liqidInventory, groupId);
         System.out.println("Current Layout:");
         currentLayout.show("| ");
 
