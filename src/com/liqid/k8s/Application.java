@@ -9,6 +9,7 @@ import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.commands.CommandType;
 import com.liqid.k8s.commands.InitializeCommand;
+import com.liqid.k8s.commands.AnnotateCommand;
 import com.liqid.k8s.commands.LinkCommand;
 import com.liqid.k8s.commands.NodesCommand;
 import com.liqid.k8s.commands.ReleaseCommand;
@@ -26,62 +27,52 @@ public class Application {
     private int _timeoutInSeconds = 300;
 
     private Boolean _allocate;
+    private Boolean _automatic;
+    private Boolean _clear;
     private Boolean _force;
+    private Collection<String> _fpgaSpecs;
+    private Collection<String> _gpuSpecs;
     private String _liqidAddress;
     private String _liqidGroupName;
     private String _liqidPassword;
     private String _liqidUsername;
+    private Collection<String> _linkSpecs;
     private Logger _logger;
+    private String _machineName;
+    private Collection<String> _memorySpecs;
+    private String _nodeName;
     private Boolean _noUpdate;
     private Collection<String> _processorSpecs;
     private String _proxyURL;
     private Collection<String> _resourceSpecs;
+    private Collection<String> _ssdSpecs;
 
     Application setAllocate(final Boolean value) { _allocate = value; return this; }
+    Application setAutomatic(final Boolean value) { _automatic = value; return this; }
+    Application setClear(final Boolean value) { _clear = value; return this; }
     Application setCommandType(final CommandType value) { _commandType = value; return this; }
     Application setForce(final Boolean value) { _force = value; return this; }
+    Application setFPGASpecs(final Collection<String> list) { _fpgaSpecs = list; return this; }
+    Application setGPUSpecs(final Collection<String> list) { _gpuSpecs = list; return this; }
     Application setLiqidAddress(final String value) { _liqidAddress = value; return this; }
     Application setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
     Application setLiqidPassword(final String value) { _liqidPassword = value; return this; }
     Application setLiqidUsername(final String value) { _liqidUsername = value; return this; }
+    Application setLinkSpecs(final Collection<String> list) { _linkSpecs = list; return this; }
     Application setLogger(final Logger value) { _logger = value; return this; }
+    Application setMachineName(final String value) { _machineName = value; return this; }
+    Application setMemorySpecs(final Collection<String> list) { _memorySpecs = list; return this; }
+    Application setNodeName(final String value) { _nodeName = value; return this; }
     Application setNoUpdate(final boolean flag) { _noUpdate = flag; return this; }
     Application setProxyURL(final String value) { _proxyURL = value; return this; }
     Application setProcessorSpecs(final Collection<String> list) { _processorSpecs = list; return this; }
     Application setResourceSpecs(final Collection<String> list) {_resourceSpecs = list; return this; }
+    Application setSSDSpecs(final Collection<String> list) { _ssdSpecs = list; return this; }
     Application setTimeoutInSeconds(final int value) { _timeoutInSeconds = value; return this; }
 
     // ------------------------------------------------------------------------
     // helper functions
     // ------------------------------------------------------------------------
-
-//    private void addDevicesToMachine(
-//        final Integer groupId,
-//        final Integer machId,
-//        final ResourceType resType,
-//        final Integer count
-//    ) throws ProcessingException, LiqidException {
-//        var fn = "addDevicesToMachine";
-//        _logger.atTrace().log("Entering {} groupId={} machId={} resType={} count={}",
-//                              fn, groupId, machId, resType, count);
-//
-//        var preDevs = _liqidClient.getUnattachedDevicesForGroup(resType._queryType, groupId);
-//        if (preDevs.size() < count) {
-//            var msg = String.format("Internal error - we have %d %s devices but we need %d",
-//                                    preDevs.size(), resType._tag, count);
-//            var t = new ProcessingException(msg);
-//            _logger.throwing(t);
-//            throw t;
-//        }
-//
-//        for (int dx = 0; dx < count; ++dx) {
-//            var preDev = preDevs.pop();
-//            var dev = _ContextForUpdate._allDevicesStatusByName.get(preDev.getDeviceName());
-//            _liqidClient.addDeviceToMachine(dev.getDeviceId(), groupId, machId);
-//        }
-//
-//        _logger.atTrace().log("{} returning", fn);
-//    }
 
 //    /**
 //     * Checks aggregate variances (all variances added together per resource type)
@@ -303,53 +294,6 @@ public class Application {
 //    }
 
 //    /**
-//     * Creates a LiqidClient object, configures it for logging, and logs in.
-//     */
-//    private void makeLiqidClient() throws LiqidException {
-//        var fn = "makeLiqidClient";
-//        _logger.atTrace().log("Entering {}", fn);
-//
-//        _liqidClient = new LiqidClientBuilder().setHostAddress(_directorAddress)
-//                                               .setTimeoutInSeconds(_timeoutInSeconds)
-//                                               .build();
-//        if (_logging) {
-//            LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-//            Configuration config = ctx.getConfiguration();
-//            LoggerConfig loggerConfig = config.getLoggerConfig(_liqidClient.getLogger().getName());
-//            loggerConfig.setLevel(Level.TRACE);
-//            ctx.updateLoggers();
-//        }
-//
-//        _liqidClient.login("LiqidK8SDeploy", _directorUsername, _directorPassword);
-//        _logger.atTrace().log("{} returning", fn);
-//    }
-
-//    /**
-//     * Creates a k8s client and configures it for logging.
-//     */
-//    private void makeK8SClient() {
-//        _k8sClient = new K8SClient(_proxyURL);
-//        _k8sClient.enableLogging(_logging);
-//    }
-
-//    /**
-//     * Converts a LiqidSDK pre-device type to a ResourceType
-//     */
-//    private static ResourceType preDeviceTypeToResourceType(
-//        final PreDeviceType preDeviceType
-//    ) {
-//        return switch (preDeviceType) {
-//            case GPU -> ResourceType.RT_GPU;
-//            case TARGET -> ResourceType.RT_TARGET;
-//            case LINK, FIBER_CHANNEL, INFINIBAND -> ResourceType.RT_LINK;
-//            case FPGA -> ResourceType.RT_FPGA;
-//            case COMPUTE -> ResourceType.RT_CPU;
-//            case MEMORY -> ResourceType.RT_MEMORY;
-//            case FABRIC_CHIP -> null; // should not get this one
-//        };
-//    }
-//
-//    /**
 //     * Performs the actual reconfiguration
 //     */
 //    private void reconfigure(
@@ -511,34 +455,6 @@ public class Application {
 //        _logger.trace(String.format("%s returning", fn));
 //    }
 
-//    private void removeDevicesFromMachine(
-//        final Integer groupId,
-//        final Integer machId,
-//        final ResourceType resType,
-//        final Integer count
-//    ) throws ProcessingException, LiqidException {
-//        var fn = "removeDevicesFromMachine";
-//        _logger.trace(String.format("Entering %s groupId=%d machId=%d resType=%s count=%d",
-//                                    fn, groupId, machId, resType, count));
-//
-//        var preDevs = _liqidClient.getDevices(resType._queryType, groupId, machId);
-//        if (preDevs.size() < count) {
-//            var msg = String.format("Internal error - we have %d %s devices but we need %d",
-//                                    preDevs.size(), resType._tag, count);
-//            var t = new ProcessingException(msg);
-//            _logger.throwing(t);
-//            throw t;
-//        }
-//
-//        for (int dx = 0; dx < count; ++dx) {
-//            var preDev = preDevs.pop();
-//            var dev = _ContextForUpdate._allDevicesStatusByName.get(preDev.getDeviceName());
-//            _liqidClient.removeDeviceFromMachine(dev.getDeviceId(), groupId, machId);
-//        }
-//
-//        _logger.trace(String.format("%s returning", fn));
-//    }
-//
 //    /**
 //     * Compares results of the wanted configuration with the existing layout
 //     * to determine if there are any variances between the general node naming
@@ -643,8 +559,6 @@ public class Application {
         _logger.trace("Entering %s", fn);
 
         var command = switch (_commandType) {
-//            case COMPOSE ->
-//                new ComposeCommand(_logger, _proxyURL, _timeoutInSeconds);
             case INITIALIZE ->
                 new InitializeCommand(_logger, _force, _timeoutInSeconds)
                     .setAllocate(_allocate)
@@ -655,6 +569,18 @@ public class Application {
                     .setProcessorSpecs(_processorSpecs)
                     .setProxyURL(_proxyURL)
                     .setResourceSpecs(_resourceSpecs);
+            case ANNOTATE ->
+                new AnnotateCommand(_logger, _force, _timeoutInSeconds)
+                    .setAutomatic(_automatic)
+                    .setClear(_clear)
+                    .setMachineName(_machineName)
+                    .setNodeName(_nodeName)
+                    .setFPGASpecifications(_fpgaSpecs)
+                    .setGPUSpecifications(_gpuSpecs)
+                    .setLinkSpecifications(_linkSpecs)
+                    .setMemorySpecifications(_memorySpecs)
+                    .setSSDSpecifications(_ssdSpecs)
+                    .setProxyURL(_proxyURL);
             case LINK ->
                 new LinkCommand(_logger, _force, _timeoutInSeconds)
                     .setLiqidAddress(_liqidAddress)
@@ -665,8 +591,6 @@ public class Application {
             case NODES ->
                 new NodesCommand(_logger, _force, _timeoutInSeconds)
                     .setProxyURL(_proxyURL);
-//            case RECONFIGURE ->
-//                new ReconfigureCommand(_logger, _proxyURL, _timeoutInSeconds);
             case RELEASE ->
                 new ReleaseCommand(_logger, _force, _timeoutInSeconds)
                     .setProxyURL(_proxyURL)
@@ -685,8 +609,6 @@ public class Application {
             case UNLINK ->
                 new UnlinkCommand(_logger, _force, _timeoutInSeconds)
                     .setProxyURL(_proxyURL);
-//            case VALIDATE ->
-//                new ValidateCommand(_logger, _proxyURL, _timeoutInSeconds);
         };
 
         var plan = command.process();

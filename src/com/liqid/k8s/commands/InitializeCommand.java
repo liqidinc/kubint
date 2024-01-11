@@ -49,85 +49,6 @@ public class InitializeCommand extends Command {
     public InitializeCommand setResourceSpecs(final Collection<String> list) { _resourceSpecs = list; return this; }
 
     /**
-     * Creates steps to allocate resources as equally as possible among the known worker nodes.
-     * This is specific to the initialize command, as it assumes that all relevant resources are
-     * in the containing group, and *not* already assigned to any machines.
-     */
-    private boolean allocateEqually(
-        final Plan plan,
-        final Map<DeviceStatus, Node> computeDevices,
-        final Collection<DeviceStatus> resourceDevices
-    ) {
-        var fn = "allocateEqually";
-        _logger.trace("Entering %s", fn);
-
-        var devsByType = new HashMap<LiqidGeneralType, LinkedList<DeviceStatus>>();
-        for (var dev : resourceDevices) {
-            var genType = LiqidGeneralType.fromDeviceType(dev.getDeviceType());
-            devsByType.computeIfAbsent(genType, k -> new LinkedList<>());
-            devsByType.get(genType).add(dev);
-        }
-
-        // we're going to loop by device type, but we want to act by machine.
-        // So... this loop creates a container which we'll deal with in the next paragraph.
-        var layout = new HashMap<DeviceStatus, HashMap<LiqidGeneralType, Integer>>();
-        for (var dbtEntry : devsByType.entrySet()) {
-            var genType = dbtEntry.getKey();
-            var devs = dbtEntry.getValue();
-            var devCount = devs.size();
-            var workerCount = computeDevices.size();
-
-            for (var devStat : computeDevices.keySet()) {
-                var resCount = devCount / workerCount;
-                if (devCount % workerCount > 0) {
-                    resCount++;
-                }
-
-                layout.computeIfAbsent(devStat, k -> new HashMap<>());
-                layout.get(devStat).put(genType, resCount);
-
-                workerCount--;
-                devCount -= resCount;
-                if ((workerCount == 0) || (devCount == 0)) {
-                    break;
-                }
-            }
-        }
-
-        for (var entry : layout.entrySet()) {
-            var devStat = entry.getKey();
-            var node = computeDevices.get(devStat);
-            var resMap = entry.getValue();
-            var annoAction = new AnnotateNode().setNodeName(node.getName());
-            var asgDevs = new LinkedList<DeviceStatus>();
-            for (var resEntry : resMap.entrySet()) {
-                var genType = resEntry.getKey();
-                var resCount = resEntry.getValue();
-                var annoKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType);
-                var annoValue = String.format("%d", resCount);
-                annoAction.addAnnotation(annoKey, annoValue);
-
-                var devs = devsByType.get(genType);
-                while (asgDevs.size() < resCount) {
-                    asgDevs.add(devs.pop());
-                }
-            }
-
-            var machName = createMachineName(devStat, node);
-            var asgAction = new AssignToMachine().setMachineName(machName);
-            for (var asgDev : asgDevs) {
-                asgAction.addDeviceName(asgDev.getName());
-            }
-
-            plan.addAction(annoAction);
-            plan.addAction(asgAction);
-        }
-
-        _logger.trace("Exiting %s true", fn);
-        return true;
-    }
-
-    /**
      * Checks the current Liqid and Kubernetes configuration to see if there is anything which would prevent
      * us from executing the requested command. Some problems can be warnings if _force is set.
      * In any case where processing cannot continue, we will throw an exception.
@@ -283,88 +204,6 @@ public class InitializeCommand extends Command {
     }
 
     /**
-     * Based on processor and resource lists, we populate containers of compute device information and of
-     * non-compute resources. If we find anomalies and _force is not set, throw an exception.
-     */
-    private void getDeviceList(
-        final Map<DeviceStatus, Node> computeDevices,
-        final Collection<DeviceStatus> resourceDevices
-    ) throws ConfigurationException, K8SHTTPError, K8SJSONError, K8SRequestError {
-        var fn = "developDeviceList";
-        _logger.trace("Entering %s with computeDevices=%s resourceDevices=%s",
-                      fn, computeDevices, resourceDevices);
-
-        var errors = false;
-        var errPrefix = getErrorPrefix();
-
-        for (var spec : _processorSpecs) {
-            var split = spec.split(":");
-            if (split.length != 2) {
-                System.err.printf("ERROR:Invalid format for spec '%s'\n", spec);
-                errors = true;
-            }
-
-            var devName = split[0];
-            var nodeName = split[1];
-
-            var devStat = _liqidInventory._deviceStatusByName.get(devName);
-            if (devStat == null) {
-                System.err.printf("%s:Compute resource '%s' is not in the Liqid Cluster\n", errPrefix, devName);
-                errors = true;
-            }
-
-            Node node = null;
-            try {
-                node = _k8sClient.getNode(nodeName);
-            } catch (K8SHTTPError ex) {
-                if (ex.getResponseCode() == 404) {
-                    System.err.printf("%s:Worker node '%s' is not in the Kubernetes Cluster\n", errPrefix, nodeName);
-                    errors = true;
-                } else {
-                    throw ex;
-                }
-            }
-
-            if ((devStat != null) && (node != null)) {
-                computeDevices.put(devStat, node);
-            }
-        }
-
-        for (var spec : _resourceSpecs) {
-            var devStat = _liqidInventory._deviceStatusByName.get(spec);
-            if (devStat == null) {
-                System.err.printf("%s:Resource '%s' is not in the Liqid Cluster\n", errPrefix, spec);
-                errors = true;
-            } else {
-                resourceDevices.add(devStat);
-            }
-        }
-
-        if (errors && _force) {
-            var ex = new ConfigurationException("Various configuration problems exist - processing will not continue.");
-            _logger.throwing(ex);
-            throw ex;
-        }
-
-        _logger.trace("Exiting %s with computeDevices=%s, resourceDevices=%s",
-                      fn, computeDevices, resourceDevices);
-    }
-
-    private String createMachineName(
-        final DeviceStatus devStat,
-        final Node node
-    ) {
-        var devName = devStat.getName();
-        var nodeName = node.getName();
-        var machName = String.format("%s-%s", devName, nodeName);
-        if (machName.length() > 22) {
-            machName = machName.substring(0, 22);
-        }
-
-        return machName;
-    }
-
-    /**
      * Adds actions to the given plan to efficiently release all indicated devices from their containing machines.
      */
     private void releaseDevicesFromMachines(
@@ -448,12 +287,25 @@ public class InitializeCommand extends Command {
         initLiqidClient();
         getLiqidInventory();
 
+        var errors = false;
         var computeResources = new HashMap<DeviceStatus, Node>();
+        if (!developComputeList(_processorSpecs, computeResources)) {
+            errors = true;
+        }
+
         var otherResources = new LinkedList<DeviceStatus>();
-        getDeviceList(computeResources, otherResources);
+        if (!developDeviceList(_resourceSpecs, otherResources)) {
+            errors = true;
+        }
 
         checkConfiguration(computeResources, otherResources);
         var plan = createPlan(computeResources, otherResources);
+
+        if (errors && _force) {
+            var ex = new ConfigurationException("Various configuration problems exist - processing will not continue.");
+            _logger.throwing(ex);
+            throw ex;
+        }
 
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;

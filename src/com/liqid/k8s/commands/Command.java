@@ -23,6 +23,7 @@ import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.k8s.plan.Plan;
 import com.liqid.k8s.plan.actions.AnnotateNode;
+import com.liqid.k8s.plan.actions.AssignToMachine;
 import com.liqid.sdk.DeviceStatus;
 import com.liqid.sdk.DeviceType;
 import com.liqid.sdk.Group;
@@ -230,6 +231,84 @@ public abstract class Command {
 //    }
 
     /**
+     * Creates steps to allocate resources as equally as possible among the known worker nodes.
+     * This is specific to the initialize command, as it assumes that all relevant resources are
+     * in the containing group, and *not* already assigned to any machines.
+     */
+    protected void allocateEqually(
+        final Plan plan,
+        final Map<DeviceStatus, Node> computeDevices,
+        final Collection<DeviceStatus> resourceDevices
+    ) {
+        var fn = "allocateEqually";
+        _logger.trace("Entering %s", fn);
+
+        var devsByType = new HashMap<LiqidGeneralType, LinkedList<DeviceStatus>>();
+        for (var dev : resourceDevices) {
+            var genType = LiqidGeneralType.fromDeviceType(dev.getDeviceType());
+            devsByType.computeIfAbsent(genType, k -> new LinkedList<>());
+            devsByType.get(genType).add(dev);
+        }
+
+        // we're going to loop by device type, but we want to act by machine.
+        // So... this loop creates a container which we'll deal with in the next paragraph.
+        var layout = new HashMap<DeviceStatus, HashMap<LiqidGeneralType, Integer>>();
+        for (var dbtEntry : devsByType.entrySet()) {
+            var genType = dbtEntry.getKey();
+            var devs = dbtEntry.getValue();
+            var devCount = devs.size();
+            var workerCount = computeDevices.size();
+
+            for (var devStat : computeDevices.keySet()) {
+                var resCount = devCount / workerCount;
+                if (devCount % workerCount > 0) {
+                    resCount++;
+                }
+
+                layout.computeIfAbsent(devStat, k -> new HashMap<>());
+                layout.get(devStat).put(genType, resCount);
+
+                workerCount--;
+                devCount -= resCount;
+                if ((workerCount == 0) || (devCount == 0)) {
+                    break;
+                }
+            }
+        }
+
+        for (var entry : layout.entrySet()) {
+            var devStat = entry.getKey();
+            var node = computeDevices.get(devStat);
+            var resMap = entry.getValue();
+            var annoAction = new AnnotateNode().setNodeName(node.getName());
+            var asgDevs = new LinkedList<DeviceStatus>();
+            for (var resEntry : resMap.entrySet()) {
+                var genType = resEntry.getKey();
+                var resCount = resEntry.getValue();
+                var annoKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType);
+                var annoValue = String.format("%d", resCount);
+                annoAction.addAnnotation(annoKey, annoValue);
+
+                var devs = devsByType.get(genType);
+                while (asgDevs.size() < resCount) {
+                    asgDevs.add(devs.pop());
+                }
+            }
+
+            var machName = createMachineName(devStat, node);
+            var asgAction = new AssignToMachine().setMachineName(machName);
+            for (var asgDev : asgDevs) {
+                asgAction.addDeviceName(asgDev.getName());
+            }
+
+            plan.addAction(annoAction);
+            plan.addAction(asgAction);
+        }
+
+        _logger.trace("Exiting %s", fn);
+    }
+
+    /**
      * Helpful wrapper to create a full annotation key
      */
     protected String createAnnotationKeyFor(
@@ -248,6 +327,23 @@ public abstract class Command {
     }
 
     /**
+     * Creates a machine name for a combination of the compute device name and the k8s node name.
+     */
+    protected String createMachineName(
+        final DeviceStatus devStat,
+        final Node node
+    ) {
+        var devName = devStat.getName();
+        var nodeName = node.getName();
+        var machName = String.format("%s-%s", devName, nodeName);
+        if (machName.length() > 22) {
+            machName = machName.substring(0, 22);
+        }
+
+        return machName;
+    }
+
+    /**
      * Creates a new Logger based on our current logger, which does NOT log to stdout or stderr.
      * Use for initializing lower-level libraries which you do not want to engage in the same verbosity
      * as the main code.
@@ -262,6 +358,86 @@ public abstract class Command {
             }
         }
         return newLogger;
+    }
+
+    /**
+     * Based on processor specifications, we populate containers of compute device information.
+     * @param processorSpecs list of processor specifications which tie compute resources to k8s nodes
+     *                       format is {deviceName} ':' {nodeName}
+     * @param computeDevices map we create based on processorSpecs, tying deviceStatus to corresponding k8s node
+     * @return true if successful, else false
+     */
+    protected boolean developComputeList(
+        final Collection<String> processorSpecs,
+        final Map<DeviceStatus, Node> computeDevices
+    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
+        var fn = "developDeviceList";
+        _logger.trace("Entering %s with processorSpecs=%s", fn, processorSpecs);
+
+        var errors = false;
+        var errPrefix = getErrorPrefix();
+
+        for (var spec : processorSpecs) {
+            var split = spec.split(":");
+            if (split.length != 2) {
+                System.err.printf("ERROR:Invalid format for spec '%s'\n", spec);
+                errors = true;
+            }
+
+            var devName = split[0];
+            var nodeName = split[1];
+
+            var devStat = _liqidInventory._deviceStatusByName.get(devName);
+            if (devStat == null) {
+                System.err.printf("%s:Compute resource '%s' is not in the Liqid Cluster\n", errPrefix, devName);
+                errors = true;
+            }
+
+            Node node = null;
+            try {
+                node = _k8sClient.getNode(nodeName);
+            } catch (K8SHTTPError ex) {
+                if (ex.getResponseCode() == 404) {
+                    System.err.printf("%s:Worker node '%s' is not in the Kubernetes Cluster\n", errPrefix, nodeName);
+                    errors = true;
+                } else {
+                    throw ex;
+                }
+            }
+
+            if ((devStat != null) && (node != null)) {
+                computeDevices.put(devStat, node);
+            }
+        }
+
+        var result = !errors;
+        _logger.trace("Exiting %s with %s, computeDevices=%s", fn, errors, computeDevices);
+        return result;
+    }
+
+    protected boolean developDeviceList(
+        final Collection<String> resourceSpecs,
+        final Collection<DeviceStatus> resourceDevices
+    ) {
+        var fn = "developDeviceList";
+        _logger.trace("Entering %s with resourceSpecs=%s", fn, resourceSpecs);
+
+        var errors = false;
+        var errPrefix = getErrorPrefix();
+
+        for (var spec : resourceSpecs) {
+            var devStat = _liqidInventory._deviceStatusByName.get(spec);
+            if (devStat == null) {
+                System.err.printf("%s:Resource '%s' is not in the Liqid Cluster\n", errPrefix, spec);
+                errors = true;
+            } else {
+                resourceDevices.add(devStat);
+            }
+        }
+
+        var result = !errors;
+        _logger.trace("Exiting %s with %s, resourceDevices=%s", fn, errors, resourceDevices);
+        return result;
     }
 
     /**
