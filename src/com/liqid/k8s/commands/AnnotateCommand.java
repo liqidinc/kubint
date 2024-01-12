@@ -7,7 +7,7 @@ package com.liqid.k8s.commands;
 
 import com.bearsnake.k8sclient.*;
 import com.bearsnake.klog.Logger;
-import com.liqid.k8s.LiqidGeneralType;
+import com.liqid.k8s.layout.LiqidGeneralType;
 import com.liqid.k8s.exceptions.*;
 import com.liqid.k8s.plan.Plan;
 import com.liqid.k8s.plan.actions.AnnotateNode;

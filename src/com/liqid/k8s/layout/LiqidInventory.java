@@ -5,7 +5,6 @@
 
 package com.liqid.k8s.layout;
 
-import com.bearsnake.klog.Logger;
 import com.liqid.sdk.DeviceInfo;
 import com.liqid.sdk.DeviceStatus;
 import com.liqid.sdk.Group;
@@ -57,19 +56,15 @@ public class LiqidInventory {
     public final Map<Integer, Machine> _machinesById = new HashMap<>();
     public final Map<String, Machine> _machinesByName = new HashMap<>();
 
-    private LiqidInventory() {}
+    public LiqidInventory() {}
 
     /**
      * Loads the resource maps so we can do some auto-analysis
      * @throws LiqidException if we cannot communicate with the Liqid Cluster
      */
     public static LiqidInventory getLiqidInventory(
-        final LiqidClient client,
-        final Logger logger
+        final LiqidClient client
     ) throws LiqidException {
-        var fn = "getLiqidInventory";
-        logger.trace("Entering %s", fn);
-
         var inv = new LiqidInventory();
         var devStats = client.getAllDevicesStatus();
         for (var ds : devStats) {
@@ -119,7 +114,6 @@ public class LiqidInventory {
             }
         }
 
-        logger.trace("Exiting %s", fn);
         return inv;
     }
 
@@ -190,6 +184,19 @@ public class LiqidInventory {
         }
 
         _deviceStatusByMachineId.get(newMachineId).add(ds);
+    }
+
+    public void notifyDeviceCreated(
+        final DeviceStatus deviceStatus,
+        final DeviceInfo deviceInfo
+    ) {
+        var devRelation = new DeviceRelation(deviceInfo.getDeviceIdentifier(), null, null);
+
+        _deviceInfoById.put(deviceInfo.getDeviceIdentifier(), deviceInfo);
+        _deviceInfoByName.put(deviceInfo.getName(), deviceInfo);
+        _deviceRelationsByDeviceId.put(deviceStatus.getDeviceId(), devRelation);
+        _deviceStatusById.put(deviceStatus.getDeviceId(), deviceStatus);
+        _deviceStatusByName.put(deviceStatus.getName(), deviceStatus);
     }
 
     public void notifyDeviceRemovedFromGroup(

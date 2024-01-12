@@ -5,7 +5,6 @@
 
 package com.liqid.k8s.layout;
 
-import com.liqid.k8s.LiqidGeneralType;
 import com.liqid.sdk.DeviceInfo;
 
 import java.util.Objects;

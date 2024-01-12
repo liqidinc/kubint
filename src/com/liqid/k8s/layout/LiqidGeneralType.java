@@ -3,7 +3,7 @@
  * Copyright 2023-2024 by Liqid, Inc - All Rights Reserved
  */
 
-package com.liqid.k8s;
+package com.liqid.k8s.layout;
 
 import com.liqid.sdk.DeviceType;
 
@@ -36,6 +36,17 @@ public enum LiqidGeneralType {
         TYPE_CONVERSION_MAP.put(DeviceType.INFINIBAND_LINK, LiqidGeneralType.LINK);
         TYPE_CONVERSION_MAP.put(DeviceType.MEMORY, LiqidGeneralType.MEMORY);
         TYPE_CONVERSION_MAP.put(DeviceType.SSD, LiqidGeneralType.SSD);
+    }
+
+    public static DeviceType fromGeneralType(
+        final LiqidGeneralType generalType
+    ) {
+        return TYPE_CONVERSION_MAP.entrySet()
+                                  .stream()
+                                  .filter(entry -> entry.getValue().equals(generalType))
+                                  .findFirst()
+                                  .map(Map.Entry::getKey)
+                                  .orElse(null);
     }
 
     public static LiqidGeneralType fromDeviceType(

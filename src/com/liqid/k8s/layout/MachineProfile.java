@@ -7,6 +7,9 @@ package com.liqid.k8s.layout;
 
 import com.liqid.sdk.Machine;
 
+/**
+ * A Profile object tied to a particular machine
+ */
 public class MachineProfile extends Profile {
 
     private final Machine _machine;

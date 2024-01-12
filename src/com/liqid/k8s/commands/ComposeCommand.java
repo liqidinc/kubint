@@ -10,7 +10,7 @@ import com.bearsnake.k8sclient.K8SHTTPError;
 import com.bearsnake.k8sclient.K8SJSONError;
 import com.bearsnake.k8sclient.K8SRequestError;
 import com.bearsnake.klog.Logger;
-import com.liqid.k8s.LiqidGeneralType;
+import com.liqid.k8s.layout.LiqidGeneralType;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
@@ -70,7 +70,7 @@ public class ComposeCommand extends Command {
                                     //  just an integer (we hope)
                                     try {
                                         var count = Integer.parseInt(split[0]);
-                                        machLayout.injectGenericCount(gType, count);
+                                        machLayout.injectCount(gType, count);
                                     } catch (NumberFormatException ex) {
                                         fmtError = true;
                                     }
@@ -98,7 +98,7 @@ public class ComposeCommand extends Command {
                     }
                 }
 
-                layout.addMachineLayout(machLayout);
+                layout.addMachineProfile(machLayout);
             }
         }
 

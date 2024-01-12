@@ -7,7 +7,7 @@ package com.liqid.k8s.commands;
 
 import com.bearsnake.k8sclient.K8SException;
 import com.bearsnake.klog.Logger;
-import com.liqid.k8s.LiqidGeneralType;
+import com.liqid.k8s.layout.LiqidGeneralType;
 import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;

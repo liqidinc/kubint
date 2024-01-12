@@ -9,6 +9,7 @@ import com.bearsnake.k8sclient.*;
 import com.bearsnake.klog.*;
 import com.liqid.k8s.*;
 import com.liqid.k8s.exceptions.*;
+import com.liqid.k8s.layout.LiqidGeneralType;
 import com.liqid.k8s.layout.LiqidInventory;
 import com.liqid.k8s.plan.Plan;
 import com.liqid.k8s.plan.actions.*;
@@ -404,7 +405,7 @@ public abstract class Command {
      * Convenience method
      */
     protected void getLiqidInventory() throws LiqidException {
-        _liqidInventory = LiqidInventory.getLiqidInventory(_liqidClient, _logger);
+        _liqidInventory = LiqidInventory.getLiqidInventory(_liqidClient);
     }
 
     /**
