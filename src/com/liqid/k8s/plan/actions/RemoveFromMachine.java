@@ -12,8 +12,6 @@ import com.liqid.k8s.plan.ExecutionContext;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.TreeSet;
 
 /**
@@ -24,7 +22,7 @@ public class RemoveFromMachine extends Action {
 
     private String _machineName;
     private String _nodeName;
-    private Set<String> _deviceNames = new HashSet<>();
+    private TreeSet<String> _deviceNames = new TreeSet<>();
 
     public RemoveFromMachine() {
         super(ActionType.REMOVE_RESOURCES_FROM_MACHINE);
@@ -34,6 +32,10 @@ public class RemoveFromMachine extends Action {
     public RemoveFromMachine setDeviceNames(final Collection<String> list) { _deviceNames = new TreeSet<>(list); return this; }
     public RemoveFromMachine setMachineName(final String value) { _machineName = value; return this; }
     public RemoveFromMachine setNodeName(final String value) { _nodeName = value; return this; }
+
+    public String getMachineName() { return _machineName; }
+    public String getNodeName() { return _nodeName; }
+    public Collection<String> getDeviceNames() { return _deviceNames; }
 
     @Override
     public void checkParameters() throws InternalErrorException {
@@ -126,14 +128,14 @@ public class RemoveFromMachine extends Action {
 
     @Override
     public String toString() {
-        var msg = String.format("Remove device%s %s from Liqid Cluster Machine %s",
-                                _deviceNames.size() > 1 ? "s" : "",
-                                String.join(", ", _deviceNames),
-                                _machineName);
+        var sb = new StringBuilder();
+        sb.append("Reconfigure Machine ").append(_machineName);
         if (_nodeName != null) {
-            msg += String.format(" and node %s", _nodeName);
+            sb.append(" and Node ").append(_nodeName);
         }
 
-        return msg;
+        sb.append(" removing ").append(String.join(",", _deviceNames));
+
+        return sb.toString();
     }
 }

@@ -56,6 +56,10 @@ public class ResourceModel {
         return _modelName;
     }
 
+    public boolean isGeneric() {
+        return (_vendorName == null) && (_modelName == null);
+    }
+
     @Override
     public boolean equals(final Object obj) {
         if (obj instanceof ResourceModel rm) {
