@@ -129,12 +129,12 @@ public class RemoveFromMachine extends Action {
     @Override
     public String toString() {
         var sb = new StringBuilder();
-        sb.append("Reconfigure Machine ").append(_machineName);
+        sb.append("Remove from Machine ").append(_machineName);
         if (_nodeName != null) {
             sb.append(" and Node ").append(_nodeName);
         }
 
-        sb.append(" removing ").append(String.join(",", _deviceNames));
+        sb.append(" device(s) ").append(String.join(",", _deviceNames));
 
         return sb.toString();
     }

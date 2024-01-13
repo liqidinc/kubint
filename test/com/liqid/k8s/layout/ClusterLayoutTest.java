@@ -14,7 +14,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-public class TestClusterLayout {
+public class ClusterLayoutTest {
 
     private static LiqidInventory createSimpleInventory(
         final int groupCount,

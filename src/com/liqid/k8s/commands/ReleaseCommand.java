@@ -64,7 +64,7 @@ public class ReleaseCommand extends Command {
                 // Grab user description from the compute node, use that to generate an action
                 // to remove the annotation from the corresponding worker node.
                 // Also clear out the user description.
-                var nodeName = getK8sNodeNameFromComputeDevice(ds);
+                var nodeName = _liqidInventory.getK8sNodeNameFromComputeDevice(ds);
                 if (nodeName != null) {
                     plan.addAction(new RemoveAnnotations().addNodeName(nodeName));
                     plan.addAction(new RemoveUserDescription().setDeviceName(devName));
@@ -86,8 +86,8 @@ public class ReleaseCommand extends Command {
                 if (machine != null) {
                     var action = machActions.get(machineName);
                     if (action == null) {
-                        var comp = getComputeDeviceStatusForMachine(machine.getMachineId());
-                        var nodeName = getK8sNodeNameFromComputeDevice(comp);
+                        var comp = _liqidInventory.getComputeDeviceStatusForMachine(machine.getMachineId());
+                        var nodeName = _liqidInventory.getK8sNodeNameFromComputeDevice(comp);
                         action = new RemoveFromMachine().setMachineName(machineName).setNodeName(nodeName);
                         machActions.put(machineName, action);
                     }

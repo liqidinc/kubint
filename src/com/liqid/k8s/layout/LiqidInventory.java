@@ -7,6 +7,7 @@ package com.liqid.k8s.layout;
 
 import com.liqid.sdk.DeviceInfo;
 import com.liqid.sdk.DeviceStatus;
+import com.liqid.sdk.DeviceType;
 import com.liqid.sdk.Group;
 import com.liqid.sdk.LiqidClient;
 import com.liqid.sdk.LiqidException;
@@ -115,6 +116,30 @@ public class LiqidInventory {
         }
 
         return inv;
+    }
+
+    /**
+     * Presuming we are populated, we find the compute device for a given machine.
+     */
+    public DeviceStatus getComputeDeviceStatusForMachine(
+        final Integer machineId
+    ) {
+        return _deviceStatusByMachineId.get(machineId)
+                                       .stream()
+                                       .filter(ds -> ds.getDeviceType() == DeviceType.COMPUTE)
+                                       .findFirst()
+                                       .orElse(null);
+    }
+
+    /**
+     * Assuming we are populated *and* the given deviceStatus is a CPU device
+     * *and* its user description has been populated with a corresponding K8s node name...
+     * we return that node name.
+     */
+    public String getK8sNodeNameFromComputeDevice(
+        final DeviceStatus deviceStatus
+    ) {
+        return _deviceInfoById.get(deviceStatus.getDeviceId()).getUserDescription();
     }
 
     public boolean hasDevice(

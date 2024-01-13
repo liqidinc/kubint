@@ -14,34 +14,33 @@ import com.liqid.sdk.Machine;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Variance {
 
     private final Machine _machine;
-    private final String _nodeName;
     private final List<Integer> _deviceIdsToAdd = new LinkedList<>();
     private final List<Integer> _deviceIdsToRemove = new LinkedList<>();
 
     public Variance(
         final Machine machine,
-        final String nodeName,
         final Collection<Integer> addingDeviceIds,
         final Collection<Integer> losingDeviceIds
     ) {
         _machine = machine;
-        _nodeName = nodeName;
         _deviceIdsToAdd.addAll(addingDeviceIds);
         _deviceIdsToRemove.addAll(losingDeviceIds);
     }
 
+    public boolean canBifurcate() { return hasAdditions() && hasRemovals(); }
     public Machine getMachine() { return _machine; }
-    public String getNodeName() { return _nodeName; }
     public Collection<Integer> getDeviceIdsToAdd() { return _deviceIdsToAdd; }
     public Collection<Integer> getDeviceIdsToRemove() { return _deviceIdsToRemove; }
+    public boolean hasAdditions() { return !_deviceIdsToAdd.isEmpty(); }
+    public boolean hasRemovals() { return !_deviceIdsToRemove.isEmpty(); }
 
     /**
      * If we can create an action, we do so, updating the given unassignedDevices collection appropriately
@@ -55,7 +54,7 @@ public class Variance {
      */
     public Action createAction(
         final LiqidInventory inventory,
-        final HashSet<Integer> unassignedDevices
+        final Set<Integer> unassignedDevices
     ) {
         for (var devs : _deviceIdsToAdd) {
             if (!unassignedDevices.contains(devs)) {
@@ -63,13 +62,15 @@ public class Variance {
             }
         }
 
-        var remove = !_deviceIdsToRemove.isEmpty();
         var add = !_deviceIdsToAdd.isEmpty();
+        var remove = !_deviceIdsToRemove.isEmpty();
+        var compDev = inventory.getComputeDeviceStatusForMachine(_machine.getMachineId());
+        var nodeName = inventory.getK8sNodeNameFromComputeDevice(compDev);
 
         if (add && remove) {
             var action = new ReconfigureMachine();
             action.setMachineName(_machine.getMachineName());
-            action.setNodeName(_nodeName);
+            action.setNodeName(nodeName);
 
             for (Integer id : _deviceIdsToAdd) {
                 action.addDeviceNameToAdd(inventory._deviceStatusById.get(id).getName());
@@ -85,7 +86,7 @@ public class Variance {
         } else if (add) {
             var action = new AssignToMachine();
             action.setMachineName(_machine.getMachineName());
-            action.setNodeName(_nodeName);
+            action.setNodeName(nodeName);
 
             for (Integer id : _deviceIdsToAdd) {
                 action.addDeviceName(inventory._deviceStatusById.get(id).getName());
@@ -96,7 +97,7 @@ public class Variance {
         } else if (remove) {
             var action = new RemoveFromMachine();
             action.setMachineName(_machine.getMachineName());
-            action.setNodeName(_nodeName);
+            action.setNodeName(nodeName);
 
             for (Integer id : _deviceIdsToRemove) {
                 action.addDeviceName(inventory._deviceStatusById.get(id).getName());
@@ -114,14 +115,18 @@ public class Variance {
      * May return an empty list or a singleton depending on what there is to be done.
      */
     public Collection<Variance> bifurcate() {
-        var result = new LinkedList<Variance>();
-        if (!_deviceIdsToRemove.isEmpty()) {
-            result.add(new Variance(_machine, _nodeName, Collections.emptyList(), _deviceIdsToRemove));
+        if (canBifurcate()) {
+            var result = new LinkedList<Variance>();
+            if (!_deviceIdsToRemove.isEmpty()) {
+                result.add(new Variance(_machine, Collections.emptyList(), _deviceIdsToRemove));
+            }
+            if (!_deviceIdsToAdd.isEmpty()) {
+                result.add(new Variance(_machine, _deviceIdsToAdd, Collections.emptyList()));
+            }
+            return result;
+        } else {
+            return Collections.singletonList(this);
         }
-        if (!_deviceIdsToAdd.isEmpty()) {
-            result.add(new Variance(_machine, _nodeName, _deviceIdsToAdd, Collections.emptyList()));
-        }
-        return result;
     }
 
     @Override

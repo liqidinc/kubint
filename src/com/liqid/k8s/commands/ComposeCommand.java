@@ -19,6 +19,7 @@ import com.liqid.k8s.layout.ClusterLayout;
 import com.liqid.k8s.layout.MachineProfile;
 import com.liqid.k8s.layout.ResourceModel;
 import com.liqid.k8s.layout.Variance;
+import com.liqid.k8s.layout.VarianceSet;
 import com.liqid.k8s.plan.Plan;
 import com.liqid.k8s.plan.actions.Action;
 import com.liqid.sdk.DeviceInfo;
@@ -111,26 +112,6 @@ public class ComposeCommand extends Command {
         return result;
     }
 
-    /**
-     * Given a list of variances, return an action created from the first variance in the list which
-     * can create one (removing that variance from the list).
-     * If no variance can create an action, we return null.
-     */
-    private Action createAction(
-        final LinkedList<Variance> variances,
-        final HashSet<Integer> unassignedResources
-    ) {
-        for (var variance : variances) {
-            var action = variance.createAction(_liqidInventory, unassignedResources);
-            if (action != null) {
-                variances.remove(variance);
-                return action;
-            }
-        }
-
-        return null;
-    }
-
     public ClusterLayout createDesiredLayout(
     ) throws K8SRequestError, K8SJSONError, K8SHTTPError {
         var fn = "createDesiredLayout";
@@ -211,9 +192,9 @@ public class ComposeCommand extends Command {
      * Create an ordered set of action steps which will result in effecting the given variances
      */
     private Plan createPlan(
-        final LinkedList<Variance> variances,
+        final VarianceSet variances,
         final List<DeviceInfo> unassignedResources
-    ) {
+    ) throws InternalErrorException {
         var fn = "createPlan";
         _logger.trace("Entering %s", fn);
 
@@ -221,62 +202,12 @@ public class ComposeCommand extends Command {
         var availableDevices = unassignedResources.stream()
                                                   .map(DeviceInfo::getDeviceIdentifier)
                                                   .collect(Collectors.toCollection(HashSet::new));
-
         while (!variances.isEmpty()) {
-            var action = createAction(variances, availableDevices);
-            if (action != null) {
-                plan.addAction(action);
-            } else {
-                variances.addAll(variances.pop().bifurcate());
-            }
+            plan.addAction(variances.getAction(_liqidInventory, availableDevices));
         }
 
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;
-    }
-
-    private LinkedList<Variance> createVariances(
-        final Map<Machine, LinkedList<DeviceInfo>> assignments
-    ) {
-        var fn = "createVariances";
-        _logger.trace("Entering %s with %s", fn, assignments);
-
-        var variances = new LinkedList<Variance>();
-        for (var mach : _liqidInventory._machinesById.values()) {
-            if (assignments.containsKey(mach)) {
-                var machWantedResources = assignments.get(mach);
-                var machHasResources = new LinkedList<DeviceInfo>();
-                for (var devRel : _liqidInventory._deviceRelationsByDeviceId.values()) {
-                    if (mach.getMachineId().equals(devRel._machineId)) {
-                        machHasResources.add(_liqidInventory._deviceInfoById.get(devRel._deviceId));
-                    }
-                }
-
-                var gainingIds = new LinkedList<Integer>();
-                var losingIds = new LinkedList<Integer>();
-
-                for (var di : machWantedResources) {
-                    if (!machHasResources.contains(di)) {
-                        gainingIds.add(di.getDeviceIdentifier());
-                    }
-                }
-
-                for (var di : machHasResources) {
-                    if (!machWantedResources.contains(di)) {
-                        losingIds.add(di.getDeviceIdentifier());
-                    }
-                }
-
-                if (!gainingIds.isEmpty() || !losingIds.isEmpty()) {
-                    var compDev = getComputeDeviceStatusForMachine(mach.getMachineId());
-                    var nodeName = getK8sNodeNameFromComputeDevice(compDev);
-                    variances.add(new Variance(mach, nodeName, gainingIds, losingIds));
-                }
-            }
-        }
-
-        _logger.trace("Exiting %s with %s", fn, variances);
-        return variances;
     }
 
     /**
@@ -480,11 +411,12 @@ public class ComposeCommand extends Command {
             throw new ConfigurationDataException("Various configuration problems exist - processing will not continue.");
         }
 
+        // TODO move the following 4 lines into createPlan() ?
         var assignedResources = new HashMap<Machine, LinkedList<DeviceInfo>>();
         var unassignedResources = new LinkedList<DeviceInfo>();
         determineDeviceAllocation(desiredLayout, unassignedResources, assignedResources);
-        var variances = createVariances(assignedResources);
-        var plan = createPlan(variances, unassignedResources);
+        var varianceSet = VarianceSet.createVarianceSet(_liqidInventory, assignedResources);
+        var plan = createPlan(varianceSet, unassignedResources);
 
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;

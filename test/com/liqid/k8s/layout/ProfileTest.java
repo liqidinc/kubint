@@ -9,7 +9,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-public class TestProfile {
+public class ProfileTest {
 
     @Test
     public void injectCount_SimpleGeneric() {
