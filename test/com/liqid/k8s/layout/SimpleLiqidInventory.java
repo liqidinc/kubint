@@ -58,7 +58,7 @@ public class SimpleLiqidInventory {
 
             cpuDevStats[cx] = cpuDevStat;
             i.notifyDeviceCreated(cpuDevStat, cpuDevInfo);
-            i.notifyDeviceAddedToGroup(devId, groupId);
+            i.notifyDeviceAssignedToGroup(devId, groupId);
         }
 
         var gpuDevStats = new DeviceStatus[gpuCount];
@@ -81,7 +81,7 @@ public class SimpleLiqidInventory {
 
             gpuDevStats[gx] = gpuDevStat;
             i.notifyDeviceCreated(gpuDevStat, gpuDevInfo);
-            i.notifyDeviceAddedToGroup(devId, groupId);
+            i.notifyDeviceAssignedToGroup(devId, groupId);
         }
 
         var nicDevStats = new DeviceStatus[nicCount];
@@ -104,7 +104,7 @@ public class SimpleLiqidInventory {
 
             nicDevStats[nx] = nicDevStat;
             i.notifyDeviceCreated(nicDevStat, nicDevInfo);
-            i.notifyDeviceAddedToGroup(devId, groupId);
+            i.notifyDeviceAssignedToGroup(devId, groupId);
         }
 
         var machines = new Machine[cpuCount];
@@ -121,7 +121,7 @@ public class SimpleLiqidInventory {
             machines[mx] = machine;
 
             i.notifyMachineCreated(machine);
-            i.notifyDeviceAddedToMachine(cpuDevStats[mx].getDeviceId(), machId);
+            i.notifyDeviceAssignedToMachine(cpuDevStats[mx].getDeviceId(), machId);
         }
 
         if (assignDevices) {
@@ -134,10 +134,10 @@ public class SimpleLiqidInventory {
                 }
                 var machId = machines[mx++].getMachineId();
                 if (gx < gpuCount) {
-                    i.notifyDeviceAddedToMachine(gpuDevStats[gx++].getDeviceId(), machId);
+                    i.notifyDeviceAssignedToMachine(gpuDevStats[gx++].getDeviceId(), machId);
                 }
                 if (nx < nicCount) {
-                    i.notifyDeviceAddedToMachine(nicDevStats[nx++].getDeviceId(), machId);
+                    i.notifyDeviceAssignedToMachine(nicDevStats[nx++].getDeviceId(), machId);
                 }
             }
         }

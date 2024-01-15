@@ -9,14 +9,11 @@ import com.liqid.k8s.plan.actions.AssignToMachine;
 import com.liqid.k8s.plan.actions.NoOperation;
 import com.liqid.k8s.plan.actions.ReconfigureMachine;
 import com.liqid.k8s.plan.actions.RemoveFromMachine;
-import com.liqid.sdk.DeviceStatus;
-import com.liqid.sdk.DeviceType;
 import org.junit.Test;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -39,30 +36,27 @@ public class VarianceTest {
         return result;
     }
 
-    private static Set<Integer> getDeviceIds(
+    /**
+     * Retrieves collection of device identifiers for the devices in the given inventory of a given type
+     * @param inventory source of DeviceItem objects
+     * @param deviceType general device type
+     * @return collection of device identifiers
+     */
+    private static Collection<Integer> getDeviceIdsOfType(
         final LiqidInventory inventory,
-        final DeviceType deviceType
+        final GeneralType deviceType
     ) {
-        return inventory._deviceStatusById.values()
-                                          .stream()
-                                          .filter(dev -> dev.getDeviceType().equals(deviceType))
-                                          .map(DeviceStatus::getDeviceId)
-                                          .collect(Collectors.toCollection(HashSet::new));
-    }
-
-    private static Set<String> getDeviceNames(
-        final LiqidInventory inventory,
-        final Collection<Integer> deviceIds
-    ) {
-        return deviceIds.stream()
-                        .map(id -> inventory._deviceStatusById.get(id).getName())
-                        .collect(Collectors.toCollection(HashSet::new));
+        var devItems = inventory.getDeviceItems();
+        LiqidInventory.removeDeviceItemsNotOfType(devItems, deviceType);
+        return devItems.stream()
+                       .map(DeviceItem::getDeviceId)
+                       .collect(Collectors.toCollection(HashSet::new));
     }
 
     @Test
     public void empty() {
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
+        var machine = inv.getMachines().iterator().next();
         var v = new Variance(machine, Collections.emptyList(), Collections.emptyList());
 
         assertEquals(machine, v.getMachine());
@@ -76,8 +70,8 @@ public class VarianceTest {
     @Test
     public void addOnly() {
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
-        var devIds = getDeviceIds(inv, DeviceType.GPU);
+        var machine = inv.getMachines().iterator().next();
+        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
         var v = new Variance(machine, devIds, Collections.emptyList());
 
         assertEquals(machine, v.getMachine());
@@ -91,8 +85,8 @@ public class VarianceTest {
     @Test
     public void removeOnly() {
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
-        var devIds = getDeviceIds(inv, DeviceType.GPU);
+        var machine = inv.getMachines().iterator().next();
+        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
         var v = new Variance(machine, Collections.emptyList(), devIds);
 
         assertEquals(machine, v.getMachine());
@@ -106,8 +100,8 @@ public class VarianceTest {
     @Test
     public void normal() {
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
-        var addIds = getDeviceIds(inv, DeviceType.GPU);
+        var machine = inv.getMachines().iterator().next();
+        var addIds = getDeviceIdsOfType(inv, GeneralType.GPU);
         var removeIds = divideIds(addIds);
         var v = new Variance(machine, addIds, removeIds);
 
@@ -122,7 +116,7 @@ public class VarianceTest {
     @Test
     public void bifurcateEmptyVariance() {
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
+        var machine = inv.getMachines().iterator().next();
         var v = new Variance(machine, Collections.emptyList(), Collections.emptyList());
 
         var variances = v.bifurcate();
@@ -133,8 +127,8 @@ public class VarianceTest {
     @Test
     public void bifurcateAddOnly() {
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
-        var devIds = getDeviceIds(inv, DeviceType.GPU);
+        var machine = inv.getMachines().iterator().next();
+        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
         var v = new Variance(machine, devIds, Collections.emptyList());
 
         var variances = v.bifurcate();
@@ -145,8 +139,8 @@ public class VarianceTest {
     @Test
     public void bifurcateRemoveOnly() {
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
-        var devIds = getDeviceIds(inv, DeviceType.GPU);
+        var machine = inv.getMachines().iterator().next();
+        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
         var v = new Variance(machine, Collections.emptyList(), devIds);
 
         var variances = v.bifurcate();
@@ -157,8 +151,8 @@ public class VarianceTest {
     @Test
     public void bifurcateNormal() {
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
-        var addIds = getDeviceIds(inv, DeviceType.GPU);
+        var machine = inv.getMachines().iterator().next();
+        var addIds = getDeviceIdsOfType(inv, GeneralType.GPU);
         var removeIds = divideIds(addIds);
         var v = new Variance(machine, addIds, removeIds);
 
@@ -181,8 +175,8 @@ public class VarianceTest {
         //  Test a Variance which can never be satisfied.
         //  Set up devices-to-be-added, but leave one of the IDs out of the unassigned container.
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
-        var devIds = getDeviceIds(inv, DeviceType.GPU);
+        var machine = inv.getMachines().iterator().next();
+        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
         var v = new Variance(machine, devIds, Collections.emptyList());
 
         //  set up unassigned devices to match ids-to-be-added, then remove one id
@@ -202,8 +196,8 @@ public class VarianceTest {
     @Test
     public void createActionAddOnly() {
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
-        var devIds = getDeviceIds(inv, DeviceType.GPU);
+        var machine = inv.getMachines().iterator().next();
+        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
         var v = new Variance(machine, devIds, Collections.emptyList());
 
         //  Put all the ids-to-be-added into the unassigned set
@@ -213,7 +207,7 @@ public class VarianceTest {
         var action = v.createAction(inv, unassignedDevices);
         assertTrue(action instanceof AssignToMachine);
         assertEquals(machine.getMachineName(), ((AssignToMachine) action).getMachineName());
-        assertEquals(getDeviceNames(inv, devIds), ((AssignToMachine) action).getDeviceNames());
+        assertEquals(inv.getDeviceNamesFromIds(devIds), ((AssignToMachine) action).getDeviceNames());
 
         //  make sure the device ids were removed from the unassigned set
         assertTrue(unassignedDevices.isEmpty());
@@ -222,8 +216,8 @@ public class VarianceTest {
     @Test
     public void createActionRemoveOnly() {
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
-        var devIds = getDeviceIds(inv, DeviceType.GPU);
+        var machine = inv.getMachines().iterator().next();
+        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
         var v = new Variance(machine, Collections.emptyList(), devIds);
 
         //  Use an empty unassigned devices set
@@ -233,7 +227,7 @@ public class VarianceTest {
         var action = v.createAction(inv, unassignedDevices);
         assertTrue(action instanceof RemoveFromMachine);
         assertEquals(machine.getMachineName(), ((RemoveFromMachine) action).getMachineName());
-        assertEquals(getDeviceNames(inv, devIds), ((RemoveFromMachine) action).getDeviceNames());
+        assertEquals(inv.getDeviceNamesFromIds(devIds), ((RemoveFromMachine) action).getDeviceNames());
 
         //  make sure the unassigned set now matches the devices-to-be-removed
         assertEquals(devIds, unassignedDevices);
@@ -242,8 +236,8 @@ public class VarianceTest {
     @Test
     public void createActionAddAndRemove() {
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
-        var addIds = getDeviceIds(inv, DeviceType.GPU);
+        var machine = inv.getMachines().iterator().next();
+        var addIds = getDeviceIdsOfType(inv, GeneralType.GPU);
         var removeIds = divideIds(addIds);
         var v = new Variance(machine, addIds, removeIds);
 
@@ -254,8 +248,8 @@ public class VarianceTest {
         var action = v.createAction(inv, unassignedDevices);
         assertTrue(action instanceof ReconfigureMachine);
         assertEquals(machine.getMachineName(), ((ReconfigureMachine) action).getMachineName());
-        assertEquals(getDeviceNames(inv, addIds), ((ReconfigureMachine) action).getDeviceNamesToAdd());
-        assertEquals(getDeviceNames(inv, removeIds), ((ReconfigureMachine) action).getDeviceNamesToRemove());
+        assertEquals(inv.getDeviceNamesFromIds(addIds), ((ReconfigureMachine) action).getDeviceNamesToAdd());
+        assertEquals(inv.getDeviceNamesFromIds(removeIds), ((ReconfigureMachine) action).getDeviceNamesToRemove());
 
         //  unassigned set should now match devices-to-be-removed
         assertEquals(removeIds, unassignedDevices);
@@ -264,7 +258,7 @@ public class VarianceTest {
     @Test
     public void createActionEmpty() {
         var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv._machinesById.values().iterator().next();
+        var machine = inv.getMachines().iterator().next();
         var v = new Variance(machine, Collections.emptyList(), Collections.emptyList());
 
         HashSet<Integer> unassignedDevices = new HashSet<>();

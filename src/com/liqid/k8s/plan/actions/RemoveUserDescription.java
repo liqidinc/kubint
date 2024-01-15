@@ -33,7 +33,7 @@ public class RemoveUserDescription extends Action {
         var fn = this.getClass().getName() + ":perform";
         context.getLogger().trace("Entering %s", fn);
 
-        var devStat = context.getLiqidInventory()._deviceStatusByName.get(_deviceName);
+        var devStat = context.getLiqidInventory().getDeviceItem(_deviceName).getDeviceStatus();
         var qType = LiqidClient.deviceTypeToQueryDeviceType(devStat.getDeviceType());
         context.getLiqidClient().deleteDeviceDescription(qType, devStat.getDeviceId());
 

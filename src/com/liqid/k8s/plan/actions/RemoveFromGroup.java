@@ -50,7 +50,7 @@ public class RemoveFromGroup extends Action {
         boolean editInProgress = false;
         Integer groupId = null;
         try {
-            var group = context.getLiqidInventory()._groupsByName.get(_groupName);
+            var group = context.getLiqidInventory().getGroup(_groupName);
             if (group == null) {
                 System.out.printf("INFO:Group %s does not exist in the Liqid Cluster\n", _groupName);
                 context.getLogger().trace("%s returning", fn);
@@ -61,7 +61,7 @@ public class RemoveFromGroup extends Action {
             context.getLiqidClient().groupPoolEdit(groupId);
             editInProgress = true;
             for (var devName : _deviceNames) {
-                var devStat = context.getLiqidInventory()._deviceStatusByName.get(devName);
+                var devStat = context.getLiqidInventory().getDeviceItem(devName).getDeviceStatus();
                 var devId = devStat.getDeviceId();
                 context.getLiqidClient().removeDeviceFromGroup(devId, groupId);
                 context.getLiqidInventory().notifyDeviceRemovedFromGroup(devId);

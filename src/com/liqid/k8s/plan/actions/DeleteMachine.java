@@ -44,7 +44,7 @@ public class DeleteMachine extends Action {
 
         // we wrap this in try-catch in order to minimize the deleterious effects of something going badly in the middle.
         try {
-            var machine = context.getLiqidInventory()._machinesByName.get(_machineName);
+            var machine = context.getLiqidInventory().getMachine(_machineName);
             if (machine == null) {
                 System.out.printf("INFO:Machine %s does not exist in the Liqid Cluster\n", _machineName);
                 context.getLogger().trace("%s returning", fn);
@@ -59,7 +59,7 @@ public class DeleteMachine extends Action {
             }
 
             context.getLiqidClient().deleteMachine(machine.getMachineId());
-            context.getLiqidInventory().notifyMachineDeleted(machine.getMachineId());
+            context.getLiqidInventory().notifyMachineRemoved(machine.getMachineId());
 
             if (nodeCordoned) {
                 System.out.printf("Uncordoning node %s...\n", _nodeName);

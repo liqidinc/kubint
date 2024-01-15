@@ -18,7 +18,7 @@ import java.util.Map;
  * It's very unlikely we will run into configurations with different types of links, and if we do we can
  * let the user play games with vendors and models to sort things out.
  */
-public enum LiqidGeneralType {
+public enum GeneralType {
     CPU,
     FPGA,
     GPU,
@@ -26,20 +26,20 @@ public enum LiqidGeneralType {
     MEMORY,
     SSD;
 
-    private static final Map<DeviceType, LiqidGeneralType> TYPE_CONVERSION_MAP = new HashMap<>();
+    private static final Map<DeviceType, GeneralType> TYPE_CONVERSION_MAP = new HashMap<>();
     static {
-        TYPE_CONVERSION_MAP.put(DeviceType.COMPUTE, LiqidGeneralType.CPU);
-        TYPE_CONVERSION_MAP.put(DeviceType.FPGA, LiqidGeneralType.FPGA);
-        TYPE_CONVERSION_MAP.put(DeviceType.GPU, LiqidGeneralType.GPU);
-        TYPE_CONVERSION_MAP.put(DeviceType.ETHERNET_LINK, LiqidGeneralType.LINK);
-        TYPE_CONVERSION_MAP.put(DeviceType.FIBER_CHANNEL_LINK, LiqidGeneralType.LINK);
-        TYPE_CONVERSION_MAP.put(DeviceType.INFINIBAND_LINK, LiqidGeneralType.LINK);
-        TYPE_CONVERSION_MAP.put(DeviceType.MEMORY, LiqidGeneralType.MEMORY);
-        TYPE_CONVERSION_MAP.put(DeviceType.SSD, LiqidGeneralType.SSD);
+        TYPE_CONVERSION_MAP.put(DeviceType.COMPUTE, GeneralType.CPU);
+        TYPE_CONVERSION_MAP.put(DeviceType.FPGA, GeneralType.FPGA);
+        TYPE_CONVERSION_MAP.put(DeviceType.GPU, GeneralType.GPU);
+        TYPE_CONVERSION_MAP.put(DeviceType.ETHERNET_LINK, GeneralType.LINK);
+        TYPE_CONVERSION_MAP.put(DeviceType.FIBER_CHANNEL_LINK, GeneralType.LINK);
+        TYPE_CONVERSION_MAP.put(DeviceType.INFINIBAND_LINK, GeneralType.LINK);
+        TYPE_CONVERSION_MAP.put(DeviceType.MEMORY, GeneralType.MEMORY);
+        TYPE_CONVERSION_MAP.put(DeviceType.SSD, GeneralType.SSD);
     }
 
     public static DeviceType fromGeneralType(
-        final LiqidGeneralType generalType
+        final GeneralType generalType
     ) {
         return TYPE_CONVERSION_MAP.entrySet()
                                   .stream()
@@ -49,7 +49,7 @@ public enum LiqidGeneralType {
                                   .orElse(null);
     }
 
-    public static LiqidGeneralType fromDeviceType(
+    public static GeneralType fromDeviceType(
         final DeviceType devType
     ) {
         return TYPE_CONVERSION_MAP.get(devType);

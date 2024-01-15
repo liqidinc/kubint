@@ -52,7 +52,7 @@ public class AssignToMachine extends Action {
 
         // we wrap this in try-catch in order to minimize the deleterious effects of something going badly in the middle.
         try {
-            var machine = context.getLiqidInventory()._machinesByName.get(_machineName);
+            var machine = context.getLiqidInventory().getMachine(_machineName);
             if (machine == null) {
                 System.out.printf("INFO:Machine %s does not exist in the Liqid Cluster\n", _machineName);
                 context.getLogger().trace("%s returning", fn);
@@ -71,10 +71,10 @@ public class AssignToMachine extends Action {
             editInProgress = true;
             var groupId = machine.getGroupId();
             for (var devName : _deviceNames) {
-                var devStat = context.getLiqidInventory()._deviceStatusByName.get(devName);
+                var devStat = context.getLiqidInventory().getDeviceItem(devName).getDeviceStatus();
                 var devId = devStat.getDeviceId();
                 context.getLiqidClient().addDeviceToMachine(devId, groupId, machineId);
-                context.getLiqidInventory().notifyDeviceAddedToMachine(devId, machineId);
+                context.getLiqidInventory().notifyDeviceAssignedToMachine(devId, machineId);
             }
             context.getLiqidClient().reprogramFabric(machineId);
             editInProgress = false;

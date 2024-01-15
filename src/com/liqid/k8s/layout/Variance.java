@@ -64,8 +64,7 @@ public class Variance {
 
         var add = !_deviceIdsToAdd.isEmpty();
         var remove = !_deviceIdsToRemove.isEmpty();
-        var compDev = inventory.getComputeDeviceStatusForMachine(_machine.getMachineId());
-        var nodeName = inventory.getK8sNodeNameFromComputeDevice(compDev);
+        var nodeName = inventory.getK8sNodeNameFromMachine(_machine.getMachineId());
 
         if (add && remove) {
             var action = new ReconfigureMachine();
@@ -73,12 +72,12 @@ public class Variance {
             action.setNodeName(nodeName);
 
             for (Integer id : _deviceIdsToAdd) {
-                action.addDeviceNameToAdd(inventory._deviceStatusById.get(id).getName());
+                action.addDeviceNameToAdd(inventory.getDeviceItem(id).getDeviceName());
                 unassignedDevices.remove(id);
             }
 
             for (Integer id : _deviceIdsToRemove) {
-                action.addDeviceNameToRemove(inventory._deviceStatusById.get(id).getName());
+                action.addDeviceNameToRemove(inventory.getDeviceItem(id).getDeviceName());
                 unassignedDevices.add(id);
             }
 
@@ -89,7 +88,7 @@ public class Variance {
             action.setNodeName(nodeName);
 
             for (Integer id : _deviceIdsToAdd) {
-                action.addDeviceName(inventory._deviceStatusById.get(id).getName());
+                action.addDeviceName(inventory.getDeviceItem(id).getDeviceName());
                 unassignedDevices.remove(id);
             }
 
@@ -100,7 +99,7 @@ public class Variance {
             action.setNodeName(nodeName);
 
             for (Integer id : _deviceIdsToRemove) {
-                action.addDeviceName(inventory._deviceStatusById.get(id).getName());
+                action.addDeviceName(inventory.getDeviceItem(id).getDeviceName());
                 unassignedDevices.add(id);
             }
 

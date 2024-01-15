@@ -57,7 +57,7 @@ public class ReconfigureMachine extends Action {
 
         // we wrap this in try-catch in order to minimize the deleterious effects of something going badly in the middle.
         try {
-            var machine = context.getLiqidInventory()._machinesByName.get(_machineName);
+            var machine = context.getLiqidInventory().getMachine(_machineName);
             if (machine == null) {
                 System.out.printf("INFO:Machine %s does not exist in the Liqid Cluster\n", _machineName);
                 context.getLogger().trace("%s returning", fn);
@@ -77,14 +77,14 @@ public class ReconfigureMachine extends Action {
             var groupId = machine.getGroupId();
 
             for (var devName : _deviceNamesToAdd) {
-                var devStat = context.getLiqidInventory()._deviceStatusByName.get(devName);
+                var devStat = context.getLiqidInventory().getDeviceItem(devName).getDeviceStatus();
                 var devId = devStat.getDeviceId();
                 context.getLiqidClient().addDeviceToMachine(devId, groupId, machineId);
-                context.getLiqidInventory().notifyDeviceAddedToMachine(devId, machineId);
+                context.getLiqidInventory().notifyDeviceAssignedToMachine(devId, machineId);
             }
 
             for (var devName : _deviceNamesToRemove) {
-                var devStat = context.getLiqidInventory()._deviceStatusByName.get(devName);
+                var devStat = context.getLiqidInventory().getDeviceItem(devName).getDeviceStatus();
                 var devId = devStat.getDeviceId();
                 context.getLiqidClient().removeDeviceFromMachine(devId, groupId, machineId);
                 context.getLiqidInventory().notifyDeviceRemovedFromMachine(devId);

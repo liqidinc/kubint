@@ -8,16 +8,19 @@ package com.liqid.k8s.layout;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.k8s.plan.actions.Action;
 import com.liqid.k8s.plan.actions.NoOperation;
-import com.liqid.sdk.DeviceInfo;
 import com.liqid.sdk.Machine;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Does things that involve a set of variances
+ * Does things that involve a set of variances.
+ * This represents a complete picture of devices which are not where we want them to be,
+ * providing a way to generate a set of actions which will change the configuration so that
+ * the devices end up where they are wanted.
  */
 public class VarianceSet {
 
@@ -29,35 +32,33 @@ public class VarianceSet {
     /**
      * Given a populated inventory and a map of desired assignments,
      * we create a VarianceSet representing the variances between the reality and what is desired.
+     * @param inventory the state of the configuration as it currently exists
+     * @param assignments a map describing, per machine, where we want devices to be
+     * @return a VarianceSet which describes how to get from the inventory to the assignments
      */
     public static VarianceSet createVarianceSet(
         final LiqidInventory inventory,
-        final Map<Machine, LinkedList<DeviceInfo>> assignments
+        final Map<Machine, Collection<DeviceItem>> assignments
     ) {
         var vs = new VarianceSet();
 
-        for (var mach : inventory._machinesById.values()) {
+        for (var mach : inventory.getMachines()) {
             if (assignments.containsKey(mach)) {
                 var machWantedResources = assignments.get(mach);
-                var machHasResources = new LinkedList<DeviceInfo>();
-                for (var devRel : inventory._deviceRelationsByDeviceId.values()) {
-                    if (mach.getMachineId().equals(devRel._machineId)) {
-                        machHasResources.add(inventory._deviceInfoById.get(devRel._deviceId));
-                    }
-                }
+                var machHasResources = inventory.getDeviceItemsForMachine(mach.getMachineId());
 
                 var gainingIds = new LinkedList<Integer>();
                 var losingIds = new LinkedList<Integer>();
 
-                for (var di : machWantedResources) {
-                    if (!machHasResources.contains(di)) {
-                        gainingIds.add(di.getDeviceIdentifier());
+                for (var devItem : machWantedResources) {
+                    if (!machHasResources.contains(devItem)) {
+                        gainingIds.add(devItem.getDeviceId());
                     }
                 }
 
-                for (var di : machHasResources) {
-                    if (!machWantedResources.contains(di)) {
-                        losingIds.add(di.getDeviceIdentifier());
+                for (var devItem : machHasResources) {
+                    if (!machWantedResources.contains(devItem)) {
+                        losingIds.add(devItem.getDeviceId());
                     }
                 }
 

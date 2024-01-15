@@ -37,7 +37,7 @@ public class CreateMachine extends Action {
         var fn = this.getClass().getName() + ":perform";
         context.getLogger().trace("Entering %s", fn);
 
-        var group = context.getLiqidInventory()._groupsByName.get(_groupName);
+        var group = context.getLiqidInventory().getGroup(_groupName);
         if (group == null) {
             System.out.printf("INFO:Group %s does not exist in the Liqid Cluster\n", _groupName);
             context.getLogger().trace("%s returning", fn);

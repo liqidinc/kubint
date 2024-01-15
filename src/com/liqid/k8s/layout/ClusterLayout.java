@@ -5,7 +5,6 @@
 
 package com.liqid.k8s.layout;
 
-import com.liqid.sdk.DeviceType;
 import com.liqid.sdk.LiqidClient;
 import com.liqid.sdk.LiqidException;
 
@@ -13,6 +12,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Represents a pattern of resource models segregated by machines.
+ * Unlike the LiqidInventory, the layout does not know about individual devices -
+ * it tracks only types, vendors, models, and counts.
+ */
 public class ClusterLayout {
 
     private final Map<Integer, MachineProfile> _machineProfiles = new HashMap<>();
@@ -29,28 +33,25 @@ public class ClusterLayout {
     ) {
         var layout = new ClusterLayout();
 
-        for (var machine : inventory._machinesById.values()) {
-            var machLayout = new MachineProfile(machine);
-            for (var ds : inventory._deviceStatusByMachineId.get(machine.getMachineId())) {
-                if (ds.getDeviceType() != DeviceType.COMPUTE) {
-                    var di = inventory._deviceInfoByName.get(ds.getName());
-                    machLayout.injectDevice(di);
-                }
+        //  devices assigned to machines
+        for (var machine : inventory.getMachines()) {
+            var machProfile = new MachineProfile(machine);
+            var machDevs = inventory.getDeviceItemsForMachine(machine.getMachineId());
+            LiqidInventory.removeDeviceItemsOfType(machDevs, GeneralType.CPU);
+            for (var devItem : inventory.getDeviceItemsForMachine(machine.getMachineId())) {
+                machProfile.injectDevice(devItem);
             }
-            layout._machineProfiles.put(machine.getMachineId(), machLayout);
+            layout._machineProfiles.put(machine.getMachineId(), machProfile);
         }
 
-        var devStatuses = groupId == null ? inventory._deviceStatusById.values()
-                                          : inventory._deviceStatusByGroupId.get(groupId);
-        for (var ds : devStatuses) {
-            if (ds.getDeviceType() != DeviceType.COMPUTE) {
-                var rel = inventory._deviceRelationsByDeviceId.get(ds.getDeviceId());
-                if ((rel != null) && (rel._machineId == null)) {
-                    var di = inventory._deviceInfoByName.get(ds.getName());
-                    layout._unassignedProfile.injectDevice(di);
-                }
-            }
+        //  non-compute devices not assigned to any machines
+        var devItems = inventory.getDeviceItems();
+        LiqidInventory.removeDeviceItemsOfType(devItems, GeneralType.CPU);
+        if (groupId != null) {
+            LiqidInventory.removeDeviceItemsNotInGroup(devItems, groupId);
         }
+        LiqidInventory.removeDeviceItemsInAnyMachine(devItems);
+        devItems.forEach(layout._unassignedProfile::injectDevice);
 
         return layout;
     }
@@ -63,7 +64,7 @@ public class ClusterLayout {
         final LiqidClient client,
         final Integer groupId
     ) throws LiqidException {
-        var inventory = LiqidInventory.getLiqidInventory(client);
+        var inventory = LiqidInventory.createLiqidInventory(client);
         return createFromInventory(inventory, groupId);
     }
 

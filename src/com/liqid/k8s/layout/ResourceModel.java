@@ -11,12 +11,12 @@ import java.util.Objects;
 
 public class ResourceModel {
 
-    private final LiqidGeneralType _generalType;
+    private final GeneralType _generalType;
     private final String _vendorName;
     private final String _modelName;
 
     public ResourceModel(
-        final LiqidGeneralType generalType,
+        final GeneralType generalType,
         final String vendorName,
         final String modelName
     ) {
@@ -29,7 +29,7 @@ public class ResourceModel {
      * Constructor for generic resource - no vendor or model name
      */
     public ResourceModel(
-        final LiqidGeneralType generalType
+        final GeneralType generalType
     ) {
         _generalType = generalType;
         _vendorName = null;
@@ -39,12 +39,12 @@ public class ResourceModel {
     public ResourceModel(
         final DeviceInfo devInfo
     ) {
-        _generalType = LiqidGeneralType.fromDeviceType(devInfo.getDeviceInfoType());
+        _generalType = GeneralType.fromDeviceType(devInfo.getDeviceInfoType());
         _vendorName = devInfo.getVendor();
         _modelName = devInfo.getModel();
     }
 
-    public LiqidGeneralType getGeneralType() {
+    public GeneralType getGeneralType() {
         return _generalType;
     }
 

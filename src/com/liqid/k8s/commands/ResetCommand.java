@@ -43,7 +43,6 @@ public class ResetCommand extends Command {
 
         initK8sClient();
         initLiqidClient();
-        getLiqidInventory();
 
         if (!_force) {
             System.err.println("ERROR: -f,--force must be set to run this command");

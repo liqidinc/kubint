@@ -8,11 +8,7 @@ package com.liqid.k8s.commands;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.k8s.plan.Plan;
-import com.liqid.sdk.DeviceStatus;
 import com.liqid.sdk.LiqidException;
-
-import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 public class ResourcesCommand extends Command {
 
@@ -40,28 +36,26 @@ public class ResourcesCommand extends Command {
         System.out.println("  ---TYPE---  --NAME--  ----ID----  --------VENDOR--------  -----MODEL------  "
                            + "-------MACHINE--------  -------------GROUP--------------  --DESCRIPTION--");
 
-        for (var ds : _liqidInventory._deviceStatusByName.values()) {
-            var di = _liqidInventory._deviceInfoById.get(ds.getDeviceId());
-            var str1 = String.format("%-10s  %-8s  0x%08x  %-22s  %-16s",
-                                     ds.getDeviceType(),
-                                     ds.getName(),
-                                     ds.getDeviceId(),
-                                     di.getVendor(),
-                                     di.getModel());
-
-            var dr = _liqidInventory._deviceRelationsByDeviceId.get(ds.getDeviceId());
+        for (var devItem : _liqidInventory.getDeviceItems()) {
             var machStr = "<none>";
-            if (dr._machineId != null) {
-                machStr = _liqidInventory._machinesById.get(dr._machineId).getMachineName();
+            if (devItem.getMachineId() != null) {
+                machStr = _liqidInventory.getMachine(devItem.getMachineId()).getMachineName();
             }
 
-            var grpStr = "";
-            var temp = (dr._groupId == null)
-                       ? "<none>"
-                       : _liqidInventory._groupsById.get(dr._groupId).getGroupName();
-            grpStr = String.format("  %-32s", temp);
+            var grpStr = "<none>";
+            if (devItem.getGroupId() != null) {
+                grpStr = _liqidInventory.getGroup(devItem.getGroupId()).getGroupName();
+            }
 
-            System.out.printf("  %s  %-22s%s  %s\n", str1, machStr, grpStr, di.getUserDescription());
+            System.out.printf("  %-10s  %-8s  0x%08x  %-22s  %-16s  %-22s  %-32s  %s\n",
+                              devItem.getGeneralType(),
+                              devItem.getDeviceName(),
+                              devItem.getDeviceId(),
+                              devItem.getDeviceInfo().getVendor(),
+                              devItem.getDeviceInfo().getModel(),
+                              machStr,
+                              grpStr,
+                              devItem.getDeviceInfo().getUserDescription());
         }
 
         _logger.trace("Exiting %s", fn);
@@ -78,13 +72,11 @@ public class ResourcesCommand extends Command {
         System.out.println("All Machines:");
         System.out.println("  -------------GROUP--------------  -------MACHINE--------  ----ID----  --------DEVICES---------");
 
-        for (var mach : _liqidInventory._machinesById.values()) {
-            var devNames = _liqidInventory._deviceStatusByMachineId.get(mach.getMachineId())
-                                                                   .stream()
-                                                                   .map(DeviceStatus::getName)
-                                                                   .collect(Collectors.toCollection(TreeSet::new));
+        for (var mach : _liqidInventory.getMachines()) {
+            var machDevs = _liqidInventory.getDeviceItemsForMachine(mach.getMachineId());
+            var devNames = _liqidInventory.getDeviceNamesFromItems(machDevs);
             var devNamesStr = String.join(" ", devNames);
-            var grp = _liqidInventory._groupsById.get(mach.getGroupId());
+            var grp = _liqidInventory.getGroup(mach.getGroupId());
             System.out.printf("  %-32s  %-22s  0x%08x  %s\n",
                               grp.getGroupName(),
                               mach.getMachineName(),
@@ -102,7 +94,6 @@ public class ResourcesCommand extends Command {
         _logger.trace("Entering %s", fn);
 
         initLiqidClient();
-        getLiqidInventory();
         displayDevices();
         displayMachines();
 

@@ -14,35 +14,35 @@ public class ProfileTest {
     @Test
     public void injectCount_SimpleGeneric() {
         Integer fpgaCount = 0;
-        var fpgaModel = new ResourceModel(LiqidGeneralType.FPGA);
+        var fpgaModel = new ResourceModel(GeneralType.FPGA);
         Integer gpuCount = 15;
-        var gpuModel = new ResourceModel(LiqidGeneralType.GPU);
+        var gpuModel = new ResourceModel(GeneralType.GPU);
         Integer linkCount = -27;
-        var linkModel = new ResourceModel(LiqidGeneralType.LINK);
+        var linkModel = new ResourceModel(GeneralType.LINK);
 
         var p = new Profile();
-        p.injectCount(LiqidGeneralType.FPGA, fpgaCount);
-        p.injectCount(LiqidGeneralType.GPU, gpuCount);
+        p.injectCount(GeneralType.FPGA, fpgaCount);
+        p.injectCount(GeneralType.GPU, gpuCount);
         p.injectCount(linkModel, linkCount);
 
         assertEquals(3, p.getResourceModels().size());
         assertEquals(fpgaCount, p.getCount(fpgaModel));
         assertEquals(gpuCount, p.getCount(gpuModel));
         assertEquals(linkCount, p.getCount(linkModel));
-        assertNull(p.getCount(new ResourceModel(LiqidGeneralType.CPU)));
-        assertNull(p.getCount(new ResourceModel(LiqidGeneralType.FPGA, "LMI Logic", "LMI1200")));
+        assertNull(p.getCount(new ResourceModel(GeneralType.CPU)));
+        assertNull(p.getCount(new ResourceModel(GeneralType.FPGA, "LMI Logic", "LMI1200")));
     }
 
     @Test
     public void injectCount_SimpleModel() {
         Integer[] counts = {0, 15, -27, 3, 100392, 42};
         ResourceModel[] models = {
-            new ResourceModel(LiqidGeneralType.FPGA, "LMI Logic", "LMI1200"),
-            new ResourceModel(LiqidGeneralType.FPGA, "LMI Logic", "LMI1300"),
-            new ResourceModel(LiqidGeneralType.FPGA, "NWidia Corpse-aration", "LMI1200"),
-            new ResourceModel(LiqidGeneralType.GPU, "AMX", "RTX12"),
-            new ResourceModel(LiqidGeneralType.FPGA),
-            new ResourceModel(LiqidGeneralType.GPU),
+            new ResourceModel(GeneralType.FPGA, "LMI Logic", "LMI1200"),
+            new ResourceModel(GeneralType.FPGA, "LMI Logic", "LMI1300"),
+            new ResourceModel(GeneralType.FPGA, "NWidia Corpse-aration", "LMI1200"),
+            new ResourceModel(GeneralType.GPU, "AMX", "RTX12"),
+            new ResourceModel(GeneralType.FPGA),
+            new ResourceModel(GeneralType.GPU),
             };
 
         var p = new Profile();
@@ -60,12 +60,12 @@ public class ProfileTest {
     public void injectCount_SimpleSpecific() {
         Integer[] counts = {0, 15, -27, 3, 100392, 42};
         ResourceModel[] models = {
-            new ResourceModel(LiqidGeneralType.FPGA, "LMI Logic", "LMI1200"),
-            new ResourceModel(LiqidGeneralType.FPGA, "LMI Logic", "LMI1300"),
-            new ResourceModel(LiqidGeneralType.FPGA, "NWidia Corpse-aration", "LMI1200"),
-            new ResourceModel(LiqidGeneralType.GPU, "AMX", "RTX12"),
-            new ResourceModel(LiqidGeneralType.FPGA),
-            new ResourceModel(LiqidGeneralType.GPU),
+            new ResourceModel(GeneralType.FPGA, "LMI Logic", "LMI1200"),
+            new ResourceModel(GeneralType.FPGA, "LMI Logic", "LMI1300"),
+            new ResourceModel(GeneralType.FPGA, "NWidia Corpse-aration", "LMI1200"),
+            new ResourceModel(GeneralType.GPU, "AMX", "RTX12"),
+            new ResourceModel(GeneralType.FPGA),
+            new ResourceModel(GeneralType.GPU),
             };
 
         var p = new Profile();
@@ -85,35 +85,35 @@ public class ProfileTest {
     @Test
     public void get_Varieties() {
         var p = new Profile();
-        p.injectCount(LiqidGeneralType.CPU, 5);
-        p.injectCount(LiqidGeneralType.CPU, "Motorola", "M68000", 1);
-        p.injectCount(LiqidGeneralType.SSD, "Liqid", "HoneyBadger", 27);
+        p.injectCount(GeneralType.CPU, 5);
+        p.injectCount(GeneralType.CPU, "Motorola", "M68000", 1);
+        p.injectCount(GeneralType.SSD, "Liqid", "HoneyBadger", 27);
 
-        assertEquals((Integer)5, p.getCount(LiqidGeneralType.CPU));
-        assertEquals((Integer)5, p.getCount(LiqidGeneralType.CPU, null, null));
-        assertEquals((Integer)5, p.getCount(new ResourceModel(LiqidGeneralType.CPU)));
-        assertEquals((Integer)5, p.getCount(new ResourceModel(LiqidGeneralType.CPU, null, null)));
+        assertEquals((Integer)5, p.getCount(GeneralType.CPU));
+        assertEquals((Integer)5, p.getCount(GeneralType.CPU, null, null));
+        assertEquals((Integer)5, p.getCount(new ResourceModel(GeneralType.CPU)));
+        assertEquals((Integer)5, p.getCount(new ResourceModel(GeneralType.CPU, null, null)));
 
-        assertEquals((Integer)1, p.getCount(LiqidGeneralType.CPU, "Motorola", "M68000"));
-        assertEquals((Integer)1, p.getCount(new ResourceModel(LiqidGeneralType.CPU, "Motorola", "M68000")));
+        assertEquals((Integer)1, p.getCount(GeneralType.CPU, "Motorola", "M68000"));
+        assertEquals((Integer)1, p.getCount(new ResourceModel(GeneralType.CPU, "Motorola", "M68000")));
 
-        assertNull(p.getCount(LiqidGeneralType.SSD));
-        assertNull(p.getCount(LiqidGeneralType.SSD, null, null));
-        assertNull(p.getCount(new ResourceModel(LiqidGeneralType.SSD)));
-        assertNull(p.getCount(new ResourceModel(LiqidGeneralType.SSD, null, null)));
+        assertNull(p.getCount(GeneralType.SSD));
+        assertNull(p.getCount(GeneralType.SSD, null, null));
+        assertNull(p.getCount(new ResourceModel(GeneralType.SSD)));
+        assertNull(p.getCount(new ResourceModel(GeneralType.SSD, null, null)));
 
-        assertEquals((Integer)27, p.getCount(LiqidGeneralType.SSD, "Liqid", "HoneyBadger"));
-        assertEquals((Integer)27, p.getCount(new ResourceModel(LiqidGeneralType.SSD, "Liqid", "HoneyBadger")));
+        assertEquals((Integer)27, p.getCount(GeneralType.SSD, "Liqid", "HoneyBadger"));
+        assertEquals((Integer)27, p.getCount(new ResourceModel(GeneralType.SSD, "Liqid", "HoneyBadger")));
     }
 
     @Test
     public void getResourceModels() {
         ResourceModel[] models = {
-            new ResourceModel(LiqidGeneralType.SSD),
-            new ResourceModel(LiqidGeneralType.MEMORY),
-            new ResourceModel(LiqidGeneralType.LINK),
-            new ResourceModel(LiqidGeneralType.CPU),
-            new ResourceModel(LiqidGeneralType.CPU, "Zilog", "Z80"),
+            new ResourceModel(GeneralType.SSD),
+            new ResourceModel(GeneralType.MEMORY),
+            new ResourceModel(GeneralType.LINK),
+            new ResourceModel(GeneralType.CPU),
+            new ResourceModel(GeneralType.CPU, "Zilog", "Z80"),
         };
 
         var p = new Profile();
@@ -131,12 +131,12 @@ public class ProfileTest {
     @Test
     public void injectCount_Sums() {
         var p = new Profile();
-        p.injectCount(LiqidGeneralType.CPU, 0);
-        p.injectCount(LiqidGeneralType.CPU, 15);
-        p.injectCount(LiqidGeneralType.CPU, -3);
-        p.injectCount(LiqidGeneralType.FPGA, -12);
+        p.injectCount(GeneralType.CPU, 0);
+        p.injectCount(GeneralType.CPU, 15);
+        p.injectCount(GeneralType.CPU, -3);
+        p.injectCount(GeneralType.FPGA, -12);
 
-        assertEquals((Integer)12, p.getCount(LiqidGeneralType.CPU));
-        assertEquals((Integer)(-12), p.getCount(LiqidGeneralType.FPGA));
+        assertEquals((Integer)12, p.getCount(GeneralType.CPU));
+        assertEquals((Integer)(-12), p.getCount(GeneralType.FPGA));
     }
 }

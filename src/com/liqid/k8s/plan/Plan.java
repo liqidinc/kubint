@@ -34,7 +34,7 @@ public class Plan {
 
         var context = new ExecutionContext().setK8SClient(k8SClient)
                                             .setLiqidClient(liqidClient)
-                                            .setLiqidInventory(LiqidInventory.getLiqidInventory(liqidClient))
+                                            .setLiqidInventory(LiqidInventory.createLiqidInventory(liqidClient))
                                             .setLogger(logger);
 
         for (int sx = 0; sx < _actions.size(); ++sx) {

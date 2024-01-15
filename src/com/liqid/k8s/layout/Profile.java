@@ -5,8 +5,6 @@
 
 package com.liqid.k8s.layout;
 
-import com.liqid.sdk.DeviceInfo;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -37,7 +35,7 @@ public class Profile {
      * @return the given count if we are tracking it, or null if we are not tracking
      */
     public Integer getCount(
-        final LiqidGeneralType generalType
+        final GeneralType generalType
     ) {
         return getCount(new ResourceModel(generalType));
     }
@@ -47,7 +45,7 @@ public class Profile {
      * @return the given count if we are tracking it, or null if we are not tracking
      */
     public Integer getCount(
-        final LiqidGeneralType generalType,
+        final GeneralType generalType,
         final String vendor,
         final String model
     ) {
@@ -89,7 +87,7 @@ public class Profile {
      * @param count number of devices of this general type
      */
     public void injectCount(
-        final LiqidGeneralType generalType,
+        final GeneralType generalType,
         final String vendorName,
         final String modelName,
         final Integer count
@@ -104,7 +102,7 @@ public class Profile {
      * @param count number of devices of this general type
      */
     public void injectCount(
-        final LiqidGeneralType generalType,
+        final GeneralType generalType,
         final Integer count
     ) {
         injectCount(new ResourceModel(generalType), count);
@@ -114,12 +112,12 @@ public class Profile {
      * Updates the count of devices which matches the given device info, respecting vendor name and model,
      * incrementing by one. If there is no entry yet for the given device type, vendor, and model, and entry
      * is created with a count of one.
-     * @param devInfo Liqid DeviceInfo object
+     * @param devInfo Liqid DeviceItem object
      */
     public void injectDevice(
-        final DeviceInfo devInfo
+        final DeviceItem devItem
     ) {
-        injectCount(new ResourceModel(devInfo), 1);
+        injectCount(new ResourceModel(devItem.getDeviceInfo()), 1);
     }
 
     /**
