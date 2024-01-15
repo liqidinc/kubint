@@ -5,13 +5,22 @@
 
 package com.liqid.k8s.layout;
 
+import com.liqid.sdk.DeviceInfo;
+
 /**
  * Represents all device vendors and models of a particular general type.
  * For example, all GPU vendor/model combinations.
  */
 public class GenericResourceModel extends ResourceModel {
 
-    protected final GeneralType _generalType;
+    private final GeneralType _generalType;
+
+    @Override
+    public boolean accepts(
+        final DeviceInfo deviceInfo
+    ) {
+        return _generalType.equals(GeneralType.fromDeviceType(deviceInfo.getDeviceInfoType()));
+    }
 
     public GenericResourceModel(
         final GeneralType generalType

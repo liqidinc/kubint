@@ -5,6 +5,8 @@
 
 package com.liqid.k8s.layout;
 
+import com.liqid.sdk.DeviceInfo;
+
 import java.util.Objects;
 
 public abstract class ResourceModel implements Comparable<ResourceModel> {
@@ -13,6 +15,14 @@ public abstract class ResourceModel implements Comparable<ResourceModel> {
     public abstract GeneralType getGeneralType();
     public abstract String getVendorName();
     public abstract String getModelName();
+
+    /**
+     * Tests a given SDK DeviceInfo object to determine whether this ResourceModel accurately
+     * describes the corresponding device.
+     * @param deviceInfo SDK DeviceInfo object
+     * @return true if the device can be described by this ResourceModel object, else false
+     */
+    public abstract boolean accepts(final DeviceInfo deviceInfo);
 
     @Override
     public final boolean equals(final Object obj) {

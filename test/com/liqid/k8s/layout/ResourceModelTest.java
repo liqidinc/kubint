@@ -5,13 +5,17 @@
 
 package com.liqid.k8s.layout;
 
+import com.liqid.sdk.DeviceInfo;
+import com.liqid.sdk.DeviceType;
 import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.TreeSet;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 public class ResourceModelTest {
 
@@ -184,5 +188,43 @@ public class ResourceModelTest {
         var expList = Arrays.stream(expArray).toList();
         var resultList = set.stream().toList();
         assertEquals(expList, resultList);
+    }
+
+    @Test
+    public void accepts() {
+        var nvidiaA100Info = new DeviceInfo();
+        nvidiaA100Info.setDeviceInfoType(DeviceType.GPU);
+        nvidiaA100Info.setVendor(NVIDIA_A100.getVendorName());
+        nvidiaA100Info.setModel(NVIDIA_A100.getModelName());
+
+        var nvidiaL40Info = new DeviceInfo();
+        nvidiaL40Info.setDeviceInfoType(DeviceType.GPU);
+        nvidiaL40Info.setVendor(NVIDIA_L40.getVendorName());
+        nvidiaL40Info.setModel(NVIDIA_L40.getModelName());
+
+        var intelGPUInfo = new DeviceInfo();
+        intelGPUInfo.setDeviceInfoType(DeviceType.GPU);
+        intelGPUInfo.setVendor(INTEL_A770.getVendorName());
+        intelGPUInfo.setModel(INTEL_A770.getModelName());
+
+        var liqidSSDInfo = new DeviceInfo();
+        liqidSSDInfo.setDeviceInfoType(DeviceType.SSD);
+        liqidSSDInfo.setVendor(LIQID_LQD4500.getVendorName());
+        liqidSSDInfo.setModel(LIQID_LQD4500.getModelName());
+
+        assertTrue(NVIDIA_A100.accepts(nvidiaA100Info));
+        assertFalse(NVIDIA_A100.accepts(nvidiaL40Info));
+        assertFalse(NVIDIA_A100.accepts(intelGPUInfo));
+        assertFalse(NVIDIA_A100.accepts(liqidSSDInfo));
+
+        assertTrue(NVIDIA_GPU.accepts(nvidiaA100Info));
+        assertTrue(NVIDIA_GPU.accepts(nvidiaL40Info));
+        assertFalse(NVIDIA_GPU.accepts(intelGPUInfo));
+        assertFalse(NVIDIA_GPU.accepts(liqidSSDInfo));
+
+        assertTrue(GPU.accepts(nvidiaA100Info));
+        assertTrue(GPU.accepts(nvidiaL40Info));
+        assertTrue(GPU.accepts(intelGPUInfo));
+        assertFalse(GPU.accepts(liqidSSDInfo));
     }
 }

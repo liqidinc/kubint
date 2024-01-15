@@ -11,6 +11,13 @@ public final class SpecificResourceModel extends VendorResourceModel {
 
     private final String _modelName;
 
+    @Override
+    public boolean accepts(
+        final DeviceInfo deviceInfo
+    ) {
+        return super.accepts(deviceInfo) && _modelName.equals(deviceInfo.getModel());
+    }
+
     public SpecificResourceModel(
         final GeneralType generalType,
         final String vendorName,
