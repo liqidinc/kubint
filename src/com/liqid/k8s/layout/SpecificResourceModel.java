@@ -1,0 +1,38 @@
+/**
+ * k8s-integration
+ * Copyright 2023-2024 by Liqid, Inc - All Rights Reserved
+ */
+
+package com.liqid.k8s.layout;
+
+import com.liqid.sdk.DeviceInfo;
+
+public final class SpecificResourceModel extends VendorResourceModel {
+
+    private final String _modelName;
+
+    public SpecificResourceModel(
+        final GeneralType generalType,
+        final String vendorName,
+        final String modelName
+    ) {
+        super(generalType, vendorName);
+        _modelName = modelName;
+    }
+
+    public SpecificResourceModel(
+        final DeviceInfo devInfo
+    ) {
+        this(GeneralType.fromDeviceType(devInfo.getDeviceInfoType()), devInfo.getVendor(), devInfo.getModel());
+    }
+
+    @Override
+    public String getModelName() {
+        return _modelName;
+    }
+
+    @Override
+    public ResourceModelType getResourceModelType() {
+        return ResourceModelType.A_SPECIFIC;
+    }
+}

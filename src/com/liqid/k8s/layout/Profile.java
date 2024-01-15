@@ -65,7 +65,7 @@ public class Profile {
     public void injectDevice(
         final DeviceItem devItem
     ) {
-        injectCount(new CompleteResourceModel(devItem.getDeviceInfo()), 1);
+        injectCount(new SpecificResourceModel(devItem.getDeviceInfo()), 1);
     }
 
     /**

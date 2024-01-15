@@ -5,9 +5,11 @@
 
 package com.liqid.k8s.layout;
 
-import java.util.Objects;
-
-public class VendorResourceModel extends ResourceModel {
+/**
+ * Represents resource models of a particular general type and vendor.
+ * For example, all models of NVidia GPUs.
+ */
+public class VendorResourceModel extends GenericResourceModel {
 
     protected final String _vendorName;
 
@@ -20,27 +22,12 @@ public class VendorResourceModel extends ResourceModel {
     }
 
     @Override
-    public String getVendorName() {
+    public ResourceModelType getResourceModelType() {
+        return ResourceModelType.B_VENDOR;
+    }
+
+    @Override
+    public final String getVendorName() {
         return _vendorName;
-    }
-
-    @Override
-    public boolean equals(final Object obj) {
-        if (obj instanceof VendorResourceModel rm) {
-            return rm._generalType.equals(_generalType)
-                   && Objects.equals(rm._vendorName, _vendorName);
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public int hashCode() {
-        return _generalType.hashCode() ^ _vendorName.hashCode();
-    }
-
-    @Override
-    public String toString() {
-        return String.format("%s[%s:*]", _generalType.toString(), _vendorName);
     }
 }
