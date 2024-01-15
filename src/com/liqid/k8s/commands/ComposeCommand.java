@@ -26,6 +26,7 @@ public class ComposeCommand extends Command {
 
     public ComposeCommand setProxyURL(final String value) {_proxyURL = value; return this; }
 
+    //TODO
 //    private boolean checkDesiredLayout(
 //        final ClusterLayout existingClusterLayout,
 //        final ClusterLayout desiredClusterLayout

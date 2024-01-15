@@ -44,6 +44,7 @@ public class AnnotateCommand extends Command {
     public AnnotateCommand setProxyURL(final String value) { _proxyURL = value; return this; }
     public AnnotateCommand setSSDSpecifications(final Collection<String> list) { _ssdSpecs = list; return this; }
 
+    //TODO
 //    /**
 //     * Creates plan actions to annotate the worker nodes.
 //     * We assume linkage already exists - so we can rely on the machine annotation in the k8s worker nodes

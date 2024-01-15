@@ -226,19 +226,6 @@ public class LiqidInventory {
     }
 
     /**
-     * Given a collection of DeviceItem objects, we construct a collection of corresponding device names
-     * @param deviceItems device items
-     * @return collection of device names
-     */
-    public Set<String> getDeviceNamesFromItems(
-        final Collection<DeviceItem> deviceItems
-    ) {
-        return deviceItems.stream()
-                          .map(DeviceItem::getDeviceName)
-                          .collect(Collectors.toCollection(HashSet::new));
-    }
-
-    /**
      * Retrieves the SDK Group object for a particular group
      * @param groupId group identifier
      * @return SDK Group object if the group exists, else null
@@ -565,18 +552,16 @@ public class LiqidInventory {
     //  ----------------------------------------------------------------------------------------------------------------
 
     /**
-     * Creates a map keyed by general device type, where each value is all of the DeviceItem objects of that type.
-     * @param deviceItems a flat collection of DeviceItem objects
+     * Given a collection of DeviceItem objects, we construct a collection of corresponding device names
+     * @param deviceItems device items
+     * @return collection of device names
      */
-    public static Map<GeneralType, Collection<DeviceItem>> segregateDeviceItemsByType(
+    public static Set<String> getDeviceNamesFromItems(
         final Collection<DeviceItem> deviceItems
     ) {
-        var result = new HashMap<GeneralType, Collection<DeviceItem>>();
-        for (var devItem : deviceItems) {
-            result.computeIfAbsent(devItem.getGeneralType(), k -> new LinkedList<>());
-            result.get(devItem.getGeneralType()).add(devItem);
-        }
-        return result;
+        return deviceItems.stream()
+                          .map(DeviceItem::getDeviceName)
+                          .collect(Collectors.toCollection(HashSet::new));
     }
 
     public static void removeDeviceItemsOfType(
@@ -613,5 +598,20 @@ public class LiqidInventory {
         final Collection<DeviceItem> deviceItems
     ) {
         deviceItems.removeIf(di -> di.getMachineId() != null);
+    }
+
+    /**
+     * Creates a map keyed by general device type, where each value is all of the DeviceItem objects of that type.
+     * @param deviceItems a flat collection of DeviceItem objects
+     */
+    public static Map<GeneralType, Collection<DeviceItem>> segregateDeviceItemsByType(
+        final Collection<DeviceItem> deviceItems
+    ) {
+        var result = new HashMap<GeneralType, Collection<DeviceItem>>();
+        for (var devItem : deviceItems) {
+            result.computeIfAbsent(devItem.getGeneralType(), k -> new LinkedList<>());
+            result.get(devItem.getGeneralType()).add(devItem);
+        }
+        return result;
     }
 }

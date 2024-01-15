@@ -116,6 +116,8 @@ public class AdoptCommand extends Command {
         var fn = this.getClass().getName() + ":process";
         _logger.trace("Entering %s", fn);
 
+        //TODO
+
 //        initK8sClient();
 //
 //        // If there is no linkage, tell the user and stop

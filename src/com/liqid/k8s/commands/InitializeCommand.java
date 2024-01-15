@@ -9,17 +9,21 @@ import com.bearsnake.k8sclient.*;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.exceptions.*;
 import com.liqid.k8s.layout.DeviceItem;
+import com.liqid.k8s.layout.LiqidInventory;
 import com.liqid.k8s.plan.*;
-import com.liqid.k8s.plan.actions.*;
-import com.liqid.sdk.DeviceStatus;
+import com.liqid.k8s.plan.actions.AssignToGroup;
+import com.liqid.k8s.plan.actions.CreateGroup;
+import com.liqid.k8s.plan.actions.CreateLinkage;
+import com.liqid.k8s.plan.actions.DeleteGroup;
+import com.liqid.k8s.plan.actions.RemoveAllAnnotations;
+import com.liqid.k8s.plan.actions.RemoveLinkage;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 public class InitializeCommand extends Command {
 
@@ -47,114 +51,116 @@ public class InitializeCommand extends Command {
     public InitializeCommand setProxyURL(final String value) { _proxyURL = value; return this; }
     public InitializeCommand setResourceSpecs(final Collection<String> list) { _resourceSpecs = list; return this; }
 
-//    /**
-//     * Checks the current Liqid and Kubernetes configuration to see if there is anything which would prevent
-//     * us from executing the requested command. Some problems can be warnings if _force is set.
-//     * In any case where processing cannot continue, we will throw an exception.
-//     */
-//    private boolean checkConfiguration(
-//        final Map<DeviceItem, Node> computeDevices,
-//        final Collection<DeviceStatus> resourceDevices
-//    ) throws K8SHTTPError,
-//             K8SJSONError,
-//             K8SRequestError {
-//        var fn = "checkConfiguration";
-//        _logger.trace("Entering %s with computeDevices=%s, resourceDevices=%s",
-//                      fn, computeDevices, resourceDevices);
-//
-//        var errors = false;
-//        var errPrefix = getErrorPrefix();
-//
-//        if (!super.checkConfiguration(computeDevices)) {
-//            errors = true;
-//        }
-//
-//        _hasLinkage = hasLinkage();
-//        _hasAnnotations = hasAnnotations();
-//        if (_hasLinkage) {
-//            System.err.printf("%s:Linkage already exists between the Kubernetes Cluster and the Liqid Cluster", errPrefix);
-//            errors = true;
-//        }
-//        if (_hasAnnotations) {
-//            System.err.printf("%s:One or more nodes in the Kubernetes Cluster has Liqid annotations", errPrefix);
-//            errors = true;
-//        }
-//
-//        // Are there any resources assigned to groups?
-//        var allDevs = new LinkedList<>(computeDevices.keySet());
-//        allDevs.addAll(resourceDevices);
-//        for (var ds : allDevs) {
-//            var dr = _liqidInventory._deviceRelationsByDeviceId.get(ds.getDeviceId());
-//            if (dr._groupId != null) {
-//                System.err.printf("%s:Device %s is currently assigned to a group or machine\n", errPrefix, ds.getName());
-//                errors = true;
-//            }
-//        }
-//
-//        // Does the called-out group already exist?
-//        if (_liqidInventory._groupsByName.containsKey(_liqidGroupName)) {
-//            _hasGroup = true;
-//            System.err.printf("%s:Group %s already exists.\n", errPrefix, _liqidGroupName);
-//            errors = true;
-//        }
-//
-//        var result = !errors;
-//        _logger.trace("Exiting %s with %s", fn, result);
-//        return result;
-//    }
-//
-//    private Plan createPlan(
-//        final Map<DeviceStatus, Node> computeDevices,
-//        final Collection<DeviceStatus> resourceDevices
-//    ) {
-//        var fn = "createPlan";
-//        _logger.trace("Entering %s with computeDevices=%s, resourceDevices=%s",
-//                      fn, computeDevices, resourceDevices);
-//
-//        var plan = new Plan();
-//        if (_hasLinkage) {
-//            plan.addAction(new RemoveLinkage());
-//        }
-//        if (_hasAnnotations) {
-//            plan.addAction(new RemoveAllAnnotations());
-//        }
-//        if (_hasGroup) {
-//            plan.addAction(new DeleteGroup().setGroupName(_liqidGroupName));
-//        }
-//
-//        plan.addAction(new CreateLinkage().setLiqidAddress(_liqidAddress)
-//                                          .setLiqidGroupName(_liqidGroupName)
-//                                          .setLiqidUsername(_liqidUsername)
-//                                          .setLiqidPassword(_liqidPassword));
-//
-//        plan.addAction(new CreateGroup().setGroupName(_liqidGroupName));
-//
-//        // Create consolidated list of all devices
-//        var allDevStats = new LinkedList<>(computeDevices.keySet());
-//        allDevStats.addAll(resourceDevices);
-//
-//        // Any called-out resources assigned to machines or groups? If so, release them.
-//        releaseDevicesFromMachines(plan, allDevStats);
-//        releaseDevicesFromGroups(plan, allDevStats);
-//
-//        // Move all called-out resources to the newly-created group.
-//        var names = allDevStats.stream().map(DeviceStatus::getName).collect(Collectors.toCollection(TreeSet::new));
-//        if (!names.isEmpty()) {
-//            plan.addAction(new AssignToGroup().setGroupName(_liqidGroupName).setDeviceNames(names));
-//        }
-//
-//        // Create machines for all the called-out compute resources and move the compute resources into those machines.
-//        // Set the device descriptions to refer to the k8s node names while we're here.
-//        createMachines(plan, computeDevices);
-//
-//        // Allocate, if requested
-//        if (_allocate) {
-//            allocateEqually(_liqidInventory, computeDevices, resourceDevices, true, plan);
-//        }
-//
-//        _logger.trace("Exiting %s with %s", fn, plan);
-//        return plan;
-//    }
+    /**
+     * Checks the current Liqid and Kubernetes configuration to see if there is anything which would prevent
+     * us from executing the requested command. Some problems can be warnings if _force is set.
+     * In any case where processing cannot continue, we will throw an exception.
+     */
+    private boolean checkConfiguration(
+        final Map<DeviceItem, Node> computeDevices,
+        final Collection<DeviceItem> resourceDevices
+    ) throws K8SHTTPError,
+             K8SJSONError,
+             K8SRequestError {
+        var fn = "checkConfiguration";
+        _logger.trace("Entering %s with computeDevices=%s, resourceDevices=%s",
+                      fn, computeDevices, resourceDevices);
+
+        var errors = false;
+        var errPrefix = getErrorPrefix();
+
+        if (!super.checkConfiguration(computeDevices)) {
+            errors = true;
+        }
+
+        _hasLinkage = hasLinkage();
+        _hasAnnotations = hasAnnotations();
+        if (_hasLinkage) {
+            System.err.printf("%s:Linkage already exists between the Kubernetes Cluster and the Liqid Cluster", errPrefix);
+            errors = true;
+        }
+        if (_hasAnnotations) {
+            System.err.printf("%s:One or more nodes in the Kubernetes Cluster has Liqid annotations", errPrefix);
+            errors = true;
+        }
+
+        // Are there any resources assigned to groups?
+        var allDevItems = new HashSet<>(computeDevices.keySet());
+        allDevItems.addAll(resourceDevices);
+        for (var devItem : allDevItems) {
+            if (devItem.isAssignedToGroup() || devItem.isAssignedToMachine()) {
+                System.err.printf("%s:Device %s is currently assigned to a group or machine\n",
+                                  errPrefix,
+                                  devItem.getDeviceName());
+                errors = true;
+            }
+        }
+
+        // Does the called-out group already exist?
+        if (_liqidInventory.getGroup(_liqidGroupName) != null) {
+            _hasGroup = true;
+            System.err.printf("%s:Group %s already exists.\n", errPrefix, _liqidGroupName);
+            errors = true;
+        }
+
+        var result = !errors;
+        _logger.trace("Exiting %s with %s", fn, result);
+        return result;
+    }
+
+    private Plan createPlan(
+        final Map<DeviceItem, Node> computeDevices,
+        final Collection<DeviceItem> resourceDevices
+    ) {
+        var fn = "createPlan";
+        _logger.trace("Entering %s with computeDevices=%s, resourceDevices=%s",
+                      fn, computeDevices, resourceDevices);
+
+        var plan = new Plan();
+        if (_hasLinkage) {
+            plan.addAction(new RemoveLinkage());
+        }
+        if (_hasAnnotations) {
+            plan.addAction(new RemoveAllAnnotations());
+        }
+        if (_hasGroup) {
+            plan.addAction(new DeleteGroup().setGroupName(_liqidGroupName));
+        }
+
+        plan.addAction(new CreateLinkage().setLiqidAddress(_liqidAddress)
+                                          .setLiqidGroupName(_liqidGroupName)
+                                          .setLiqidUsername(_liqidUsername)
+                                          .setLiqidPassword(_liqidPassword));
+
+        plan.addAction(new CreateGroup().setGroupName(_liqidGroupName));
+
+        // Create consolidated list of all devices
+        var allDevItems = new LinkedList<>(computeDevices.keySet());
+        allDevItems.addAll(resourceDevices);
+
+        // Any called-out resources assigned to machines or groups? If so, release them.
+        releaseDevicesFromMachines(_liqidInventory, allDevItems, plan);
+        releaseDevicesFromGroups(_liqidInventory, allDevItems, plan);
+
+        // Move all called-out resources to the newly-created group.
+        var names = LiqidInventory.getDeviceNamesFromItems(allDevItems);
+        if (!names.isEmpty()) {
+            plan.addAction(new AssignToGroup().setGroupName(_liqidGroupName).setDeviceNames(names));
+        }
+
+        // Create machines for all the called-out compute resources and move the compute resources into those machines.
+        // Set the device descriptions to refer to the k8s node names while we're here.
+        createMachines(plan, computeDevices);
+
+        // Allocate, if requested
+        if (_allocate) {
+            allocateEqually(computeDevices, resourceDevices, plan);
+            compose(plan);
+        }
+
+        _logger.trace("Exiting %s with %s", fn, plan);
+        return plan;
+    }
 
     @Override
     public Plan process(
@@ -166,30 +172,33 @@ public class InitializeCommand extends Command {
         var fn = this.getClass().getName() + ":process";
         _logger.trace("Entering %s", fn);
 
-//        initK8sClient();
-//        initLiqidClient();
-//
-//        var errors = false;
-//        var computeResources = new HashMap<DeviceItem, Node>();
-//        if ((_processorSpecs != null) && !developComputeList(_processorSpecs, computeResources)) {
-//            errors = true;
-//        }
-//
-//        var otherResources = new LinkedList<DeviceStatus>();
-//        if ((_resourceSpecs != null) && !developDeviceList(_resourceSpecs, otherResources)) {
-//            errors = true;
-//        }
-//
-//        if (!checkConfiguration(computeResources, otherResources)) {
-//            errors = true;
-//        }
-//
-//        if (errors && !_force) {
-//            throw new ConfigurationException("Various configuration problems exist - processing will not continue.");
-//        }
-//
-//        var plan = createPlan(computeResources, otherResources);
-        var plan = new Plan();
+        initK8sClient();
+        initLiqidClient();
+
+        var errors = false;
+        var computeResources = new HashMap<DeviceItem, Node>();
+        if (_processorSpecs != null) {
+            if (!developComputeListFromSpecifications(_liqidInventory, _processorSpecs, computeResources)) {
+                errors = true;
+            }
+        }
+
+        var otherResources = new HashSet<DeviceItem>();
+        if (_resourceSpecs != null) {
+            if (!developDeviceListFromSpecifications(_liqidInventory, _resourceSpecs, otherResources)) {
+                errors = true;
+            }
+        }
+
+        if (!checkConfiguration(computeResources, otherResources)) {
+            errors = true;
+        }
+
+        if (errors && !_force) {
+            throw new ConfigurationException("Various configuration problems exist - processing will not continue.");
+        }
+
+        var plan = createPlan(computeResources, otherResources);
 
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;

@@ -8,6 +8,8 @@ package com.liqid.k8s.layout;
 import com.liqid.sdk.DeviceInfo;
 import com.liqid.sdk.DeviceStatus;
 
+import java.util.Objects;
+
 /**
  * Collects all the known information about a device into one convenient object
  */
@@ -55,4 +57,30 @@ public class DeviceItem {
 
     public DeviceItem setGroupId(final Integer value) {_groupId = value; return this; }
     public DeviceItem setMachineId(final Integer value) {_machineId = value; return this; }
+
+    @Override
+    public boolean equals(
+        final Object obj
+    ) {
+        if (obj instanceof DeviceItem di) {
+            return Objects.equals(di.getMachineId(), getMachineId());
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return getDeviceId();
+    }
+
+    @Override
+    public String toString() {
+        return String.format("{id:0x%08X name:%s type:%s vendor:%s model:%s}",
+                             getDeviceId(),
+                             getDeviceName(),
+                             getGeneralType(),
+                             getDeviceInfo().getVendor(),
+                             getDeviceInfo().getModel());
+    }
 }
