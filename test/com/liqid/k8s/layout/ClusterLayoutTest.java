@@ -197,8 +197,8 @@ public class ClusterLayoutTest {
         mp1.injectCount(new ResourceModel(GeneralType.GPU), 3);
         var mp2 = new MachineProfile(mach2);
         mp1.injectCount(new ResourceModel(GeneralType.GPU), 4);
-        mp2.injectCount(new ResourceModel(GeneralType.GPU, "Liqid", "Gen4"), 2);
-        mp2.injectCount(new ResourceModel(GeneralType.GPU, "Liqid", "Gen5"), 2);
+        mp2.injectCount(new CompleteResourceModel(GeneralType.GPU, "Liqid", "Gen4"), 2);
+        mp2.injectCount(new CompleteResourceModel(GeneralType.GPU, "Liqid", "Gen5"), 2);
 
         var layout = new ClusterLayout();
         layout.addMachineProfile(mp1);

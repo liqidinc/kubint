@@ -31,28 +31,6 @@ public class Profile {
     }
 
     /**
-     * Retrieve the count for the generic form of a given type.
-     * @return the given count if we are tracking it, or null if we are not tracking
-     */
-    public Integer getCount(
-        final GeneralType generalType
-    ) {
-        return getCount(new ResourceModel(generalType));
-    }
-
-    /**
-     * Retrieve the count for the specific form of a given type, vendor, and model.
-     * @return the given count if we are tracking it, or null if we are not tracking
-     */
-    public Integer getCount(
-        final GeneralType generalType,
-        final String vendor,
-        final String model
-    ) {
-        return getCount(new ResourceModel(generalType, vendor, model));
-    }
-
-    /**
      * Retrieve the set of all currently known ResourceModels
      */
     public Set<ResourceModel> getResourceModels() {
@@ -79,45 +57,15 @@ public class Profile {
     }
 
     /**
-     * Updates the current count for the given combination of type, vendor, and model to account for an additional
-     * +/- number of devices. If no entry exists yet for that combination, one is created and set to the count value.
-     * @param generalType general type value
-     * @param vendorName vendor name
-     * @param modelName model name
-     * @param count number of devices of this general type
-     */
-    public void injectCount(
-        final GeneralType generalType,
-        final String vendorName,
-        final String modelName,
-        final Integer count
-    ) {
-        injectCount(new ResourceModel(generalType, vendorName, modelName), count);
-    }
-
-    /**
-     * Updates the current count for the generic entry for the given type, vendor, and model to account for an additional
-     * +/- number of devices. If no entry exists yet for that type, one is created and set to the count value.
-     * @param generalType general type value
-     * @param count number of devices of this general type
-     */
-    public void injectCount(
-        final GeneralType generalType,
-        final Integer count
-    ) {
-        injectCount(new ResourceModel(generalType), count);
-    }
-
-    /**
      * Updates the count of devices which matches the given device info, respecting vendor name and model,
      * incrementing by one. If there is no entry yet for the given device type, vendor, and model, and entry
      * is created with a count of one.
-     * @param devInfo Liqid DeviceItem object
+     * @param devItem Liqid DeviceItem object
      */
     public void injectDevice(
         final DeviceItem devItem
     ) {
-        injectCount(new ResourceModel(devItem.getDeviceInfo()), 1);
+        injectCount(new CompleteResourceModel(devItem.getDeviceInfo()), 1);
     }
 
     /**

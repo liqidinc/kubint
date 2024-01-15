@@ -5,67 +5,24 @@
 
 package com.liqid.k8s.layout;
 
-import com.liqid.sdk.DeviceInfo;
-
-import java.util.Objects;
-
 public class ResourceModel {
 
-    private final GeneralType _generalType;
-    private final String _vendorName;
-    private final String _modelName;
+    protected final GeneralType _generalType;
 
-    public ResourceModel(
-        final GeneralType generalType,
-        final String vendorName,
-        final String modelName
-    ) {
-        _generalType = generalType;
-        _vendorName = vendorName;
-        _modelName = modelName;
-    }
-
-    /**
-     * Constructor for generic resource - no vendor or model name
-     */
     public ResourceModel(
         final GeneralType generalType
     ) {
         _generalType = generalType;
-        _vendorName = null;
-        _modelName = null;
     }
 
-    public ResourceModel(
-        final DeviceInfo devInfo
-    ) {
-        _generalType = GeneralType.fromDeviceType(devInfo.getDeviceInfoType());
-        _vendorName = devInfo.getVendor();
-        _modelName = devInfo.getModel();
-    }
-
-    public GeneralType getGeneralType() {
-        return _generalType;
-    }
-
-    public String getVendorName() {
-        return _vendorName;
-    }
-
-    public String getModelName() {
-        return _modelName;
-    }
-
-    public boolean isGeneric() {
-        return (_vendorName == null) && (_modelName == null);
-    }
+    public GeneralType getGeneralType() { return _generalType; }
+    public String getVendorName() { return null; }
+    public String getModelName() { return null; }
 
     @Override
     public boolean equals(final Object obj) {
         if (obj instanceof ResourceModel rm) {
-            return rm._generalType.equals(_generalType)
-                   && Objects.equals(rm._vendorName, _vendorName)
-                   && Objects.equals(rm._modelName, _modelName);
+            return rm._generalType.equals(_generalType);
         } else {
             return false;
         }
@@ -73,20 +30,11 @@ public class ResourceModel {
 
     @Override
     public int hashCode() {
-        return _generalType.hashCode()
-               ^ ((_vendorName == null) ? 0 : _vendorName.hashCode())
-               ^ ((_modelName == null) ? 0 : _modelName.hashCode());
+        return _generalType.hashCode();
     }
 
     @Override
     public String toString() {
-        var sb = new StringBuilder();
-        sb.append(_generalType.toString());
-        if (_vendorName == null || _modelName == null) {
-            sb.append('[').append("*").append(']');
-        } else {
-            sb.append('[').append(_vendorName).append(":").append(_modelName).append(']');
-        }
-        return sb.toString();
+        return String.format("%s[*:*]", _generalType.toString());
     }
 }
