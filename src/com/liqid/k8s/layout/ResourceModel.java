@@ -5,36 +5,72 @@
 
 package com.liqid.k8s.layout;
 
-public class ResourceModel {
+import com.liqid.sdk.DeviceInfo;
 
-    protected final GeneralType _generalType;
+import java.util.Objects;
 
-    public ResourceModel(
-        final GeneralType generalType
-    ) {
-        _generalType = generalType;
-    }
+public abstract class ResourceModel implements Comparable<ResourceModel> {
 
-    public GeneralType getGeneralType() { return _generalType; }
-    public String getVendorName() { return null; }
-    public String getModelName() { return null; }
+    public abstract ResourceModelType getResourceModelType();
+    public abstract GeneralType getGeneralType();
+    public abstract String getVendorName();
+    public abstract String getModelName();
+
+    /**
+     * Tests a given SDK DeviceInfo object to determine whether this ResourceModel accurately
+     * describes the corresponding device.
+     * @param deviceInfo SDK DeviceInfo object
+     * @return true if the device can be described by this ResourceModel object, else false
+     */
+    public abstract boolean accepts(final DeviceInfo deviceInfo);
 
     @Override
-    public boolean equals(final Object obj) {
-        if (obj instanceof ResourceModel rm) {
-            return rm._generalType.equals(_generalType);
-        } else {
-            return false;
-        }
+    public final boolean equals(final Object obj) {
+        return (obj instanceof ResourceModel rm)
+            && (getResourceModelType().equals(rm.getResourceModelType()))
+            && (getGeneralType().equals(rm.getGeneralType()))
+            && (Objects.equals(getVendorName(), rm.getVendorName()))
+            && (Objects.equals(getModelName(), rm.getModelName()));
     }
 
     @Override
     public int hashCode() {
-        return _generalType.hashCode();
+        int code = getResourceModelType().hashCode() ^ getGeneralType().hashCode();
+        if (this instanceof VendorResourceModel) {
+            code ^= getVendorName().hashCode();
+        }
+        return code;
+    }
+
+    /**
+     * Provides ordering for the ResourceModel objects
+     * @param compObject the object to be compared.
+     * @return  -1 if this object sorts lower than (ahead of) the comparison object
+     *          0 if this object sorts equally to the comparison object
+     *          +1 if this object sorts greater than (behind) the comparison object
+     */
+    @Override
+    public final int compareTo(final ResourceModel compObject) {
+        int comp = getGeneralType().compareTo(compObject.getGeneralType());
+        if (comp == 0) {
+            // same general type - check resource model type.
+            // The most specific should sort ahead of the least specific.
+            comp = getResourceModelType().compareTo(compObject.getResourceModelType());
+            if ((comp == 0) && (getVendorName() != null)) {
+                comp = getVendorName().compareTo(compObject.getVendorName());
+                if ((comp == 0) && (getModelName() != null)) {
+                    comp = getModelName().compareTo(compObject.getModelName());
+                }
+            }
+        }
+        return comp;
     }
 
     @Override
-    public String toString() {
-        return String.format("%s[*:*]", _generalType.toString());
+    public final String toString() {
+        var typeStr = getGeneralType();
+        var vendorStr = getVendorName() == null ? "*" : getVendorName();
+        var modelStr = getModelName() == null ? "*" : getModelName();
+        return String.format("%s[%s:%s]", typeStr, vendorStr, modelStr);
     }
 }

@@ -295,7 +295,6 @@ public abstract class Command {
 
     /**
      * Based on processor specifications, we populate containers of compute device information.
-     * @param inventory LiqidInventory object we use as a reference
      * @param processorSpecs list of processor specifications which tie compute resources to k8s nodes
      *                       format is {deviceName} ':' {nodeName}
      * @param computeDevices a map of DeviceItem objects which we create based on the processorSpecs praameter,
@@ -303,7 +302,6 @@ public abstract class Command {
      * @return true if successful, else false
      */
     protected boolean developComputeListFromSpecifications(
-        final LiqidInventory inventory,
         final Collection<String> processorSpecs,
         final Map<DeviceItem, Node> computeDevices
     ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
@@ -323,7 +321,7 @@ public abstract class Command {
             var devName = split[0];
             var nodeName = split[1];
 
-            var devItem = inventory.getDeviceItem(devName);
+            var devItem = _liqidInventory.getDeviceItem(devName);
             if (devItem == null) {
                 System.err.printf("%s:Compute resource '%s' is not in the Liqid Cluster\n", errPrefix, devName);
                 errors = true;
@@ -354,13 +352,11 @@ public abstract class Command {
     /**
      * Based on resource specifications (i.e., device names) we develop a collection of corresponding
      * DeviceItem objects based on the provided LiqidInventory object
-     * @param inventory LiqidInventory object we use as a reference
      * @param resourceSpecs list of resource (device) names - does NOT include compute resources
      * @param resourceDevices collection which we populate with DeviceItem objects
      * @return true if successful, else false
      */
     protected boolean developDeviceListFromSpecifications(
-        final LiqidInventory inventory,
         final Collection<String> resourceSpecs,
         final Collection<DeviceItem> resourceDevices
     ) {
@@ -371,7 +367,7 @@ public abstract class Command {
         var errPrefix = getErrorPrefix();
 
         for (var spec : resourceSpecs) {
-            var devItem = inventory.getDeviceItem(spec);
+            var devItem = _liqidInventory.getDeviceItem(spec);
             if (devItem == null) {
                 System.err.printf("%s:Resource '%s' is not in the Liqid Cluster\n", errPrefix, spec);
                 errors = true;
@@ -564,22 +560,20 @@ public abstract class Command {
     /**
      * Adds actions to the given plan to efficiently release all indicated devices from their containing groups.
      * Does NOT actually do anything else.
-     * @param inventory the LiqidInventory which we reference
      * @param devices collection of DeviceItem objects to be removed from their containing groups
      * @param plan plan which we populate
      */
     protected void releaseDevicesFromGroups(
-        final LiqidInventory inventory,
         final Collection<DeviceItem> devices,
         final Plan plan
     ) {
         var fn = "releaseDevicesFromGroups";
-        _logger.trace("Entering %s with inventory=%s devices=%s", fn, inventory, devices);
+        _logger.trace("Entering %s with devices=%s", fn, devices);
 
         // Iterate over the groups so that we can do multiple devices per group.
         // In the case where we're removing all the devices for a group, just delete the group.
-        for (var group : inventory.getGroups()) {
-                var grpDevs = inventory.getDeviceItemsForGroup(group.getGroupId());
+        for (var group : _liqidInventory.getGroups()) {
+                var grpDevs = _liqidInventory.getDeviceItemsForGroup(group.getGroupId());
                 Set<DeviceItem> devsToRemove = new HashSet<>();
                 getIntersection(devices, grpDevs, devsToRemove);
 
@@ -600,22 +594,20 @@ public abstract class Command {
     /**
      * Adds actions to the given plan to efficiently release all indicated devices from their containing machines.
      * Does NOT actually do anything else.
-     * @param inventory the LiqidInventory which we reference
      * @param devices collection of DeviceItem objects to be removed from their containing machines
      * @param plan plan which we populate
      */
     protected void releaseDevicesFromMachines(
-        final LiqidInventory inventory,
         final Collection<DeviceItem> devices,
         final Plan plan
     ) {
         var fn = "releaseDevicesFromMachines";
-        _logger.trace("Entering %s with inventory=%s devices=%s", fn, inventory, devices);
+        _logger.trace("Entering %s with devices=%s", fn, devices);
 
         // Iterate over the machines so that we can do multiple devices per machine.
         // In the case where we're removing all the devices for a machine, just delete the machine.
-        for (var mach : inventory.getMachines()) {
-            var machDevs = inventory.getDeviceItemsForMachine(mach.getMachineId());
+        for (var mach : _liqidInventory.getMachines()) {
+            var machDevs = _liqidInventory.getDeviceItemsForMachine(mach.getMachineId());
             Set<DeviceItem> devsToRemove = new HashSet<>();
             getIntersection(devices, machDevs, devsToRemove);
 

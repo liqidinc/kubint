@@ -85,7 +85,6 @@ public class Variance {
         } else if (add) {
             var action = new AssignToMachine();
             action.setMachineName(_machine.getMachineName());
-            action.setNodeName(nodeName);
 
             for (Integer id : _deviceIdsToAdd) {
                 action.addDeviceName(inventory.getDeviceItem(id).getDeviceName());

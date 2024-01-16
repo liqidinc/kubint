@@ -139,8 +139,8 @@ public class InitializeCommand extends Command {
         allDevItems.addAll(resourceDevices);
 
         // Any called-out resources assigned to machines or groups? If so, release them.
-        releaseDevicesFromMachines(_liqidInventory, allDevItems, plan);
-        releaseDevicesFromGroups(_liqidInventory, allDevItems, plan);
+        releaseDevicesFromMachines(allDevItems, plan);
+        releaseDevicesFromGroups(allDevItems, plan);
 
         // Move all called-out resources to the newly-created group.
         var names = LiqidInventory.getDeviceNamesFromItems(allDevItems);
@@ -178,14 +178,14 @@ public class InitializeCommand extends Command {
         var errors = false;
         var computeResources = new HashMap<DeviceItem, Node>();
         if (_processorSpecs != null) {
-            if (!developComputeListFromSpecifications(_liqidInventory, _processorSpecs, computeResources)) {
+            if (!developComputeListFromSpecifications(_processorSpecs, computeResources)) {
                 errors = true;
             }
         }
 
         var otherResources = new HashSet<DeviceItem>();
         if (_resourceSpecs != null) {
-            if (!developDeviceListFromSpecifications(_liqidInventory, _resourceSpecs, otherResources)) {
+            if (!developDeviceListFromSpecifications(_resourceSpecs, otherResources)) {
                 errors = true;
             }
         }
