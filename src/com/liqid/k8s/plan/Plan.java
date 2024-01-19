@@ -16,6 +16,8 @@ import com.liqid.sdk.LiqidClient;
 import com.liqid.sdk.LiqidException;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedList;
 
 public class Plan {
 
@@ -43,6 +45,8 @@ public class Plan {
             step.perform(context);
         }
     }
+
+    public Collection<Action> getActions() { return new LinkedList<>(_actions); }
 
     public void show() {
         System.out.println();

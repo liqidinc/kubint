@@ -20,8 +20,10 @@ public class SetUserDescription extends Action {
         super(ActionType.SET_USER_DESCRIPTION);
     }
 
-    public SetUserDescription setDeviceName(final String value) { _deviceName = value; return this; }
+    public String getDescription() { return _description; }
+    public String getDeviceName() { return _deviceName; }
     public SetUserDescription setDescription(final String value) { _description = value; return this; }
+    public SetUserDescription setDeviceName(final String value) { _deviceName = value; return this; }
 
     @Override
     public void checkParameters() throws InternalErrorException {

@@ -21,6 +21,8 @@ public class CreateMachine extends Action {
         super(ActionType.CREATE_MACHINE);
     }
 
+    public String getGroupName() { return _groupName; }
+    public String getMachineName() { return _machineName; }
     public CreateMachine setGroupName(final String value) { _groupName = value; return this; }
     public CreateMachine setMachineName(final String value) { _machineName = value; return this; }
 
