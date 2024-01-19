@@ -13,6 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 /**
  * This class contains logic to get us from the configuration we have, to the configuration we want.
@@ -63,6 +64,7 @@ public class Allocator {
      *  Firstly, the devices owned by the given machine
      *  Secondly, the devices which are not owned by any machine
      *  Finally, the devices which are owned by other machines
+     * Each segregated category is segregated to facility unit tests.
      * Protected to facilitate unit tests.
      * @param inventory LiqidInventory from which we get the list of devices
      * @param resourceModel ResourceModel limiting the devices which we are allowed to consider
@@ -78,9 +80,9 @@ public class Allocator {
         final Collection<ResourceModel> disallowedModels,
         final Integer machineId
     ) {
-        var thisMachineList = new LinkedList<Integer>();
-        var otherMachineList = new LinkedList<Integer>();
-        var freeList = new LinkedList<Integer>();
+        var thisMachineList = new TreeSet<Integer>();
+        var otherMachineList = new TreeSet<Integer>();
+        var freeList = new TreeSet<Integer>();
 
         for (var devItem : inventory.getDeviceItems()) {
             if (resourceModel.accepts(devItem.getDeviceInfo())) {
