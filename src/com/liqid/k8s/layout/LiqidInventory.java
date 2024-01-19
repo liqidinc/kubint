@@ -78,12 +78,22 @@ public class LiqidInventory {
         for (var g : groups) {
             inv._groups.put(g.getGroupId(), g);
             inv._groupIdsByName.put(g.getGroupName(), g.getGroupId());
+
+            for (var rel : client.getPreDevices(null, g.getGroupId(), null)) {
+                var devId = inv._deviceIdsByName.get(rel.getDeviceName());
+                inv._deviceItems.get(devId).setGroupId(g.getGroupId());
+            }
         }
 
         var machines = client.getMachines();
         for (var m : machines) {
             inv._machines.put(m.getMachineId(), m);
             inv._machineIdsByName.put(m.getMachineName(), m.getMachineId());
+
+            for (var rel : client.getPreDevices(null, m.getGroupId(), m.getMachineId())) {
+                var devId = inv._deviceIdsByName.get(rel.getDeviceName());
+                inv._deviceItems.get(devId).setMachineId(m.getMachineId());
+            }
         }
 
         return inv;
