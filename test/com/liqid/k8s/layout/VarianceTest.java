@@ -9,6 +9,10 @@ import com.liqid.k8s.plan.actions.AssignToMachine;
 import com.liqid.k8s.plan.actions.NoOperation;
 import com.liqid.k8s.plan.actions.ReconfigureMachine;
 import com.liqid.k8s.plan.actions.RemoveFromMachine;
+import com.liqid.sdk.DeviceType;
+import com.liqid.sdk.LiqidException;
+import com.liqid.sdk.Machine;
+import com.liqid.sdk.mock.MockLiqidClient;
 import org.junit.Test;
 
 import java.util.Collection;
@@ -55,8 +59,7 @@ public class VarianceTest {
 
     @Test
     public void empty() {
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
+        var machine = new Machine();
         var v = new Variance(machine, Collections.emptyList(), Collections.emptyList());
 
         assertEquals(machine, v.getMachine());
@@ -68,14 +71,16 @@ public class VarianceTest {
     }
 
     @Test
-    public void addOnly() {
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
-        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
-        var v = new Variance(machine, devIds, Collections.emptyList());
+    public void addOnly() throws LiqidException {
+        var mock = new MockLiqidClient.Builder().build();
+        var gpuIds = mock.createDevices(DeviceType.GPU, (short)0x0010, (short)0x03, "Vector Graphics", "VT-G", 5);
+        var group = mock.createGroup("Kubernetes");
+        var machine = mock.createMachine(group.getGroupId(), "XKCD");
+
+        var v = new Variance(machine, gpuIds, Collections.emptyList());
 
         assertEquals(machine, v.getMachine());
-        assertEquals(devIds.size(), v.getDeviceIdsToAdd().size());
+        assertEquals(gpuIds.size(), v.getDeviceIdsToAdd().size());
         assertEquals(0, v.getDeviceIdsToRemove().size());
         assertTrue(v.hasAdditions());
         assertFalse(v.hasRemovals());
@@ -83,26 +88,30 @@ public class VarianceTest {
     }
 
     @Test
-    public void removeOnly() {
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
-        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
-        var v = new Variance(machine, Collections.emptyList(), devIds);
+    public void removeOnly() throws LiqidException {
+        var mock = new MockLiqidClient.Builder().build();
+        var gpuIds = mock.createDevices(DeviceType.GPU, (short)0x0010, (short)0x03, "Vector Graphics", "VT-G", 5);
+        var group = mock.createGroup("Kubernetes");
+        var machine = mock.createMachine(group.getGroupId(), "XKCD");
+
+        var v = new Variance(machine, Collections.emptyList(), gpuIds);
 
         assertEquals(machine, v.getMachine());
         assertEquals(0, v.getDeviceIdsToAdd().size());
-        assertEquals(devIds.size(), v.getDeviceIdsToRemove().size());
+        assertEquals(gpuIds.size(), v.getDeviceIdsToRemove().size());
         assertFalse(v.hasAdditions());
         assertTrue(v.hasRemovals());
         assertFalse(v.canBifurcate());
     }
 
     @Test
-    public void normal() {
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
-        var addIds = getDeviceIdsOfType(inv, GeneralType.GPU);
+    public void normal() throws LiqidException {
+        var mock = new MockLiqidClient.Builder().build();
+        var addIds = mock.createDevices(DeviceType.GPU, (short)0x0010, (short)0x03, "Vector Graphics", "VT-G", 11);
+        var group = mock.createGroup("Kubernetes");
+        var machine = mock.createMachine(group.getGroupId(), "XKCD");
         var removeIds = divideIds(addIds);
+
         var v = new Variance(machine, addIds, removeIds);
 
         assertEquals(machine, v.getMachine());
@@ -115,8 +124,7 @@ public class VarianceTest {
 
     @Test
     public void bifurcateEmptyVariance() {
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
+        var machine = new Machine();
         var v = new Variance(machine, Collections.emptyList(), Collections.emptyList());
 
         var variances = v.bifurcate();
@@ -125,11 +133,13 @@ public class VarianceTest {
     }
 
     @Test
-    public void bifurcateAddOnly() {
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
-        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
-        var v = new Variance(machine, devIds, Collections.emptyList());
+    public void bifurcateAddOnly() throws LiqidException {
+        var mock = new MockLiqidClient.Builder().build();
+        var gpuIds = mock.createDevices(DeviceType.GPU, (short)0x0010, (short)0x03, "Vector Graphics", "VT-G", 5);
+        var group = mock.createGroup("Kubernetes");
+        var machine = mock.createMachine(group.getGroupId(), "XKCD");
+
+        var v = new Variance(machine, gpuIds, Collections.emptyList());
 
         var variances = v.bifurcate();
         assertEquals(1, variances.size());
@@ -137,11 +147,13 @@ public class VarianceTest {
     }
 
     @Test
-    public void bifurcateRemoveOnly() {
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
-        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
-        var v = new Variance(machine, Collections.emptyList(), devIds);
+    public void bifurcateRemoveOnly() throws LiqidException {
+        var mock = new MockLiqidClient.Builder().build();
+        var gpuIds = mock.createDevices(DeviceType.GPU, (short)0x0010, (short)0x03, "Vector Graphics", "VT-G", 5);
+        var group = mock.createGroup("Kubernetes");
+        var machine = mock.createMachine(group.getGroupId(), "XKCD");
+
+        var v = new Variance(machine, gpuIds, Collections.emptyList());
 
         var variances = v.bifurcate();
         assertEquals(1, variances.size());
@@ -149,11 +161,13 @@ public class VarianceTest {
     }
 
     @Test
-    public void bifurcateNormal() {
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
-        var addIds = getDeviceIdsOfType(inv, GeneralType.GPU);
+    public void bifurcateNormal() throws LiqidException {
+        var mock = new MockLiqidClient.Builder().build();
+        var addIds = mock.createDevices(DeviceType.GPU, (short)0x0010, (short)0x03, "Vector Graphics", "VT-G", 11);
+        var group = mock.createGroup("Kubernetes");
+        var machine = mock.createMachine(group.getGroupId(), "XKCD");
         var removeIds = divideIds(addIds);
+
         var v = new Variance(machine, addIds, removeIds);
 
         var variances = v.bifurcate();
@@ -171,12 +185,15 @@ public class VarianceTest {
     }
 
     @Test
-    public void createActionFail() {
+    public void createActionFail() throws LiqidException {
         //  Test a Variance which can never be satisfied.
         //  Set up devices-to-be-added, but leave one of the IDs out of the unassigned container.
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
-        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
+        var mock = new MockLiqidClient.Builder().build();
+        var devIds = mock.createDevices(DeviceType.FPGA, (short)0x0015, (short)0x77, "Xypher", "ASIC-1", 7);
+        var group = mock.createGroup("NexGen");
+        var machine = mock.createMachine(group.getGroupId(), "N5");
+        var inv = LiqidInventory.createLiqidInventory(mock);
+
         var v = new Variance(machine, devIds, Collections.emptyList());
 
         //  set up unassigned devices to match ids-to-be-added, then remove one id
@@ -194,31 +211,37 @@ public class VarianceTest {
     }
 
     @Test
-    public void createActionAddOnly() {
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
-        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
-        var v = new Variance(machine, devIds, Collections.emptyList());
+    public void createActionAddOnly() throws LiqidException {
+        var mock = new MockLiqidClient.Builder().build();
+        var gpuIds = mock.createDevices(DeviceType.GPU, (short)0x0010, (short)0x03, "Vector Graphics", "VT-G", 5);
+        var group = mock.createGroup("Kubernetes");
+        var machine = mock.createMachine(group.getGroupId(), "XKCD");
+        var inv = LiqidInventory.createLiqidInventory(mock);
+
+        var v = new Variance(machine, gpuIds, Collections.emptyList());
 
         //  Put all the ids-to-be-added into the unassigned set
-        HashSet<Integer> unassignedDevices = new HashSet<>(devIds);
+        HashSet<Integer> unassignedDevices = new HashSet<>(gpuIds);
 
         //  make sure the details of the action are accurate
         var action = v.createAction(inv, unassignedDevices);
         assertTrue(action instanceof AssignToMachine);
         assertEquals(machine.getMachineName(), ((AssignToMachine) action).getMachineName());
-        assertEquals(inv.getDeviceNamesFromIds(devIds), ((AssignToMachine) action).getDeviceNames());
+        assertEquals(inv.getDeviceNamesFromIds(gpuIds), ((AssignToMachine) action).getDeviceNames());
 
         //  make sure the device ids were removed from the unassigned set
         assertTrue(unassignedDevices.isEmpty());
     }
 
     @Test
-    public void createActionRemoveOnly() {
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
-        var devIds = getDeviceIdsOfType(inv, GeneralType.GPU);
-        var v = new Variance(machine, Collections.emptyList(), devIds);
+    public void createActionRemoveOnly() throws LiqidException {
+        var mock = new MockLiqidClient.Builder().build();
+        var gpuIds = mock.createDevices(DeviceType.GPU, (short)0x0010, (short)0x03, "Vector Graphics", "VT-G", 5);
+        var group = mock.createGroup("Kubernetes");
+        var machine = mock.createMachine(group.getGroupId(), "XKCD");
+        var inv = LiqidInventory.createLiqidInventory(mock);
+
+        var v = new Variance(machine, Collections.emptyList(), gpuIds);
 
         //  Use an empty unassigned devices set
         HashSet<Integer> unassignedDevices = new HashSet<>();
@@ -227,18 +250,21 @@ public class VarianceTest {
         var action = v.createAction(inv, unassignedDevices);
         assertTrue(action instanceof RemoveFromMachine);
         assertEquals(machine.getMachineName(), ((RemoveFromMachine) action).getMachineName());
-        assertEquals(inv.getDeviceNamesFromIds(devIds), ((RemoveFromMachine) action).getDeviceNames());
+        assertEquals(inv.getDeviceNamesFromIds(gpuIds), ((RemoveFromMachine) action).getDeviceNames());
 
         //  make sure the unassigned set now matches the devices-to-be-removed
-        assertEquals(devIds, unassignedDevices);
+        assertEquals(new HashSet<>(gpuIds), unassignedDevices);
     }
 
     @Test
-    public void createActionAddAndRemove() {
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
-        var addIds = getDeviceIdsOfType(inv, GeneralType.GPU);
+    public void createActionAddAndRemove() throws LiqidException {
+        var mock = new MockLiqidClient.Builder().build();
+        var addIds = mock.createDevices(DeviceType.GPU, (short)0x0010, (short)0x03, "Vector Graphics", "VT-G", 11);
+        var group = mock.createGroup("Kubernetes");
+        var machine = mock.createMachine(group.getGroupId(), "XKCD");
         var removeIds = divideIds(addIds);
+        var inv = LiqidInventory.createLiqidInventory(mock);
+
         var v = new Variance(machine, addIds, removeIds);
 
         //  Put all the ids-to-be-added into the unassigned set
@@ -256,9 +282,12 @@ public class VarianceTest {
     }
 
     @Test
-    public void createActionEmpty() {
-        var inv = SimpleLiqidInventory.createDefaultInventory();
-        var machine = inv.getMachines().iterator().next();
+    public void createActionEmpty() throws LiqidException {
+        var mock = new MockLiqidClient.Builder().build();
+        var group = mock.createGroup("Kubernetes");
+        var machine = mock.createMachine(group.getGroupId(), "XKCD");
+        var inv = LiqidInventory.createLiqidInventory(mock);
+
         var v = new Variance(machine, Collections.emptyList(), Collections.emptyList());
 
         HashSet<Integer> unassignedDevices = new HashSet<>();
