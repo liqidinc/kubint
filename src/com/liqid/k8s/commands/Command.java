@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -391,20 +392,28 @@ public abstract class Command {
     }
 
     /**
-     * Given two sets of the same type, we populate a third set of that type with
-     * only those items which are contained in both of the original sets.
-     * @param set1 first contributing set
-     * @param set2 second contributing set
-     * @param intersection result set.
+     * Given two collections of the same type, we populate a third collection of that type with
+     * only those items which are contained in both of the original collections.
+     * The basic type should have a meaningful equals operation.
+     * For unordered collections, the resulting order will be that of collection1.
+     * @param collection1 first contributing collection
+     * @param collection2 second contributing collection
+     * @param intersection resulting collection.
      * @param <T> item type
      */
     protected <T> void getIntersection(
-        final Collection<T> set1,
-        final Collection<T> set2,
+        final Collection<T> collection1,
+        final Collection<T> collection2,
         final Collection<T> intersection
     ) {
         intersection.clear();
-        set1.stream().filter(set2::contains).forEach(intersection::add);
+        var temp2 = new LinkedList<>(collection2);
+        for (var item : collection1) {
+            if (temp2.contains(item)) {
+                temp2.remove(item);
+                intersection.add(item);
+            }
+        }
     }
 
     /**
