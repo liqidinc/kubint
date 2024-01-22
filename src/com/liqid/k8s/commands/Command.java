@@ -108,10 +108,7 @@ public abstract class Command {
         _logger.trace("Entering %s with inv=%s compDevs=%s resDevs=%s",
                       fn, _liqidInventory, computeDeviceItems, resourceDeviceItems);
 
-        var groupId = _liqidInventory.getGroupId(_liqidGroupName);
-        var resDevs = _liqidInventory.getDeviceItemsForGroup(groupId);
-        LiqidInventory.removeDeviceItemsOfType(resDevs, GeneralType.CPU);
-        var devsByType = LiqidInventory.segregateDeviceItemsByType(resDevs);
+        var devsByType = LiqidInventory.segregateDeviceItemsByType(resourceDeviceItems);
         if (computeDeviceItems.isEmpty() || resourceDeviceItems.isEmpty()) {
             _logger.trace("Exiting %s with nothing to do", fn);
             return;
@@ -140,9 +137,14 @@ public abstract class Command {
                 var annoKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType);
                 var annoValue = String.format("%d", resCount);
                 annoAction.addAnnotation(annoKey, annoValue);
+
+                for (int rx = 0; rx < resCount; rx++) {
+                    devItems.removeFirst();
+                }
             }
 
             plan.addAction(annoAction);
+            remainingMachineCount--;
         }
 
         _logger.trace("Exiting %s", fn);

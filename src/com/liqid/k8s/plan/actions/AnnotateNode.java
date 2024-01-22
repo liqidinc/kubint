@@ -30,6 +30,8 @@ public class AnnotateNode extends Action {
         return this;
     }
 
+    public Map<String, String> getAnnotations() { return _annotations; }
+    public String getNodeName() { return _nodeName; }
     public AnnotateNode setNodeName(final String value) { _nodeName = value; return this; }
 
     @Override

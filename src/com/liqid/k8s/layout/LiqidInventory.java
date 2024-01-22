@@ -614,10 +614,10 @@ public class LiqidInventory {
      * Creates a map keyed by general device type, where each value is all of the DeviceItem objects of that type.
      * @param deviceItems a flat collection of DeviceItem objects
      */
-    public static Map<GeneralType, Collection<DeviceItem>> segregateDeviceItemsByType(
+    public static Map<GeneralType, LinkedList<DeviceItem>> segregateDeviceItemsByType(
         final Collection<DeviceItem> deviceItems
     ) {
-        var result = new HashMap<GeneralType, Collection<DeviceItem>>();
+        var result = new HashMap<GeneralType, LinkedList<DeviceItem>>();
         for (var devItem : deviceItems) {
             result.computeIfAbsent(devItem.getGeneralType(), k -> new LinkedList<>());
             result.get(devItem.getGeneralType()).add(devItem);
