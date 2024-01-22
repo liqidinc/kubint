@@ -6,10 +6,10 @@
 package com.liqid.k8s.layout;
 
 import com.liqid.k8s.plan.actions.Action;
-import com.liqid.k8s.plan.actions.AssignToMachine;
-import com.liqid.k8s.plan.actions.NoOperation;
-import com.liqid.k8s.plan.actions.ReconfigureMachine;
-import com.liqid.k8s.plan.actions.RemoveFromMachine;
+import com.liqid.k8s.plan.actions.AssignToMachineAction;
+import com.liqid.k8s.plan.actions.NoOperationAction;
+import com.liqid.k8s.plan.actions.ReconfigureMachineAction;
+import com.liqid.k8s.plan.actions.RemoveFromMachineAction;
 import com.liqid.sdk.Machine;
 
 import java.util.Collection;
@@ -67,7 +67,7 @@ public class Variance {
         var nodeName = inventory.getK8sNodeNameFromMachine(_machine.getMachineId());
 
         if (add && remove) {
-            var action = new ReconfigureMachine();
+            var action = new ReconfigureMachineAction();
             action.setMachineName(_machine.getMachineName());
             action.setNodeName(nodeName);
 
@@ -83,7 +83,7 @@ public class Variance {
 
             return action;
         } else if (add) {
-            var action = new AssignToMachine();
+            var action = new AssignToMachineAction();
             action.setMachineName(_machine.getMachineName());
 
             for (Integer id : _deviceIdsToAdd) {
@@ -93,7 +93,7 @@ public class Variance {
 
             return action;
         } else if (remove) {
-            var action = new RemoveFromMachine();
+            var action = new RemoveFromMachineAction();
             action.setMachineName(_machine.getMachineName());
             action.setNodeName(nodeName);
 
@@ -105,7 +105,7 @@ public class Variance {
             return action;
         }
 
-        return new NoOperation();
+        return new NoOperationAction();
     }
 
     /**

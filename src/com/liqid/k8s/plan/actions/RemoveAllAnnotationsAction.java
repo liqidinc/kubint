@@ -13,9 +13,9 @@ import com.liqid.k8s.plan.ExecutionContext;
 
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 
-public class RemoveAllAnnotations extends Action {
+public class RemoveAllAnnotationsAction extends Action {
 
-    public RemoveAllAnnotations() {
+    public RemoveAllAnnotationsAction() {
         super(ActionType.REMOVE_ALL_ANNOTATIONS);
     }
 

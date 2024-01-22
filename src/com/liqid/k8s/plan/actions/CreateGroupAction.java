@@ -12,15 +12,15 @@ import com.liqid.sdk.LiqidException;
 /**
  * Creates a group with the specified name, in the Liqid Cluster
  */
-public class CreateGroup extends Action {
+public class CreateGroupAction extends Action {
 
     private String _groupName;
 
-    public CreateGroup() {
+    public CreateGroupAction() {
         super(ActionType.CREATE_GROUP);
     }
 
-    public CreateGroup setGroupName(final String value) { _groupName = value; return this; }
+    public CreateGroupAction setGroupName(final String value) {_groupName = value; return this; }
 
     @Override
     public void checkParameters() throws InternalErrorException {

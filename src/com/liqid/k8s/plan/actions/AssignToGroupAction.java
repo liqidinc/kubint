@@ -15,24 +15,19 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
 
-/**
- * Removes devices from a group.
- * ALWAYS invoke RemoveFromMachine or DeleteMachine before invoking here, to make sure we properly
- * cordon/uncordon worker nodes.
- */
-public class RemoveFromGroup extends Action {
+public class AssignToGroupAction extends Action {
 
     private String _groupName;
     private Set<String> _deviceNames = new HashSet<>();
 
-    public RemoveFromGroup(
+    public AssignToGroupAction(
     ) {
-        super(ActionType.REMOVE_RESOURCES_FROM_GROUP);
+        super(ActionType.ASSIGN_RESOURCES_TO_GROUP);
     }
 
-    public RemoveFromGroup addDeviceName(final String value) { _deviceNames.add(value); return this; }
-    public RemoveFromGroup setDeviceNames(final Collection<String> list) { _deviceNames = new TreeSet<>(list); return this; }
-    public RemoveFromGroup setGroupName(final String value) { _groupName = value; return this; }
+    public AssignToGroupAction addDeviceName(final String value) { _deviceNames.add(value); return this; }
+    public AssignToGroupAction setDeviceNames(final Collection<String> list) {_deviceNames = new TreeSet<>(list); return this; }
+    public AssignToGroupAction setGroupName(final String value) {_groupName = value; return this; }
 
     @Override
     public void checkParameters() throws InternalErrorException {
@@ -63,8 +58,8 @@ public class RemoveFromGroup extends Action {
             for (var devName : _deviceNames) {
                 var devStat = context.getLiqidInventory().getDeviceItem(devName).getDeviceStatus();
                 var devId = devStat.getDeviceId();
-                context.getLiqidClient().removeDeviceFromGroup(devId, groupId);
-                context.getLiqidInventory().notifyDeviceRemovedFromGroup(devId);
+                context.getLiqidClient().addDeviceToGroup(devId, groupId);
+                context.getLiqidInventory().notifyDeviceAssignedToGroup(devId, groupId);
             }
             context.getLiqidClient().groupPoolDone(groupId);
             editInProgress = false;
@@ -81,7 +76,7 @@ public class RemoveFromGroup extends Action {
                     //  nothing can be done here
                     context.getLogger().catching(lex2);
                     System.err.printf("ERROR:Could not cancel group edit-in-progress for Liqid Cluster group %s\n",
-                                       _groupName);
+                                      _groupName);
                 }
             }
         }
@@ -91,7 +86,7 @@ public class RemoveFromGroup extends Action {
 
     @Override
     public String toString() {
-        return String.format("Remove device%s %s from Liqid Cluster Group %s",
+        return String.format("Assign device%s %s to Liqid Cluster Group %s",
                              _deviceNames.size() > 1 ? "s" : "",
                              String.join(", ", _deviceNames),
                              _groupName);

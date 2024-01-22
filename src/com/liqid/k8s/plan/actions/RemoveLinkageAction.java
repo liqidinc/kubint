@@ -15,9 +15,9 @@ import static com.liqid.k8s.Constants.K8S_CONFIG_NAMESPACE;
 import static com.liqid.k8s.Constants.K8S_SECRET_NAME;
 import static com.liqid.k8s.Constants.K8S_SECRET_NAMESPACE;
 
-public class RemoveLinkage extends Action {
+public class RemoveLinkageAction extends Action {
 
-    public RemoveLinkage() {
+    public RemoveLinkageAction() {
         super(ActionType.REMOVE_LINKAGE);
     }
 

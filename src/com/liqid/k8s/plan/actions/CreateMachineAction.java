@@ -10,23 +10,26 @@ import com.liqid.k8s.plan.ExecutionContext;
 import com.liqid.sdk.LiqidException;
 
 /**
- * Deletes a Liqid group.
- * ALWAYS invoke RemoveFromMachine or DeleteMachine before invoking here, to make sure we properly
- * cordon/uncordon worker nodes.
+ * Creates a machine with the specified name, in the Liqid Cluster
  */
-public class DeleteGroup extends Action {
+public class CreateMachineAction extends Action {
 
     private String _groupName;
+    private String _machineName;
 
-    public DeleteGroup() {
-        super(ActionType.DELETE_GROUP);
+    public CreateMachineAction() {
+        super(ActionType.CREATE_MACHINE);
     }
 
-    public DeleteGroup setGroupName(final String value) { _groupName = value; return this; }
+    public String getGroupName() { return _groupName; }
+    public String getMachineName() { return _machineName; }
+    public CreateMachineAction setGroupName(final String value) {_groupName = value; return this; }
+    public CreateMachineAction setMachineName(final String value) {_machineName = value; return this; }
 
     @Override
     public void checkParameters() throws InternalErrorException {
         checkForNull("GroupName", _groupName);
+        checkForNull("MachineName", _machineName);
     }
 
     @Override
@@ -43,14 +46,14 @@ public class DeleteGroup extends Action {
             return;
         }
 
-        context.getLiqidClient().deleteGroup(group.getGroupId());
-        context.getLiqidInventory().notifyGroupRemoved(group.getGroupId());
+        var machine = context.getLiqidClient().createMachine(group.getGroupId(), _machineName);
+        context.getLiqidInventory().notifyMachineCreated(machine);
 
         context.getLogger().trace("%s returning", fn);
     }
 
     @Override
     public String toString() {
-        return "Delete Group " + _groupName + " from Liqid Cluster";
+        return String.format("Create Machine %s in Group %s in the Liqid Cluster", _machineName, _groupName);
     }
 }

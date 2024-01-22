@@ -12,7 +12,7 @@ import com.bearsnake.k8sclient.NodeStatus;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.layout.DeviceItem;
 import com.liqid.k8s.plan.Plan;
-import com.liqid.k8s.plan.actions.AnnotateNode;
+import com.liqid.k8s.plan.actions.AnnotateNodeAction;
 import com.liqid.sdk.DeviceInfo;
 import com.liqid.sdk.DeviceStatus;
 import com.liqid.sdk.DeviceType;
@@ -86,7 +86,7 @@ public class CommandTest extends Command {
         var gpuPerHigh = (gpuCount % nodeCount == 0) ? gpuPerLow : gpuPerLow + 1;
 
         for (var action : plan.getActions()) {
-            var annotateAction = (AnnotateNode) action;
+            var annotateAction = (AnnotateNodeAction) action;
             for (var anno : annotateAction.getAnnotations().entrySet()) {
                 var annoKey = anno.getKey();
                 var annoValue = Integer.parseInt(anno.getValue());

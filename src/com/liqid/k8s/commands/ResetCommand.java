@@ -11,9 +11,9 @@ import com.liqid.k8s.exceptions.ConfigurationException;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.k8s.plan.Plan;
-import com.liqid.k8s.plan.actions.ClearConfiguration;
-import com.liqid.k8s.plan.actions.RemoveAllAnnotations;
-import com.liqid.k8s.plan.actions.RemoveLinkage;
+import com.liqid.k8s.plan.actions.ClearConfigurationAction;
+import com.liqid.k8s.plan.actions.RemoveAllAnnotationsAction;
+import com.liqid.k8s.plan.actions.RemoveLinkageAction;
 import com.liqid.sdk.LiqidException;
 
 public class ResetCommand extends Command {
@@ -52,13 +52,13 @@ public class ResetCommand extends Command {
 
         var plan = new Plan();
         if (hasLinkage()) {
-            plan.addAction(new RemoveLinkage());
+            plan.addAction(new RemoveLinkageAction());
         }
         if (hasAnnotations()) {
-            plan.addAction(new RemoveAllAnnotations());
+            plan.addAction(new RemoveAllAnnotationsAction());
         }
 
-        plan.addAction(new ClearConfiguration());
+        plan.addAction(new ClearConfigurationAction());
 
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;

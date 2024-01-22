@@ -17,16 +17,16 @@ import java.util.TreeSet;
 
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 
-public class RemoveAnnotations extends Action {
+public class RemoveAnnotationsAction extends Action {
 
     private Set<String> _nodeNames = new TreeSet<>();
 
-    public RemoveAnnotations() {
+    public RemoveAnnotationsAction() {
         super(ActionType.REMOVE_ANNOTATIONS);
     }
 
-    public RemoveAnnotations addNodeName(final String value) { _nodeNames.add(value); return this; }
-    public RemoveAnnotations setNodeNames(final Collection<String> list) { _nodeNames = new TreeSet<>(list); return this; }
+    public RemoveAnnotationsAction addNodeName(final String value) { _nodeNames.add(value); return this; }
+    public RemoveAnnotationsAction setNodeNames(final Collection<String> list) {_nodeNames = new TreeSet<>(list); return this; }
 
     @Override
     public void checkParameters() throws InternalErrorException {

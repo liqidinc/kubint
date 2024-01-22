@@ -11,7 +11,7 @@ import com.liqid.k8s.exceptions.ConfigurationDataException;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.k8s.plan.Plan;
-import com.liqid.k8s.plan.actions.RemoveLinkage;
+import com.liqid.k8s.plan.actions.RemoveLinkageAction;
 import com.liqid.sdk.LiqidException;
 
 public class UnlinkCommand extends Command {
@@ -47,7 +47,7 @@ public class UnlinkCommand extends Command {
 
         getLiqidLinkage();
         initLiqidClient();
-        var plan = new Plan().addAction(new RemoveLinkage());
+        var plan = new Plan().addAction(new RemoveLinkageAction());
 
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;

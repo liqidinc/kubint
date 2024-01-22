@@ -11,19 +11,24 @@ import com.liqid.k8s.plan.ExecutionContext;
 import com.liqid.sdk.LiqidClient;
 import com.liqid.sdk.LiqidException;
 
-public class RemoveUserDescription extends Action {
+public class SetUserDescriptionAction extends Action {
 
     private String _deviceName;
+    private String _description;
 
-    public RemoveUserDescription() {
+    public SetUserDescriptionAction() {
         super(ActionType.SET_USER_DESCRIPTION);
     }
 
-    public RemoveUserDescription setDeviceName(final String value) {_deviceName = value; return this; }
+    public String getDescription() { return _description; }
+    public String getDeviceName() { return _deviceName; }
+    public SetUserDescriptionAction setDescription(final String value) {_description = value; return this; }
+    public SetUserDescriptionAction setDeviceName(final String value) {_deviceName = value; return this; }
 
     @Override
     public void checkParameters() throws InternalErrorException {
         checkForNull("DeviceName", _deviceName);
+        checkForNull("DeviceDescription", _description);
     }
 
     @Override
@@ -35,13 +40,13 @@ public class RemoveUserDescription extends Action {
 
         var devStat = context.getLiqidInventory().getDeviceItem(_deviceName).getDeviceStatus();
         var qType = LiqidClient.deviceTypeToQueryDeviceType(devStat.getDeviceType());
-        context.getLiqidClient().deleteDeviceDescription(qType, devStat.getDeviceId());
+        context.getLiqidClient().createDeviceDescription(qType, devStat.getDeviceId(), _description);
 
         context.getLogger().trace("%s returning", fn);
     }
 
     @Override
     public String toString() {
-        return String.format("Delete User Description for Device %s", _deviceName);
+        return String.format("Set User Description for Device %s to '%s'", _deviceName, _description);
     }
 }

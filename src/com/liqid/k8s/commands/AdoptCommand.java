@@ -6,19 +6,12 @@
 package com.liqid.k8s.commands;
 
 import com.bearsnake.k8sclient.K8SException;
-import com.bearsnake.k8sclient.Node;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.exceptions.*;
-import com.liqid.k8s.layout.DeviceItem;
 import com.liqid.k8s.plan.Plan;
-import com.liqid.k8s.plan.actions.AssignToGroup;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Map;
 
 public class AdoptCommand extends Command {
 

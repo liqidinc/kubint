@@ -13,16 +13,16 @@ import com.liqid.k8s.plan.ExecutionContext;
 import java.util.HashMap;
 import java.util.Map;
 
-public class AnnotateNode extends Action {
+public class AnnotateNodeAction extends Action {
 
     private String _nodeName;
     private Map<String, String> _annotations = new HashMap<>();
 
-    public AnnotateNode() {
+    public AnnotateNodeAction() {
         super(ActionType.ANNOTATE_NODE);
     }
 
-    public AnnotateNode addAnnotation(
+    public AnnotateNodeAction addAnnotation(
         final String keySuffix,
         final String value
     ) {
@@ -32,7 +32,7 @@ public class AnnotateNode extends Action {
 
     public Map<String, String> getAnnotations() { return _annotations; }
     public String getNodeName() { return _nodeName; }
-    public AnnotateNode setNodeName(final String value) { _nodeName = value; return this; }
+    public AnnotateNodeAction setNodeName(final String value) {_nodeName = value; return this; }
 
     @Override
     public void checkParameters() throws InternalErrorException {

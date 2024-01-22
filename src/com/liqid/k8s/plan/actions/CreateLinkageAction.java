@@ -25,21 +25,21 @@ import static com.liqid.k8s.Constants.K8S_SECRET_CREDENTIALS_KEY;
 import static com.liqid.k8s.Constants.K8S_SECRET_NAME;
 import static com.liqid.k8s.Constants.K8S_SECRET_NAMESPACE;
 
-public class CreateLinkage extends Action {
+public class CreateLinkageAction extends Action {
 
     private String _liqidAddress;
     private String _liqidGroupName;
     private String _liqidPassword;
     private String _liqidUsername;
 
-    public CreateLinkage() {
+    public CreateLinkageAction() {
         super(ActionType.CREATE_LINKAGE);
     }
 
-    public CreateLinkage setLiqidAddress(final String value) { _liqidAddress = value; return this; }
-    public CreateLinkage setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
-    public CreateLinkage setLiqidPassword(final String value) { _liqidPassword = value; return this; }
-    public CreateLinkage setLiqidUsername(final String value) { _liqidUsername = value; return this; }
+    public CreateLinkageAction setLiqidAddress(final String value) {_liqidAddress = value; return this; }
+    public CreateLinkageAction setLiqidGroupName(final String value) {_liqidGroupName = value; return this; }
+    public CreateLinkageAction setLiqidPassword(final String value) {_liqidPassword = value; return this; }
+    public CreateLinkageAction setLiqidUsername(final String value) {_liqidUsername = value; return this; }
 
     @Override
     public void checkParameters() throws InternalErrorException {

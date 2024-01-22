@@ -5,10 +5,10 @@
 
 package com.liqid.k8s.layout;
 
-import com.liqid.k8s.plan.actions.AssignToMachine;
-import com.liqid.k8s.plan.actions.NoOperation;
-import com.liqid.k8s.plan.actions.ReconfigureMachine;
-import com.liqid.k8s.plan.actions.RemoveFromMachine;
+import com.liqid.k8s.plan.actions.AssignToMachineAction;
+import com.liqid.k8s.plan.actions.NoOperationAction;
+import com.liqid.k8s.plan.actions.ReconfigureMachineAction;
+import com.liqid.k8s.plan.actions.RemoveFromMachineAction;
 import com.liqid.sdk.DeviceType;
 import com.liqid.sdk.LiqidException;
 import com.liqid.sdk.Machine;
@@ -225,9 +225,9 @@ public class VarianceTest {
 
         //  make sure the details of the action are accurate
         var action = v.createAction(inv, unassignedDevices);
-        assertTrue(action instanceof AssignToMachine);
-        assertEquals(machine.getMachineName(), ((AssignToMachine) action).getMachineName());
-        assertEquals(inv.getDeviceNamesFromIds(gpuIds), ((AssignToMachine) action).getDeviceNames());
+        assertTrue(action instanceof AssignToMachineAction);
+        assertEquals(machine.getMachineName(), ((AssignToMachineAction) action).getMachineName());
+        assertEquals(inv.getDeviceNamesFromIds(gpuIds), ((AssignToMachineAction) action).getDeviceNames());
 
         //  make sure the device ids were removed from the unassigned set
         assertTrue(unassignedDevices.isEmpty());
@@ -248,9 +248,9 @@ public class VarianceTest {
 
         //  make sure the details of the action are accurate
         var action = v.createAction(inv, unassignedDevices);
-        assertTrue(action instanceof RemoveFromMachine);
-        assertEquals(machine.getMachineName(), ((RemoveFromMachine) action).getMachineName());
-        assertEquals(inv.getDeviceNamesFromIds(gpuIds), ((RemoveFromMachine) action).getDeviceNames());
+        assertTrue(action instanceof RemoveFromMachineAction);
+        assertEquals(machine.getMachineName(), ((RemoveFromMachineAction) action).getMachineName());
+        assertEquals(inv.getDeviceNamesFromIds(gpuIds), ((RemoveFromMachineAction) action).getDeviceNames());
 
         //  make sure the unassigned set now matches the devices-to-be-removed
         assertEquals(new HashSet<>(gpuIds), unassignedDevices);
@@ -272,10 +272,10 @@ public class VarianceTest {
 
         //  make sure the details of the action are accurate
         var action = v.createAction(inv, unassignedDevices);
-        assertTrue(action instanceof ReconfigureMachine);
-        assertEquals(machine.getMachineName(), ((ReconfigureMachine) action).getMachineName());
-        assertEquals(inv.getDeviceNamesFromIds(addIds), ((ReconfigureMachine) action).getDeviceNamesToAdd());
-        assertEquals(inv.getDeviceNamesFromIds(removeIds), ((ReconfigureMachine) action).getDeviceNamesToRemove());
+        assertTrue(action instanceof ReconfigureMachineAction);
+        assertEquals(machine.getMachineName(), ((ReconfigureMachineAction) action).getMachineName());
+        assertEquals(inv.getDeviceNamesFromIds(addIds), ((ReconfigureMachineAction) action).getDeviceNamesToAdd());
+        assertEquals(inv.getDeviceNamesFromIds(removeIds), ((ReconfigureMachineAction) action).getDeviceNamesToRemove());
 
         //  unassigned set should now match devices-to-be-removed
         assertEquals(removeIds, unassignedDevices);
@@ -293,6 +293,6 @@ public class VarianceTest {
         HashSet<Integer> unassignedDevices = new HashSet<>();
         var action = v.createAction(inv, unassignedDevices);
 
-        assertTrue(action instanceof NoOperation);
+        assertTrue(action instanceof NoOperationAction);
     }
 }

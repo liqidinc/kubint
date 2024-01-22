@@ -14,23 +14,23 @@ import com.liqid.sdk.LiqidException;
 import java.util.Collection;
 import java.util.TreeSet;
 
-public class ReconfigureMachine extends Action {
+public class ReconfigureMachineAction extends Action {
 
     private String _machineName;
     private String _nodeName;
     private TreeSet<String> _deviceNamesToAdd = new TreeSet<>();
     private TreeSet<String> _deviceNamesToRemove = new TreeSet<>();
 
-    public ReconfigureMachine() {
+    public ReconfigureMachineAction() {
         super(ActionType.RECONFIGURE_MACHINE);
     }
 
-    public ReconfigureMachine addDeviceNameToAdd(final String value) { _deviceNamesToAdd.add(value); return this; }
-    public ReconfigureMachine setDeviceNamesToAdd(final Collection<String> list) {_deviceNamesToAdd = new TreeSet<>(list); return this; }
-    public ReconfigureMachine addDeviceNameToRemove(final String value) { _deviceNamesToRemove.add(value); return this; }
-    public ReconfigureMachine setDeviceNamesToRemove(final Collection<String> list) {_deviceNamesToRemove = new TreeSet<>(list); return this; }
-    public ReconfigureMachine setMachineName(final String value) {_machineName = value; return this; }
-    public ReconfigureMachine setNodeName(final String value) {_nodeName = value; return this; }
+    public ReconfigureMachineAction addDeviceNameToAdd(final String value) { _deviceNamesToAdd.add(value); return this; }
+    public ReconfigureMachineAction setDeviceNamesToAdd(final Collection<String> list) {_deviceNamesToAdd = new TreeSet<>(list); return this; }
+    public ReconfigureMachineAction addDeviceNameToRemove(final String value) { _deviceNamesToRemove.add(value); return this; }
+    public ReconfigureMachineAction setDeviceNamesToRemove(final Collection<String> list) {_deviceNamesToRemove = new TreeSet<>(list); return this; }
+    public ReconfigureMachineAction setMachineName(final String value) {_machineName = value; return this; }
+    public ReconfigureMachineAction setNodeName(final String value) {_nodeName = value; return this; }
 
     public String getMachineName() { return _machineName; }
     public String getNodeName() { return _nodeName; }

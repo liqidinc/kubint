@@ -119,7 +119,7 @@ public abstract class Command {
         var remainingMachineCount = computeDeviceItems.size();
         for (var entry : computeDeviceItems.entrySet()) {
             var node = entry.getValue();
-            var annoAction = new AnnotateNode().setNodeName(node.getName());
+            var annoAction = new AnnotateNodeAction().setNodeName(node.getName());
 
             //  loop over each type of device - for each type we have all the still-to-be-assigned
             //  devices of that type.
@@ -279,11 +279,11 @@ public abstract class Command {
             var nodeName = node.getName();
             var machineName = createMachineName(devItem.getDeviceStatus(), node);
 
-            plan.addAction(new CreateMachine().setMachineName(machineName).setGroupName(_liqidGroupName));
-            plan.addAction(new AssignToMachine().setMachineName(machineName).addDeviceName(devName));
-            plan.addAction(new SetUserDescription().setDeviceName(devName).setDescription(nodeName));
-            plan.addAction(new AnnotateNode().setNodeName(nodeName)
-                                             .addAnnotation(Constants.K8S_ANNOTATION_MACHINE_NAME, machineName));
+            plan.addAction(new CreateMachineAction().setMachineName(machineName).setGroupName(_liqidGroupName));
+            plan.addAction(new AssignToMachineAction().setMachineName(machineName).addDeviceName(devName));
+            plan.addAction(new SetUserDescriptionAction().setDeviceName(devName).setDescription(nodeName));
+            plan.addAction(new AnnotateNodeAction().setNodeName(nodeName)
+                                                   .addAnnotation(Constants.K8S_ANNOTATION_MACHINE_NAME, machineName));
         }
     }
 
@@ -600,11 +600,11 @@ public abstract class Command {
 
                 if (!devsToRemove.isEmpty()) {
                     if (devsToRemove.size() == grpDevs.size()) {
-                        plan.addAction(new DeleteGroup().setGroupName(group.getGroupName()));
+                        plan.addAction(new DeleteGroupAction().setGroupName(group.getGroupName()));
                     } else {
                         var names = LiqidInventory.getDeviceNamesFromItems(devsToRemove);
-                        plan.addAction(new RemoveFromGroup().setGroupName(group.getGroupName())
-                                                            .setDeviceNames(names));
+                        plan.addAction(new RemoveFromGroupAction().setGroupName(group.getGroupName())
+                                                                  .setDeviceNames(names));
                     }
                 }
         }
@@ -634,11 +634,11 @@ public abstract class Command {
 
             if (!devsToRemove.isEmpty()) {
                 if (devsToRemove.size() == machDevs.size()) {
-                    plan.addAction(new DeleteMachine().setMachineName(mach.getMachineName()));
+                    plan.addAction(new DeleteMachineAction().setMachineName(mach.getMachineName()));
                 } else {
                     var names = LiqidInventory.getDeviceNamesFromItems(devsToRemove);
-                    plan.addAction(new RemoveFromMachine().setMachineName(mach.getMachineName())
-                                                          .setDeviceNames(names));
+                    plan.addAction(new RemoveFromMachineAction().setMachineName(mach.getMachineName())
+                                                                .setDeviceNames(names));
                 }
             }
         }

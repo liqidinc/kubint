@@ -15,17 +15,17 @@ import com.liqid.sdk.LiqidException;
  * Deletes a machine with the specified name, as part of a specified group.
  * If a node name is specified, we cordon/uncordon the node as part of this process.
  */
-public class DeleteMachine extends Action {
+public class DeleteMachineAction extends Action {
 
     private String _machineName;
     private String _nodeName;
 
-    public DeleteMachine() {
+    public DeleteMachineAction() {
         super(ActionType.DELETE_MACHINE);
     }
 
-    public DeleteMachine setMachineName(final String value) { _machineName = value; return this; }
-    public DeleteMachine setNodeName(final String value) { _nodeName = value; return this; }
+    public DeleteMachineAction setMachineName(final String value) {_machineName = value; return this; }
+    public DeleteMachineAction setNodeName(final String value) {_nodeName = value; return this; }
 
     @Override
     public void checkParameters() throws InternalErrorException {

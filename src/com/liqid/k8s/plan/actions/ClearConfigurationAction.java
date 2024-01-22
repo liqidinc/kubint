@@ -6,11 +6,12 @@
 package com.liqid.k8s.plan.actions;
 
 import com.liqid.k8s.plan.ExecutionContext;
+import com.liqid.sdk.LiqidException;
 
-public class NoOperation extends Action {
+public class ClearConfigurationAction extends Action {
 
-    public NoOperation() {
-        super(ActionType.NO_OPERATION);
+    public ClearConfigurationAction() {
+        super(ActionType.CLEAR_CONFIGURATION);
     }
 
     @Override
@@ -19,14 +20,17 @@ public class NoOperation extends Action {
     @Override
     public void perform(
         final ExecutionContext context
-    ) {
+    ) throws LiqidException {
         var fn = this.getClass().getName() + ":perform";
         context.getLogger().trace("Entering %s", fn);
+
+        context.getLiqidClient().clearGroups();
+
         context.getLogger().trace("%s returning", fn);
     }
 
     @Override
     public String toString() {
-        return "No Operation";
+        return "Clear Liqid Configuration";
     }
 }

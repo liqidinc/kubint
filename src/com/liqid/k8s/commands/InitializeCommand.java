@@ -11,12 +11,12 @@ import com.liqid.k8s.exceptions.*;
 import com.liqid.k8s.layout.DeviceItem;
 import com.liqid.k8s.layout.LiqidInventory;
 import com.liqid.k8s.plan.*;
-import com.liqid.k8s.plan.actions.AssignToGroup;
-import com.liqid.k8s.plan.actions.CreateGroup;
-import com.liqid.k8s.plan.actions.CreateLinkage;
-import com.liqid.k8s.plan.actions.DeleteGroup;
-import com.liqid.k8s.plan.actions.RemoveAllAnnotations;
-import com.liqid.k8s.plan.actions.RemoveLinkage;
+import com.liqid.k8s.plan.actions.AssignToGroupAction;
+import com.liqid.k8s.plan.actions.CreateGroupAction;
+import com.liqid.k8s.plan.actions.CreateLinkageAction;
+import com.liqid.k8s.plan.actions.DeleteGroupAction;
+import com.liqid.k8s.plan.actions.RemoveAllAnnotationsAction;
+import com.liqid.k8s.plan.actions.RemoveLinkageAction;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
@@ -140,21 +140,21 @@ public class InitializeCommand extends Command {
 
         var plan = new Plan();
         if (_hasLinkage) {
-            plan.addAction(new RemoveLinkage());
+            plan.addAction(new RemoveLinkageAction());
         }
         if (_hasAnnotations) {
-            plan.addAction(new RemoveAllAnnotations());
+            plan.addAction(new RemoveAllAnnotationsAction());
         }
         if (_hasGroup) {
-            plan.addAction(new DeleteGroup().setGroupName(_liqidGroupName));
+            plan.addAction(new DeleteGroupAction().setGroupName(_liqidGroupName));
         }
 
-        plan.addAction(new CreateLinkage().setLiqidAddress(_liqidAddress)
-                                          .setLiqidGroupName(_liqidGroupName)
-                                          .setLiqidUsername(_liqidUsername)
-                                          .setLiqidPassword(_liqidPassword));
+        plan.addAction(new CreateLinkageAction().setLiqidAddress(_liqidAddress)
+                                                .setLiqidGroupName(_liqidGroupName)
+                                                .setLiqidUsername(_liqidUsername)
+                                                .setLiqidPassword(_liqidPassword));
 
-        plan.addAction(new CreateGroup().setGroupName(_liqidGroupName));
+        plan.addAction(new CreateGroupAction().setGroupName(_liqidGroupName));
 
         // Create consolidated list of all devices
         var allDevItems = new LinkedList<>(computeDevices.keySet());
@@ -167,7 +167,7 @@ public class InitializeCommand extends Command {
         // Move all called-out resources to the newly-created group.
         var names = LiqidInventory.getDeviceNamesFromItems(allDevItems);
         if (!names.isEmpty()) {
-            plan.addAction(new AssignToGroup().setGroupName(_liqidGroupName).setDeviceNames(names));
+            plan.addAction(new AssignToGroupAction().setGroupName(_liqidGroupName).setDeviceNames(names));
         }
 
         // Create machines for all the called-out compute resources and move the compute resources into those machines.

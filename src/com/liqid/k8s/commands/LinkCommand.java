@@ -10,10 +10,10 @@ import com.bearsnake.klog.Logger;
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.k8s.exceptions.ProcessingException;
 import com.liqid.k8s.plan.Plan;
-import com.liqid.k8s.plan.actions.CreateGroup;
-import com.liqid.k8s.plan.actions.CreateLinkage;
-import com.liqid.k8s.plan.actions.RemoveAllAnnotations;
-import com.liqid.k8s.plan.actions.RemoveLinkage;
+import com.liqid.k8s.plan.actions.CreateGroupAction;
+import com.liqid.k8s.plan.actions.CreateLinkageAction;
+import com.liqid.k8s.plan.actions.RemoveAllAnnotationsAction;
+import com.liqid.k8s.plan.actions.RemoveLinkageAction;
 import com.liqid.sdk.LiqidException;
 
 public class LinkCommand extends Command {
@@ -49,7 +49,7 @@ public class LinkCommand extends Command {
                 errors = true;
             }
 
-            plan.addAction(new RemoveLinkage());
+            plan.addAction(new RemoveLinkageAction());
         }
 
         // check for existing annotations
@@ -61,7 +61,7 @@ public class LinkCommand extends Command {
                 errors = true;
             }
 
-            plan.addAction(new RemoveAllAnnotations());
+            plan.addAction(new RemoveAllAnnotationsAction());
         }
 
 
@@ -77,7 +77,7 @@ public class LinkCommand extends Command {
                     errors = true;
                 }
 
-                plan.addAction(new CreateGroup().setGroupName(_liqidGroupName));
+                plan.addAction(new CreateGroupAction().setGroupName(_liqidGroupName));
             }
         } catch (LiqidException lex) {
             var msg = "Cannot communicate properly with the Liqid Cluster";
@@ -106,10 +106,10 @@ public class LinkCommand extends Command {
             throw ex;
         }
 
-        plan.addAction(new CreateLinkage().setLiqidAddress(_liqidAddress)
-                                          .setLiqidGroupName(_liqidGroupName)
-                                          .setLiqidUsername(_liqidUsername)
-                                          .setLiqidPassword(_liqidPassword));
+        plan.addAction(new CreateLinkageAction().setLiqidAddress(_liqidAddress)
+                                                .setLiqidGroupName(_liqidGroupName)
+                                                .setLiqidUsername(_liqidUsername)
+                                                .setLiqidPassword(_liqidPassword));
 
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;

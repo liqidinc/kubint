@@ -7,7 +7,7 @@ package com.liqid.k8s.layout;
 
 import com.liqid.k8s.exceptions.InternalErrorException;
 import com.liqid.k8s.plan.actions.Action;
-import com.liqid.k8s.plan.actions.NoOperation;
+import com.liqid.k8s.plan.actions.NoOperationAction;
 import com.liqid.sdk.Machine;
 
 import java.util.Collection;
@@ -88,7 +88,7 @@ public class VarianceSet {
         while (iter.hasNext()) {
             var variance = iter.next();
             var action = variance.createAction(inventory, unassignedResources);
-            if (action instanceof NoOperation) {
+            if (action instanceof NoOperationAction) {
                 //  variance has nothing to add or remove - so we got a do-nothing.
                 //  remove the variance and try again.
                 iter.remove();
