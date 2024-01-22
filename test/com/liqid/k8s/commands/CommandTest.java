@@ -10,12 +10,23 @@ import com.bearsnake.k8sclient.NodeMetadata;
 import com.bearsnake.k8sclient.NodeSpec;
 import com.bearsnake.k8sclient.NodeStatus;
 import com.bearsnake.klog.Logger;
+import com.liqid.k8s.Constants;
 import com.liqid.k8s.layout.DeviceItem;
+import com.liqid.k8s.layout.GeneralType;
+import com.liqid.k8s.layout.GenericResourceModel;
+import com.liqid.k8s.layout.LiqidInventory;
+import com.liqid.k8s.layout.ResourceModel;
+import com.liqid.k8s.layout.SpecificResourceModel;
+import com.liqid.k8s.layout.VendorResourceModel;
 import com.liqid.k8s.plan.Plan;
 import com.liqid.k8s.plan.actions.AnnotateNodeAction;
 import com.liqid.sdk.DeviceInfo;
 import com.liqid.sdk.DeviceStatus;
 import com.liqid.sdk.DeviceType;
+import com.liqid.sdk.LiqidException;
+import com.liqid.sdk.Machine;
+import com.liqid.sdk.mock.MockLiqidClient;
+import com.liqid.sdk.mock.MockMachine;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -25,12 +36,25 @@ import java.util.Map;
 import java.util.TreeSet;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class CommandTest extends Command {
 
     public CommandTest() {
         super(new Logger("Test"), false, 0);
+    }
+
+    /**
+     * Helpful wrapper to create a full annotation key for a device-specific resource count.
+     * @param genType the general type of interest
+     * @return the full key for this type of resource counter (with the company prefix applied)
+     */
+    private static String createAnnotationKeyForDeviceType(
+        final GeneralType genType
+    ) {
+        return createAnnotationKeyFor(ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType));
     }
 
     @Test
@@ -105,6 +129,82 @@ public class CommandTest extends Command {
     }
 
     @Test
+    public void createClusterLayout_test() throws LiqidException {
+        _force = true;
+
+        var liqidClient = new MockLiqidClient.Builder().build();
+        var group = liqidClient.createGroup("Group");
+
+        var machine1 = liqidClient.createMachine(group.getGroupId(), "machine1");
+        var machine2 = liqidClient.createMachine(group.getGroupId(), "machine2");
+        var machine3 = liqidClient.createMachine(group.getGroupId(), "machine3");
+
+        var node1 = new Node(new NodeMetadata().setName("worker-1"), new NodeSpec(), new NodeStatus());
+        var node2 = new Node(new NodeMetadata().setName("worker-2"), new NodeSpec(), new NodeStatus());
+        var node3 = new Node(new NodeMetadata().setName("worker-3"), new NodeSpec(), new NodeStatus());
+        var nodes = Arrays.asList(new Node[]{node1, node2, node3});
+
+        nodes.get(0).metadata.annotations = new HashMap<>();
+        nodes.get(0).metadata.annotations.put(createAnnotationKeyFor(Constants.K8S_ANNOTATION_MACHINE_NAME), "machine1");
+        nodes.get(0).metadata.annotations.put(createAnnotationKeyForDeviceType(GeneralType.GPU), "NVidia:A100:3,Intel:A770:5,AMD:2,10");
+        nodes.get(0).metadata.annotations.put(createAnnotationKeyForDeviceType(GeneralType.FPGA), "2");
+        nodes.get(0).metadata.annotations.put(createAnnotationKeyForDeviceType(GeneralType.SSD), "Liqid:7");
+
+        nodes.get(1).metadata.annotations = new HashMap<>();
+        nodes.get(1).metadata.annotations.put(createAnnotationKeyFor(Constants.K8S_ANNOTATION_MACHINE_NAME), "machine2");
+        nodes.get(1).metadata.annotations.put(createAnnotationKeyForDeviceType(GeneralType.GPU), "NVidia:5,NVidia:A100:0");
+
+        nodes.get(2).metadata.annotations = new HashMap<>();
+        nodes.get(2).metadata.annotations.put(createAnnotationKeyFor(Constants.K8S_ANNOTATION_MACHINE_NAME), "machine3");
+
+        _liqidInventory = LiqidInventory.createLiqidInventory(liqidClient);
+        var layout = createClusterLayout(nodes);
+        assertNotNull(layout);
+        layout.show("");
+
+        var machProfile1 = layout.getMachineProfile(machine1.getMachineId());
+        assertEquals(6, machProfile1.getResourceModels().size());
+
+        ResourceModel resModel = new SpecificResourceModel(GeneralType.GPU, "NVidia", "A100");
+        assertTrue(machProfile1.getResourceModels().contains(resModel));
+        assertEquals((Integer)3, machProfile1.getCount(resModel));
+
+        resModel = new SpecificResourceModel(GeneralType.GPU, "Intel", "A770");
+        assertTrue(machProfile1.getResourceModels().contains(resModel));
+        assertEquals((Integer)5, machProfile1.getCount(resModel));
+
+        resModel = new VendorResourceModel(GeneralType.GPU, "AMD");
+        assertTrue(machProfile1.getResourceModels().contains(resModel));
+        assertEquals((Integer)2, machProfile1.getCount(resModel));
+
+        resModel = new GenericResourceModel(GeneralType.GPU);
+        assertTrue(machProfile1.getResourceModels().contains(resModel));
+        assertEquals((Integer)10, machProfile1.getCount(resModel));
+
+        resModel = new GenericResourceModel(GeneralType.FPGA);
+        assertTrue(machProfile1.getResourceModels().contains(resModel));
+        assertEquals((Integer)2, machProfile1.getCount(resModel));
+
+        resModel = new VendorResourceModel(GeneralType.SSD, "Liqid");
+        assertTrue(machProfile1.getResourceModels().contains(resModel));
+        assertEquals((Integer)7, machProfile1.getCount(resModel));
+
+        var machProfile2 = layout.getMachineProfile(machine2.getMachineId());
+        assertEquals(2, machProfile2.getResourceModels().size());
+
+        resModel = new VendorResourceModel(GeneralType.GPU, "NVidia");
+        assertTrue(machProfile2.getResourceModels().contains(resModel));
+        assertEquals((Integer)5, machProfile2.getCount(resModel));
+
+        resModel = new SpecificResourceModel(GeneralType.GPU, "NVidia", "A100");
+        assertTrue(machProfile2.getResourceModels().contains(resModel));
+        assertEquals((Integer)0, machProfile2.getCount(resModel));
+
+        var machProfile3 = layout.getMachineProfile(machine3.getMachineId());
+        assertNull(machProfile3);
+    }
+
+    @Test
     public void createMachines_test() {
         DeviceStatus[] statuses = new DeviceStatus[3];
         DeviceInfo[] infos = new DeviceInfo[3];
@@ -130,7 +230,7 @@ public class CommandTest extends Command {
         map.put(items[0], nodes[0]);
 
         var plan = new Plan();
-        createMachines(plan, map);
+        createMachines(map, plan);
         plan.show();
 
         assertEquals(12, plan.getActions().size());

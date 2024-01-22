@@ -172,13 +172,12 @@ public class InitializeCommand extends Command {
 
         // Create machines for all the called-out compute resources and move the compute resources into those machines.
         // Set the device descriptions to refer to the k8s node names while we're here.
-        createMachines(plan, computeDevices);
-        //TODO does this annotate the workers and fill in the device descriptions? I *think* it should...
+        createMachines(computeDevices, plan);
 
         // Allocate, if requested
         if (_allocate) {
             allocateEqually(computeDevices, resourceDevices, plan);
-            compose(plan);
+//            compose(plan);
         }
 
         _logger.trace("Exiting %s with %s", fn, plan);
