@@ -5,8 +5,6 @@
 
 package com.liqid.k8s.layout;
 
-import com.liqid.sdk.Machine;
-
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -24,7 +22,7 @@ public class Allocator {
     public static class Allocation {
 
         // the machine to which this applied
-        private final Machine _machine;
+        private final String _machineName;
 
         // the number of devices to be allocated, from the given list
         private final Integer _count;
@@ -34,22 +32,22 @@ public class Allocator {
         private final List<Integer> _deviceIdentifiers = new LinkedList<>();
 
         public Allocation(
-            final Machine machine,
+            final String machineName,
             final Integer count,
             final List<Integer> deviceIdentifiers
         ) {
-            _machine = machine;
+            _machineName = machineName;
             _count = count;
             _deviceIdentifiers.addAll(deviceIdentifiers);
         }
 
-        public Machine getMachine() { return _machine; }
+        public String getMachineName() { return _machineName; }
         public Integer getCount() { return _count; }
         public Collection<Integer> getDeviceIdentifiers() { return new LinkedList<>(_deviceIdentifiers); }
 
         @Override
         public String toString() {
-            return String.format("%s:%d <- %s", _machine.getMachineName(), _count, _deviceIdentifiers);
+            return String.format("%s:%d <- %s", _machineName, _count, _deviceIdentifiers);
         }
     }
 
@@ -71,14 +69,14 @@ public class Allocator {
      * @param disallowedModels a possibly empty collection of ResourceModel objects which we are *not* allowed to
      *                         consider - the caller might want all GPUs (for example) *excepting* those from ACME,
      *                         or models T1 and T2 from SKY-NET.
-     * @param machineId machine identifier of the machine to which this list applies
+     * @param machineName machine name of the machine to which this list applies
      * @return sorted list of device identifiers
      */
     protected static LinkedList<Integer> getOrderedDeviceIdentifiers(
         final LiqidInventory inventory,
         final ResourceModel resourceModel,
         final Collection<ResourceModel> disallowedModels,
-        final Integer machineId
+        final String machineName
     ) {
         var thisMachineList = new TreeSet<Integer>();
         var otherMachineList = new TreeSet<Integer>();
@@ -97,7 +95,8 @@ public class Allocator {
                 if (!ignore) {
                     var devId = devItem.getDeviceId();
                     if (devItem.isAssignedToMachine()) {
-                        if (devItem.getMachineId().equals(machineId)) {
+                        var attachedMachine = inventory.getMachine(devItem.getMachineId());
+                        if (attachedMachine.getMachineName().equals(machineName)) {
                             thisMachineList.add(devId);
                         } else {
                             otherMachineList.add(devId);
@@ -131,25 +130,25 @@ public class Allocator {
         final ClusterLayout desiredLayout
     ) {
         // iterate over the machine profiles in the desired layout.
-        for (var machProf : desiredLayout.getMachineProfiles()) {
-            var machineId = machProf.getMachine().getMachineId();
-            var resModels = machProf.getResourceModels();
+        for (var machineProfile : desiredLayout.getMachineProfiles()) {
+            var machineName = machineProfile.getMachineName();
+            var resModels = machineProfile.getResourceModels();
 
             // Find restrictive resource models (those with a value of zero)
             var restrictions = new HashSet<ResourceModel>();
             for (var rm : resModels) {
-                var devCount = machProf.getCount(rm);
+                var devCount = machineProfile.getCount(rm);
                 if (devCount == 0) {
                     restrictions.add(rm);
                 }
             }
 
             for (var rm : resModels) {
-                var devCount = machProf.getCount(rm);
+                var devCount = machineProfile.getCount(rm);
                 if (devCount > 0) {
-                    var devIds = getOrderedDeviceIdentifiers(inventory, rm, restrictions, machineId);
+                    var devIds = getOrderedDeviceIdentifiers(inventory, rm, restrictions, machineName);
                     _content.computeIfAbsent(rm, k -> new LinkedList<>());
-                    _content.get(rm).add(new Allocation(machProf.getMachine(), devCount, devIds));
+                    _content.get(rm).add(new Allocation(machineProfile.getMachineName(), devCount, devIds));
                 }
             }
         }

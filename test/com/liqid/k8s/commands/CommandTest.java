@@ -162,7 +162,7 @@ public class CommandTest extends Command {
         assertNotNull(layout);
         layout.show("");
 
-        var machProfile1 = layout.getMachineProfile(machine1.getMachineId());
+        var machProfile1 = layout.getMachineProfile(machine1.getMachineName());
         assertEquals(6, machProfile1.getResourceModels().size());
 
         ResourceModel resModel = new SpecificResourceModel(GeneralType.GPU, "NVidia", "A100");
@@ -189,7 +189,7 @@ public class CommandTest extends Command {
         assertTrue(machProfile1.getResourceModels().contains(resModel));
         assertEquals((Integer)7, machProfile1.getCount(resModel));
 
-        var machProfile2 = layout.getMachineProfile(machine2.getMachineId());
+        var machProfile2 = layout.getMachineProfile(machine2.getMachineName());
         assertEquals(2, machProfile2.getResourceModels().size());
 
         resModel = new VendorResourceModel(GeneralType.GPU, "NVidia");
@@ -200,7 +200,7 @@ public class CommandTest extends Command {
         assertTrue(machProfile2.getResourceModels().contains(resModel));
         assertEquals((Integer)0, machProfile2.getCount(resModel));
 
-        var machProfile3 = layout.getMachineProfile(machine3.getMachineId());
+        var machProfile3 = layout.getMachineProfile(machine3.getMachineName());
         assertNull(machProfile3);
     }
 

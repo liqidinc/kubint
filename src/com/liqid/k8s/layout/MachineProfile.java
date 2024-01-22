@@ -12,13 +12,13 @@ import com.liqid.sdk.Machine;
  */
 public class MachineProfile extends Profile {
 
-    private final Machine _machine;
+    private final String _machineName;
 
     public MachineProfile(
-        final Machine machine
+        final String machineName
     ) {
-        _machine = machine;
+        _machineName = machineName;
     }
 
-    public Machine getMachine() { return _machine; }
+    public String getMachineName() { return _machineName; }
 }

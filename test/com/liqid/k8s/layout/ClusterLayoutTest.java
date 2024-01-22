@@ -137,11 +137,11 @@ public class ClusterLayoutTest {
         layout.show("");
 
         assertEquals(1, layout.getUnassignedProfile().getResourceModels().size());
-        assertEquals(1, layout.getMachineProfile(1).getResourceModels().size());
-        assertEquals(2, layout.getMachineProfile(2).getResourceModels().size());
-        assertEquals(2, layout.getMachineProfile(3).getResourceModels().size());
-        assertEquals(1, layout.getMachineProfile(4).getResourceModels().size());
-        assertEquals(0, layout.getMachineProfile(5).getResourceModels().size());
+        assertEquals(1, layout.getMachineProfile("Machine1").getResourceModels().size());
+        assertEquals(2, layout.getMachineProfile("Machine2").getResourceModels().size());
+        assertEquals(2, layout.getMachineProfile("Machine3").getResourceModels().size());
+        assertEquals(1, layout.getMachineProfile("Machine4").getResourceModels().size());
+        assertEquals(0, layout.getMachineProfile("Machine5").getResourceModels().size());
     }
 
     @Test
@@ -193,9 +193,9 @@ public class ClusterLayoutTest {
         mach2.setMachineId(2);
         mach2.setGroupId(2);
 
-        var mp1 = new MachineProfile(mach1);
+        var mp1 = new MachineProfile(mach1.getMachineName());
         mp1.injectCount(new GenericResourceModel(GeneralType.GPU), 3);
-        var mp2 = new MachineProfile(mach2);
+        var mp2 = new MachineProfile(mach2.getMachineName());
         mp1.injectCount(new GenericResourceModel(GeneralType.GPU), 4);
         mp2.injectCount(new SpecificResourceModel(GeneralType.GPU, "Liqid", "Gen4"), 2);
         mp2.injectCount(new SpecificResourceModel(GeneralType.GPU, "Liqid", "Gen5"), 2);

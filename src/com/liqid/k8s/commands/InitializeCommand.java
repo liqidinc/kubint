@@ -177,6 +177,7 @@ public class InitializeCommand extends Command {
         // Allocate, if requested
         if (_allocate) {
             allocateEqually(computeDevices, resourceDevices, plan);
+
 //            compose(plan);
         }
 

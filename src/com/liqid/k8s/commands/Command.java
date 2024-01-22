@@ -244,15 +244,16 @@ public abstract class Command {
 
         var layout = new ClusterLayout();
         for (var node : nodes) {
-            var machine = getMachineForNode(node);
-            if (machine == null) {
+            var annoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
+            var machineName = node.metadata.annotations.get(annoKey);
+            if (machineName == null) {
                 System.err.printf("%s:Node '%s' is not annotated with a valid machine name\n",
                                   errPrefix, node.getName());
                 errors = true;
                 continue;
             }
 
-            var machProfile = new MachineProfile(machine);
+            var machProfile = new MachineProfile(machineName);
             for (var anno : getLiqidAnnotations(node).entrySet()) {
                 var split = anno.getKey().split("/");
                 GeneralType genType = null;
@@ -579,31 +580,6 @@ public abstract class Command {
         }
 
         _logger.trace("Exiting %s", fn);
-    }
-
-    /**
-     * Retrieves the Machine object corresponding to the annotation on the given worker node.
-     * @param node worker node of interest
-     * @return Machine object associated with the node if one is found, else null
-     */
-    protected Machine getMachineForNode(
-        final Node node
-    ) {
-        var fn = "getMachineForNode";
-        _logger.trace("Entering %s with node=%s", fn, node);
-
-        Machine machine = null;
-
-        var annoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
-        if (node.metadata.annotations != null) {
-            var machName = node.metadata.annotations.get(annoKey);
-            if (machName != null) {
-                machine = _liqidInventory.getMachine(machName);
-            }
-        }
-
-        _logger.trace("%s returning %s", machine);
-        return machine;
     }
 
     protected boolean hasAnnotations() throws K8SHTTPError, K8SJSONError, K8SRequestError {

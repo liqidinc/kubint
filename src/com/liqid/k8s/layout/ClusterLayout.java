@@ -19,7 +19,8 @@ import java.util.Map;
  */
 public class ClusterLayout {
 
-    private final Map<Integer, MachineProfile> _machineProfiles = new HashMap<>();
+    // key for the following map is the machine name
+    private final Map<String, MachineProfile> _machineProfiles = new HashMap<>();
     private final Profile _unassignedProfile = new Profile();
 
     /**
@@ -35,13 +36,13 @@ public class ClusterLayout {
 
         //  devices assigned to machines
         for (var machine : inventory.getMachines()) {
-            var machProfile = new MachineProfile(machine);
+            var machProfile = new MachineProfile(machine.getMachineName());
             var machDevs = inventory.getDeviceItemsForMachine(machine.getMachineId());
             LiqidInventory.removeDeviceItemsOfType(machDevs, GeneralType.CPU);
             for (var devItem : inventory.getDeviceItemsForMachine(machine.getMachineId())) {
                 machProfile.injectDevice(devItem);
             }
-            layout._machineProfiles.put(machine.getMachineId(), machProfile);
+            layout._machineProfiles.put(machProfile.getMachineName(), machProfile);
         }
 
         //  non-compute devices not assigned to any machines
@@ -75,16 +76,16 @@ public class ClusterLayout {
     public void addMachineProfile(
         final MachineProfile machProfile
     ) {
-        _machineProfiles.put(machProfile.getMachine().getMachineId(), machProfile);
+        _machineProfiles.put(machProfile.getMachineName(), machProfile);
     }
 
     /**
-     * Retrieves a particular MachineProfile given the machine id for the machine of interest
+     * Retrieves a particular MachineProfile given the machine name for the machine of interest
      */
     public MachineProfile getMachineProfile(
-        final Integer machineId
+        final String machineName
     ) {
-        return _machineProfiles.get(machineId);
+        return _machineProfiles.get(machineName);
     }
 
     /**
@@ -106,10 +107,10 @@ public class ClusterLayout {
      * based on the individual counters in each of the machine profiles and the unassigned profile.
      */
     public Profile getFlattenedProfile() {
-        var prof = new Profile();
-        _machineProfiles.values().forEach(prof::injectProfile);
-        prof.injectProfile(_unassignedProfile);
-        return prof;
+        var profile = new Profile();
+        _machineProfiles.values().forEach(profile::injectProfile);
+        profile.injectProfile(_unassignedProfile);
+        return profile;
     }
 
     /**
@@ -121,9 +122,9 @@ public class ClusterLayout {
     ) {
         System.out.println(indent + "<unassigned>");
         _unassignedProfile.show(indent + "  ");
-        for (var machProf : _machineProfiles.values()) {
-            System.out.println(indent + machProf.getMachine().getMachineName());
-            machProf.show(indent + "  ");
+        for (var machineProfile : _machineProfiles.values()) {
+            System.out.println(indent + machineProfile.getMachineName());
+            machineProfile.show(indent + "  ");
         }
     }
 }

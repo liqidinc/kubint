@@ -136,7 +136,7 @@ public class AllocatorTest {
 
         var resModelL40 = new SpecificResourceModel(GeneralType.GPU, NVIDIA, "L40");
 
-        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resModelL40, Collections.emptyList(), 1);
+        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resModelL40, Collections.emptyList(), "");
         assertEquals(_l40Devs, list);
     }
 
@@ -150,7 +150,7 @@ public class AllocatorTest {
         var expList = new LinkedList<>(_a100Devs);
         expList.addAll(_l40Devs);
 
-        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resVendorNVidia, Collections.emptyList(), 1);
+        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resVendorNVidia, Collections.emptyList(), "");
         assertEquals(expList, list);
     }
 
@@ -165,7 +165,7 @@ public class AllocatorTest {
         expList.addAll(_l40Devs);
         expList.addAll(_a770Devs);
 
-        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, Collections.emptyList(), 1);
+        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, Collections.emptyList(), "");
         assertEquals(expList, list);
     }
 
@@ -178,7 +178,7 @@ public class AllocatorTest {
         var resGPU = new GenericResourceModel(GeneralType.GPU);
 
         var restrictions = Arrays.asList(new ResourceModel[]{ resNVidia });
-        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, restrictions, 1);
+        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, restrictions, "");
         assertEquals(_a770Devs, list);
     }
 
@@ -194,7 +194,7 @@ public class AllocatorTest {
         var restrictions = Arrays.asList(new ResourceModel[]{ resIntel, resModelA100 });
         var expected = new LinkedList<>(_l40Devs);
 
-        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, restrictions, 1);
+        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, restrictions, "");
         assertEquals(expected, list);
     }
 
@@ -209,7 +209,7 @@ public class AllocatorTest {
 
         var expList = new LinkedList<Integer>();
         var restrictions = Arrays.asList(new ResourceModel[]{ resNVidia, resIntel });
-        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, restrictions, 1);
+        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, restrictions, "");
         assertEquals(expList, list);
     }
 
@@ -258,17 +258,17 @@ public class AllocatorTest {
 
         var expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _arthurMachine);
         var expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, Collections.emptyList(), _arthurMachine.getMachineId());
+        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, Collections.emptyList(), ARTHUR);
         assertEquals(expected, list);
 
         expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _fordMachine);
         expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, Collections.emptyList(), _fordMachine.getMachineId());
+        list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, Collections.emptyList(), FORD);
         assertEquals(expected, list);
 
         expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _trillianMachine);
         expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, Collections.emptyList(), _trillianMachine.getMachineId());
+        list = Allocator.getOrderedDeviceIdentifiers(inventory, resGPU, Collections.emptyList(), TRILLIAN);
         assertEquals(expected, list);
     }
 
@@ -317,19 +317,19 @@ public class AllocatorTest {
         var expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _arthurMachine);
         filterDevicesForVendor(expectedDevs, NVIDIA);
         var expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resNVidia, Collections.emptyList(), _arthurMachine.getMachineId());
+        var list = Allocator.getOrderedDeviceIdentifiers(inventory, resNVidia, Collections.emptyList(), ARTHUR);
         assertEquals(expected, list);
 
         expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _fordMachine);
         filterDevicesForVendor(expectedDevs, NVIDIA);
         expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        list = Allocator.getOrderedDeviceIdentifiers(inventory, resNVidia, Collections.emptyList(), _fordMachine.getMachineId());
+        list = Allocator.getOrderedDeviceIdentifiers(inventory, resNVidia, Collections.emptyList(), FORD);
         assertEquals(expected, list);
 
         expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _trillianMachine);
         filterDevicesForVendor(expectedDevs, NVIDIA);
         expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        list = Allocator.getOrderedDeviceIdentifiers(inventory, resNVidia, Collections.emptyList(), _trillianMachine.getMachineId());
+        list = Allocator.getOrderedDeviceIdentifiers(inventory, resNVidia, Collections.emptyList(), TRILLIAN);
         assertEquals(expected, list);
     }
 
@@ -342,9 +342,9 @@ public class AllocatorTest {
         // each machine wants 2 GPUs of any vendor and model.
         var layout = new ClusterLayout();
         var resModel = new GenericResourceModel(GeneralType.GPU);
-        var machProf1 = new MachineProfile(inventory.getMachine(1));
-        var machProf2 = new MachineProfile(inventory.getMachine(2));
-        var machProf3 = new MachineProfile(inventory.getMachine(3));
+        var machProf1 = new MachineProfile(inventory.getMachine(1).getMachineName());
+        var machProf2 = new MachineProfile(inventory.getMachine(2).getMachineName());
+        var machProf3 = new MachineProfile(inventory.getMachine(3).getMachineName());
         machProf1.injectCount(resModel, 2);
         machProf2.injectCount(resModel, 2);
         machProf3.injectCount(resModel, 2);
@@ -421,21 +421,21 @@ public class AllocatorTest {
         // Zaphod will take 4 of anything except A100's
         var layout = new ClusterLayout();
 
-        var machProf1 = new MachineProfile(inventory.getMachine(1));
+        var machProf1 = new MachineProfile(ARTHUR);
         var resModel1a = new SpecificResourceModel(GeneralType.GPU, NVIDIA, "A100");
         var resModel1b = new SpecificResourceModel(GeneralType.GPU, NVIDIA, "L40");
         machProf1.injectCount(resModel1a, 1);
         machProf1.injectCount(resModel1b, 2);
 
-        var machProf2 = new MachineProfile(inventory.getMachine(2));
+        var machProf2 = new MachineProfile(FORD);
         var resModel2 = new VendorResourceModel(GeneralType.GPU, INTEL);
         machProf2.injectCount(resModel2, 4);
 
-        var machProf3 = new MachineProfile(inventory.getMachine(3));
+        var machProf3 = new MachineProfile(TRILLIAN);
         var resModel3 = new SpecificResourceModel(GeneralType.GPU, NVIDIA, "A100");
         machProf3.injectCount(resModel3, 1);
 
-        var machProf4 = new MachineProfile(inventory.getMachine(4));
+        var machProf4 = new MachineProfile(ZAPHOD);
         var resModel4a = new GenericResourceModel(GeneralType.GPU);
         var resModel4b = new SpecificResourceModel(GeneralType.GPU, NVIDIA, "A100");
         machProf4.injectCount(resModel4a, 4);
@@ -467,21 +467,22 @@ public class AllocatorTest {
         assertEquals(2, allocations.size());
 
         var subIter = allocations.iterator();
-        var alloc = subIter.next();
-        assertEquals(ARTHUR, alloc.getMachine().getMachineName());
-        assertEquals((Integer) 1, alloc.getCount());
-        var expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _arthurMachine);
-        filterDevicesForModel(expectedDevs, resModel.getVendorName(), resModel.getModelName());
-        var expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        assertEquals(expected, alloc.getDeviceIdentifiers());
-
-        alloc = subIter.next();
-        assertEquals(TRILLIAN, alloc.getMachine().getMachineName());
-        assertEquals((Integer) 1, alloc.getCount());
-        expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _trillianMachine);
-        filterDevicesForModel(expectedDevs, resModel.getVendorName(), resModel.getModelName());
-        expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        assertEquals(expected, alloc.getDeviceIdentifiers());
+        while (subIter.hasNext()) {
+            var alloc = subIter.next();
+            if (alloc.getMachineName().equals(ARTHUR)) {
+                assertEquals((Integer) 1, alloc.getCount());
+                var expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _arthurMachine);
+                filterDevicesForModel(expectedDevs, resModel.getVendorName(), resModel.getModelName());
+                var expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
+                assertEquals(expected, alloc.getDeviceIdentifiers());
+            } else if (alloc.getMachineName().equals(TRILLIAN)) {
+                assertEquals((Integer) 1, alloc.getCount());
+                var expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _trillianMachine);
+                filterDevicesForModel(expectedDevs, resModel.getVendorName(), resModel.getModelName());
+                var expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
+                assertEquals(expected, alloc.getDeviceIdentifiers());
+            }
+        }
 
         /* NVidia L40 - Arthur wants 2 */
         entry = iter.next();
@@ -496,12 +497,12 @@ public class AllocatorTest {
         assertEquals(1, allocations.size());
 
         subIter = allocations.iterator();
-        alloc = subIter.next();
-        assertEquals(ARTHUR, alloc.getMachine().getMachineName());
+        var alloc = subIter.next();
+        assertEquals(ARTHUR, alloc.getMachineName());
         assertEquals((Integer) 2, alloc.getCount());
-        expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _arthurMachine);
+        var expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _arthurMachine);
         filterDevicesForModel(expectedDevs, resModel.getVendorName(), resModel.getModelName());
-        expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
+        var expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
         assertEquals(expected, alloc.getDeviceIdentifiers());
 
         /* Intel - Ford wants 4 */
@@ -517,7 +518,7 @@ public class AllocatorTest {
 
         subIter = allocations.iterator();
         alloc = subIter.next();
-        assertEquals(FORD, alloc.getMachine().getMachineName());
+        assertEquals(FORD, alloc.getMachineName());
         assertEquals((Integer) 4, alloc.getCount());
         expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _fordMachine);
         filterDevicesForVendor(expectedDevs, resModel.getVendorName());
@@ -534,7 +535,7 @@ public class AllocatorTest {
 
         subIter = allocations.iterator();
         alloc = subIter.next();
-        assertEquals(ZAPHOD, alloc.getMachine().getMachineName());
+        assertEquals(ZAPHOD, alloc.getMachineName());
         assertEquals((Integer) 4, alloc.getCount());
         expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _zaphodMachine);
         removeDevicesForModel(expectedDevs, NVIDIA, "A100");
@@ -606,7 +607,7 @@ public class AllocatorTest {
         var layout = new ClusterLayout();
 
         /* Arthur */
-        var machProf1 = new MachineProfile(inventory.getMachine(1));
+        var machProf1 = new MachineProfile(ARTHUR);
         var resModel1a = new SpecificResourceModel(GeneralType.GPU, NVIDIA, "A100");
         var resModel1b = new SpecificResourceModel(GeneralType.GPU, NVIDIA, "L40");
         var resModel1c = new GenericResourceModel(GeneralType.SSD);
@@ -615,7 +616,7 @@ public class AllocatorTest {
         machProf1.injectCount(resModel1c, 2);
 
         /* Ford */
-        var machProf2 = new MachineProfile(inventory.getMachine(2));
+        var machProf2 = new MachineProfile(FORD);
         var resModel2a = new VendorResourceModel(GeneralType.GPU, INTEL);
         var resModel2b = new GenericResourceModel(GeneralType.SSD);
         var resModel2c = new SpecificResourceModel(GeneralType.SSD, MICRON, "Bear");
@@ -624,7 +625,7 @@ public class AllocatorTest {
         machProf2.injectCount(resModel2c, 0);
 
         /* Trillian */
-        var machProf3 = new MachineProfile(inventory.getMachine(3));
+        var machProf3 = new MachineProfile(TRILLIAN);
         var resModel3a = new SpecificResourceModel(GeneralType.GPU, NVIDIA, "A100");
         var resModel3b = new SpecificResourceModel(GeneralType.SSD, MICRON, "Bear");
         var resModel3c = new SpecificResourceModel(GeneralType.SSD, MICRON, "Snake");
@@ -635,7 +636,7 @@ public class AllocatorTest {
         machProf3.injectCount(resModel3d, 10);
 
         /* Zaphod */
-        var machProf4 = new MachineProfile(inventory.getMachine(4));
+        var machProf4 = new MachineProfile(ZAPHOD);
         var resModel4a = new GenericResourceModel(GeneralType.GPU);
         var resModel4b = new SpecificResourceModel(GeneralType.GPU, NVIDIA, "A100");
         var resModel4c = new GenericResourceModel(GeneralType.SSD);
@@ -670,7 +671,7 @@ public class AllocatorTest {
 
         var subIter = allocations.iterator();
         var alloc = subIter.next();
-        assertEquals(TRILLIAN, alloc.getMachine().getMachineName());
+        assertEquals(TRILLIAN, alloc.getMachineName());
         assertEquals((Integer) 10, alloc.getCount());
         var expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.FPGA, _trillianMachine);
         var expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
@@ -689,21 +690,22 @@ public class AllocatorTest {
         assertEquals(2, allocations.size());
 
         subIter = allocations.iterator();
-        alloc = subIter.next();
-        assertEquals(ARTHUR, alloc.getMachine().getMachineName());
-        assertEquals((Integer) 1, alloc.getCount());
-        expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _arthurMachine);
-        filterDevicesForModel(expectedDevs, NVIDIA, "A100");
-        expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        assertEquals(expected, alloc.getDeviceIdentifiers());
-
-        alloc = subIter.next();
-        assertEquals(TRILLIAN, alloc.getMachine().getMachineName());
-        assertEquals((Integer) 1, alloc.getCount());
-        expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _trillianMachine);
-        filterDevicesForModel(expectedDevs, NVIDIA, "A100");
-        expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        assertEquals(expected, alloc.getDeviceIdentifiers());
+        while (subIter.hasNext()) {
+            alloc = subIter.next();
+            if (alloc.getMachineName().equals(ARTHUR)) {
+                assertEquals((Integer) 1, alloc.getCount());
+                expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _arthurMachine);
+                filterDevicesForModel(expectedDevs, NVIDIA, "A100");
+                expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
+                assertEquals(expected, alloc.getDeviceIdentifiers());
+            } else if (alloc.getMachineName().equals(TRILLIAN)) {
+                assertEquals((Integer) 1, alloc.getCount());
+                expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _trillianMachine);
+                filterDevicesForModel(expectedDevs, NVIDIA, "A100");
+                expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
+                assertEquals(expected, alloc.getDeviceIdentifiers());
+            }
+        }
 
         /* NVidia L40 - Arthur wants 2 */
         entry = iter.next();
@@ -719,7 +721,7 @@ public class AllocatorTest {
 
         subIter = allocations.iterator();
         alloc = subIter.next();
-        assertEquals(ARTHUR, alloc.getMachine().getMachineName());
+        assertEquals(ARTHUR, alloc.getMachineName());
         assertEquals((Integer) 2, alloc.getCount());
         expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _arthurMachine);
         filterDevicesForModel(expectedDevs, NVIDIA, "L40");
@@ -739,7 +741,7 @@ public class AllocatorTest {
 
         subIter = allocations.iterator();
         alloc = subIter.next();
-        assertEquals(FORD, alloc.getMachine().getMachineName());
+        assertEquals(FORD, alloc.getMachineName());
         assertEquals((Integer) 4, alloc.getCount());
         expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _fordMachine);
         filterDevicesForVendor(expectedDevs, INTEL);
@@ -758,7 +760,7 @@ public class AllocatorTest {
 
         subIter = allocations.iterator();
         alloc = subIter.next();
-        assertEquals(ZAPHOD, alloc.getMachine().getMachineName());
+        assertEquals(ZAPHOD, alloc.getMachineName());
         assertEquals((Integer) 4, alloc.getCount());
         expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.GPU, _zaphodMachine);
         removeDevicesForModel(expectedDevs, NVIDIA, "A100");
@@ -779,7 +781,7 @@ public class AllocatorTest {
 
         subIter = allocations.iterator();
         alloc = subIter.next();
-        assertEquals(TRILLIAN, alloc.getMachine().getMachineName());
+        assertEquals(TRILLIAN, alloc.getMachineName());
         assertEquals((Integer) 1, alloc.getCount());
         expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.SSD, _trillianMachine);
         filterDevicesForModel(expectedDevs, MICRON, "Bear");
@@ -800,7 +802,7 @@ public class AllocatorTest {
 
         subIter = allocations.iterator();
         alloc = subIter.next();
-        assertEquals(TRILLIAN, alloc.getMachine().getMachineName());
+        assertEquals(TRILLIAN, alloc.getMachineName());
         assertEquals((Integer) 1, alloc.getCount());
         expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.SSD, _trillianMachine);
         filterDevicesForModel(expectedDevs, MICRON, "Snake");
@@ -818,27 +820,30 @@ public class AllocatorTest {
         assertEquals(3, allocations.size());
 
         subIter = allocations.iterator();
-        alloc = subIter.next();
-        assertEquals(ARTHUR, alloc.getMachine().getMachineName());
-        assertEquals((Integer) 2, alloc.getCount());
-        expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.SSD, _arthurMachine);
-        expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        assertEquals(expected, alloc.getDeviceIdentifiers());
-
-        alloc = subIter.next();
-        assertEquals(FORD, alloc.getMachine().getMachineName());
-        assertEquals((Integer) 2, alloc.getCount());
-        expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.SSD, _arthurMachine);
-        removeDevicesForModel(expectedDevs, MICRON, "Bear");
-        expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        assertEquals(expected, alloc.getDeviceIdentifiers());
-
-        alloc = subIter.next();
-        assertEquals(ZAPHOD, alloc.getMachine().getMachineName());
-        assertEquals((Integer) 1, alloc.getCount());
-        expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.SSD, _arthurMachine);
-        removeDevicesForModel(expectedDevs, MICRON, "Snake");
-        expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
-        assertEquals(expected, alloc.getDeviceIdentifiers());
+        while (subIter.hasNext()) {
+            alloc = subIter.next();
+            switch (alloc.getMachineName()) {
+                case ARTHUR -> {
+                    assertEquals((Integer) 2, alloc.getCount());
+                    expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.SSD, _arthurMachine);
+                    expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
+                    assertEquals(expected, alloc.getDeviceIdentifiers());
+                }
+                case FORD -> {
+                    assertEquals((Integer) 2, alloc.getCount());
+                    expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.SSD, _arthurMachine);
+                    removeDevicesForModel(expectedDevs, MICRON, "Bear");
+                    expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
+                    assertEquals(expected, alloc.getDeviceIdentifiers());
+                }
+                case ZAPHOD -> {
+                    assertEquals((Integer) 1, alloc.getCount());
+                    expectedDevs = getOrderedDevicesForMachine(mock, DeviceType.SSD, _arthurMachine);
+                    removeDevicesForModel(expectedDevs, MICRON, "Snake");
+                    expected = MockLiqidClient.getDeviceIdsFromMockDevices(expectedDevs);
+                    assertEquals(expected, alloc.getDeviceIdentifiers());
+                }
+            }
+        }
     }
 }
