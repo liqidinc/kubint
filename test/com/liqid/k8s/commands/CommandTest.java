@@ -13,7 +13,6 @@ import com.bearsnake.klog.Logger;
 import com.liqid.k8s.layout.DeviceItem;
 import com.liqid.k8s.plan.Plan;
 import com.liqid.k8s.plan.actions.AnnotateNode;
-import com.liqid.sdk.ComputeDeviceStatus;
 import com.liqid.sdk.DeviceInfo;
 import com.liqid.sdk.DeviceStatus;
 import com.liqid.sdk.DeviceType;

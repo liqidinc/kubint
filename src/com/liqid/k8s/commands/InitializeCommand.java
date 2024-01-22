@@ -25,6 +25,8 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
 
+import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
+
 public class InitializeCommand extends Command {
 
     private boolean _allocate;
@@ -69,10 +71,6 @@ public class InitializeCommand extends Command {
         var errors = false;
         var errPrefix = getErrorPrefix();
 
-        if (!super.checkConfiguration(computeDevices)) {
-            errors = true;
-        }
-
         _hasLinkage = hasLinkage();
         _hasAnnotations = hasAnnotations();
         if (_hasLinkage) {
@@ -82,6 +80,30 @@ public class InitializeCommand extends Command {
         if (_hasAnnotations) {
             System.err.printf("%s:One or more nodes in the Kubernetes Cluster has Liqid annotations", errPrefix);
             errors = true;
+        }
+
+        // Are there any compute device descriptions which contradict the node names?
+        for (var entry : computeDevices.entrySet()) {
+            var devItem = entry.getKey();
+            var node = entry.getValue();
+            var desc = devItem.getDeviceInfo().getUserDescription();
+            if ((desc != null) && (!desc.equals("n/a")) && !desc.equals(node.getName())) {
+                System.err.printf("%s:User description for device '%s' is not set to the corresponding node name '%s'",
+                                  errPrefix,
+                                  devItem.getDeviceName(),
+                                  node.getName());
+            }
+
+            var machineAnnoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
+            var machineAnnotation = node.metadata.annotations.get(machineAnnoKey);
+            if ((machineAnnotation == null) ||
+                (!_liqidInventory.getMachine(machineAnnotation).getComputeName().equals(devItem.getDeviceName()))) {
+                System.err.printf("%s:node name '%s' has an incorrect annotation referencing machine name '%s'",
+                                  errPrefix,
+                                  node.getName(),
+                                  machineAnnotation);
+                errors = true;
+            }
         }
 
         // Are there any resources assigned to groups?
@@ -151,6 +173,7 @@ public class InitializeCommand extends Command {
         // Create machines for all the called-out compute resources and move the compute resources into those machines.
         // Set the device descriptions to refer to the k8s node names while we're here.
         createMachines(plan, computeDevices);
+        //TODO does this annotate the workers and fill in the device descriptions? I *think* it should...
 
         // Allocate, if requested
         if (_allocate) {

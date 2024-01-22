@@ -150,41 +150,51 @@ public abstract class Command {
         _logger.trace("Exiting %s", fn);
     }
 
-    /**
-     * Checks the current Liqid and Kubernetes configuration to see if there is anything which would prevent
-     * us from executing the requested command. Some problems can be warnings if _force is set.
-     * In any case where processing cannot continue, we will throw an exception.
-     * This is common code for the Initialize and Adopt commands.
-     * @param computeDevices a map of DeviceItem objects representing compute resources, to the corresponding
-     *                       Node objects representing k8s worker nodes.
-     * @return true if no errors were detected
-     */
-    protected boolean checkConfiguration(
-        final Map<DeviceItem, Node> computeDevices
-    ) {
-        var fn = "checkConfiguration";
-        _logger.trace("Entering %s", fn);
-
-        // Are there any compute device descriptions which contradict the node names?
-        var errors = false;
-        var errPrefix = getErrorPrefix();
-        for (var entry : computeDevices.entrySet()) {
-            var devItem = entry.getKey();
-            var node = entry.getValue();
-            var desc = devItem.getDeviceInfo().getUserDescription();
-            if (!(desc.equals("n/a") || desc.equals(node.getName()))) {
-                System.err.printf("%s:Description for resource %s conflicts with node name %s",
-                                  errPrefix,
-                                  devItem.getDeviceName(),
-                                  node.getName());
-                errors = true;
-            }
-        }
-
-        var result = !errors;
-        _logger.trace("Exiting %s with %s", fn, result);
-        return result;
-    }
+//    /**
+//     * Checks the current Liqid and Kubernetes configuration to see if there is anything which would prevent
+//     * us from executing the requested command. Some problems can be warnings if _force is set.
+//     * This is a check for contradictions, not existence.
+//     * It is okay for a node to not have a user description
+//     * This is common code for the Initialize and Adopt commands.
+//     * @param computeDevices a map of DeviceItem objects representing compute resources, to the corresponding
+//     *                       Node objects representing k8s worker nodes.
+//     * @return true if no errors were detected
+//     */
+//    protected boolean checkConfiguration(
+//        final Map<DeviceItem, Node> computeDevices
+//    ) {
+//        var fn = "checkConfiguration";
+//        _logger.trace("Entering %s", fn);
+//
+//        // Are there any compute device descriptions which contradict the node names?
+//        var errors = false;
+//        var errPrefix = getErrorPrefix();
+//        for (var entry : computeDevices.entrySet()) {
+//            var devItem = entry.getKey();
+//            var node = entry.getValue();
+//            var desc = devItem.getDeviceInfo().getUserDescription();
+//            if ((desc == null) || !desc.equals(node.getName())) {
+//                System.err.printf("%s:User description for device '%s' is not set to the corresponding node name '%s'",
+//                                  errPrefix,
+//                                  devItem.getDeviceName(),
+//                                  node.getName());
+//            }
+//
+//            var machineAnnoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
+//            var machineAnnotation = node.metadata.annotations.get(machineAnnoKey);
+//            if ((machineAnnotation == null) || ()) {
+//                System.err.printf("%s:Description for resource %s conflicts with node name %s",
+//                                  errPrefix,
+//                                  devItem.getDeviceName(),
+//                                  node.getName());
+//                errors = true;
+//            }
+//        }
+//
+//        var result = !errors;
+//        _logger.trace("Exiting %s with %s", fn, result);
+//        return result;
+//    }
 
     /**
      * Compares the annotations on the k8s worker nodes to the existing liqid configuration,
@@ -197,17 +207,17 @@ public abstract class Command {
         //TODO
     }
 
-//    /**
-//     * Helpful wrapper to create a full annotation key.
-//     * @param keySuffix the definitive portion of the key
-//     * @return the full key, with the company prefix applied to the front of the suffix
-//     */
-//    protected String createAnnotationKeyFor(
-//        final String keySuffix
-//    ) {
-//        return String.format("%s/%s", K8S_ANNOTATION_PREFIX, keySuffix);
-//    }
-//
+    /**
+     * Helpful wrapper to create a full annotation key.
+     * @param keySuffix the definitive portion of the key
+     * @return the full key, with the company prefix applied to the front of the suffix
+     */
+    protected String createAnnotationKeyFor(
+        final String keySuffix
+    ) {
+        return String.format("%s/%s", K8S_ANNOTATION_PREFIX, keySuffix);
+    }
+
 //    /**
 //     * Helpful wrapper to create a full annotation key for a device-specific resource count.
 //     * @param genType the general type of interest
