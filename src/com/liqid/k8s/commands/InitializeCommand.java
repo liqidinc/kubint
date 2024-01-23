@@ -89,7 +89,7 @@ public class InitializeCommand extends Command {
             var node = entry.getValue();
             var desc = devItem.getDeviceInfo().getUserDescription();
             if ((desc != null) && (!desc.equals("n/a")) && !desc.equals(node.getName())) {
-                System.err.printf("%s:User description for device '%s' is not set to the corresponding node name '%s'",
+                System.err.printf("%s:User description for device '%s' is not set to the corresponding node name '%s'\n",
                                   errPrefix,
                                   devItem.getDeviceName(),
                                   node.getName());
@@ -97,9 +97,9 @@ public class InitializeCommand extends Command {
 
             var machineAnnoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
             var machineAnnotation = node.metadata.annotations.get(machineAnnoKey);
-            if ((machineAnnotation == null) ||
+            if ((machineAnnotation != null) &&
                 (!_liqidInventory.getMachine(machineAnnotation).getComputeName().equals(devItem.getDeviceName()))) {
-                System.err.printf("%s:node name '%s' has an incorrect annotation referencing machine name '%s'",
+                System.err.printf("%s:node name '%s' has an incorrect annotation referencing machine name '%s'\n",
                                   errPrefix,
                                   node.getName(),
                                   machineAnnotation);

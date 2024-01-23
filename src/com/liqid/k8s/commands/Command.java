@@ -154,8 +154,9 @@ public abstract class Command {
      * @param nodes collection of all the nodes of interest
      * @param layout ClusterLayout containing the desired resource layout
      * @param plan plan which will be populated with actions
+     * @return true if no errors were detected along the way
      */
-    protected void createAnnotationsFromClusterLayout(
+    protected boolean createAnnotationsFromClusterLayout(
         final Collection<Node> nodes,
         final ClusterLayout layout,
         final Plan plan
@@ -163,45 +164,62 @@ public abstract class Command {
         var fn = "createAnnotationsFromClusterLayout";
         _logger.trace("Entering %s with nodes=%s layout=%s plan=%s", fn, nodes, layout, plan);
 
+        var errors = false;
+        var errPrefix = getErrorPrefix();
+
         // This is done by establishing removal annotations for all general types, for all nodes,
         // then overwriting the appopropriate removals with replacements per the cluster layout.
         for (var node : nodes) {
-            var annotations = new HashMap<GeneralType, String>();
-            for (var genType : GeneralType.values()) {
-                if (genType != GeneralType.CPU) {
-                    annotations.put(genType, null);
+            var newAnnos = new HashMap<GeneralType, String>();
+
+            if (node.metadata.annotations != null) {
+                for (var genType : GeneralType.values()) {
+                    var annoKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType);
+                    if (node.metadata.annotations.containsKey(annoKey)) {
+                        newAnnos.put(genType, null);
+                    }
                 }
             }
 
             var annoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
             var machineName = node.metadata.annotations.get(annoKey);
-            var profile = layout.getMachineProfile(machineName);
-            if (profile != null) {
-                for (var resModel : profile.getResourceModels()) {
-                    var genType = resModel.getGeneralType();
-                    var count = profile.getCount(resModel);
-                    var spec = createAnnotationForModelAndCount(resModel, count);
-                    if (annotations.get(genType) != null) {
-                        var sb = new StringBuilder();
-                        sb.append(annotations.get(genType)).append(",").append(spec);
-                        annotations.put(genType, sb.toString());
-                    } else {
-                        annotations.put(genType, spec);
+            if (machineName == null) {
+                System.err.printf("%s:Incorrectly-annotated node '%s' - no machine name\n",
+                                  errPrefix, node.getName());
+                errors = true;
+            } else {
+                var profile = layout.getMachineProfile(machineName);
+                if (profile != null) {
+                    for (var resModel : profile.getResourceModels()) {
+                        var genType = resModel.getGeneralType();
+                        var count = profile.getCount(resModel);
+                        var spec = createAnnotationForModelAndCount(resModel, count);
+                        if (newAnnos.get(genType) != null) {
+                            var sb = new StringBuilder();
+                            sb.append(newAnnos.get(genType)).append(",").append(spec);
+                            newAnnos.put(genType, sb.toString());
+                        } else {
+                            newAnnos.put(genType, spec);
+                        }
                     }
                 }
             }
 
             var action = new AnnotateNodeAction().setNodeName(node.getName());
-            for (var entry : annotations.entrySet()) {
+            for (var entry : newAnnos.entrySet()) {
                 var genType = entry.getKey();
                 var spec = entry.getValue();
                 action.addAnnotation(ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType), spec);
             }
 
-            plan.addAction(action);
+            if (!action.getAnnotations().isEmpty()) {
+                plan.addAction(action);
+            }
         }
 
-        _logger.trace("%s returning with plan=%s", fn, plan);
+        var result = !errors;
+        _logger.trace("%s returning %s with plan=%s", fn, result, plan);
+        return result;
     }
 
     /**
@@ -342,11 +360,13 @@ public abstract class Command {
                 }
 
                 //  Create resource profile and add it to machine profile with the resource count
-                var resModel = new GenericResourceModel(genType);
-                machineProfile.injectCount(resModel, resCount);
+                if (resCount > 0) {
+                    var resModel = new GenericResourceModel(genType);
+                    machineProfile.injectCount(resModel, resCount);
 
-                for (int rx = 0; rx < resCount; rx++) {
-                    devItems.removeFirst();
+                    for (int rx = 0; rx < resCount; rx++) {
+                        devItems.removeFirst();
+                    }
                 }
             }
 

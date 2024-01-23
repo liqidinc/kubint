@@ -69,7 +69,12 @@ public class AnnotateNodeAction extends Action {
         var sb = new StringBuilder();
         sb.append("Update annotations for Kubernetes node ").append(_nodeName);
         for (var entry : _annotations.entrySet()) {
-            sb.append("\n      ").append(entry.getKey()).append(":").append(entry.getValue());
+            sb.append("\n      ").append(entry.getKey()).append(":");
+            if (entry.getValue() == null) {
+                sb.append("<to be removed>");
+            } else {
+                sb.append(entry.getValue());
+            }
         }
         return sb.toString();
     }
