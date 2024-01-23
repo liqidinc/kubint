@@ -531,6 +531,7 @@ public class LiqidInventory {
         final Group group
     ) {
         _groups.put(group.getGroupId(), group);
+        _groupIdsByName.put(group.getGroupName(), group.getGroupId());
     }
 
     /**
