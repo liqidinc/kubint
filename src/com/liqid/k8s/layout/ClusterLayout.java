@@ -24,6 +24,16 @@ public class ClusterLayout {
     private final Profile _unassignedProfile = new Profile();
 
     /**
+     * Adds a MachineProfile to this entity
+     * @param machProfile profile to be added
+     */
+    public void addMachineProfile(
+        final MachineProfile machProfile
+    ) {
+        _machineProfiles.put(machProfile.getMachineName(), machProfile);
+    }
+
+    /**
      * Constructs an object based on the content of the given populated LiqidInventory object.
      * @param inventory Inventory object
      * @param groupId group id of the particular group in which we are interested, or null for everything
@@ -70,16 +80,6 @@ public class ClusterLayout {
     }
 
     /**
-     * Adds a MachineProfile to this entity
-     * @param machProfile profile to be added
-     */
-    public void addMachineProfile(
-        final MachineProfile machProfile
-    ) {
-        _machineProfiles.put(machProfile.getMachineName(), machProfile);
-    }
-
-    /**
      * Retrieves a particular MachineProfile given the machine name for the machine of interest
      */
     public MachineProfile getMachineProfile(
@@ -100,17 +100,6 @@ public class ClusterLayout {
      */
     public Profile getUnassignedProfile() {
         return _unassignedProfile;
-    }
-
-    /**
-     * Retrieves a new Profile object which contains aggregate resource-model separated counts
-     * based on the individual counters in each of the machine profiles and the unassigned profile.
-     */
-    public Profile getFlattenedProfile() {
-        var profile = new Profile();
-        _machineProfiles.values().forEach(profile::injectProfile);
-        profile.injectProfile(_unassignedProfile);
-        return profile;
     }
 
     /**

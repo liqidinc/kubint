@@ -53,7 +53,7 @@ public class LinkCommand extends Command {
         }
 
         // check for existing annotations
-        var hasAnnotations = hasAnnotations();
+        var hasAnnotations = hasAnnotations(_k8sClient.getNodes());
         if (hasAnnotations) {
             var msg = "Liqid annotations already exist on nodes in the Kubernetes Cluster";
             System.err.printf("%s:%s\n", errPrefix, msg);

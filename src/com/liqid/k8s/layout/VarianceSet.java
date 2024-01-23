@@ -16,6 +16,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
+// TODO do we need this?
 /**
  * Does things that involve a set of variances.
  * This represents a complete picture of devices which are not where we want them to be,

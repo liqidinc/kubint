@@ -54,7 +54,7 @@ public class ResetCommand extends Command {
         if (hasLinkage()) {
             plan.addAction(new RemoveLinkageAction());
         }
-        if (hasAnnotations()) {
+        if (hasAnnotations(_k8sClient.getNodes())) {
             plan.addAction(new RemoveAllAnnotationsAction());
         }
 

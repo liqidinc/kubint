@@ -73,7 +73,7 @@ public class InitializeCommand extends Command {
         var errPrefix = getErrorPrefix();
 
         _hasLinkage = hasLinkage();
-        _hasAnnotations = hasAnnotations();
+        _hasAnnotations = hasAnnotations(computeDevices.values());
         if (_hasLinkage) {
             System.err.printf("%s:Linkage already exists between the Kubernetes Cluster and the Liqid Cluster", errPrefix);
             errors = true;
@@ -182,6 +182,8 @@ public class InitializeCommand extends Command {
         if (_allocate) {
             ClusterLayout layout = createEvenlyAllocatedClusterLayout(computeDevices, resourceDevices);
             createAnnotationsFromClusterLayout(computeDevices.values(), layout, plan);
+//            var allocator = new Allocator();
+//            allocator.populateAllocations(_liqidInventory, layout);
 //            compose(plan);
         }
 

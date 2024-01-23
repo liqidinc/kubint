@@ -22,6 +22,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import static com.liqid.k8s.Constants.*;
 
@@ -92,24 +93,114 @@ public abstract class Command {
     public LiqidClient getLiqidClient() { return _liqidClient; }
 
     /**
-     * Compares the annotations on the k8s worker nodes to the existing liqid configuration,
-     * and creates an efficient plan for getting to the former from the latter.
-     * @param plan the plan we populate
+     * Given an inventory of the current Liqid configuration and a desired layout, we populate our allocations list
+     * with Allocation objects describing the potential devices for each ResourceModel entry indicated in the
+     * desired layout.
+     * This is auto-magically sorted such that the most specific resource models are first in line, followed
+     * by the less-restrictive, and finishing with the least-restrictive. (Auto-magically, because our content
+     * is sorted by ResourceModel, which has a compareTo() method implementing this sorting).
+     * @param inventory LiqidInventory which sources the devices we consider
+     * @param desiredLayout ClusterLayout which describes the layout wanted by the user
+     * @return ordered map (ordered by ResourceModel ordering, which prioritizes specific allocations, then vendor, then generic)
+     * which, for each unique ResourceModel, presents a set of Allocator objects relevant to that model, for a particular machine.
      */
-    public void compose(
-        final Plan plan
-    ) throws K8SRequestError, K8SJSONError, K8SHTTPError {
-        var fn = "compose";
-        _logger.trace("Entering %s with plan=%s", fn, plan);
+    public Map<ResourceModel, Collection<Allocator>> createAllocators(
+        final LiqidInventory inventory,
+        final ClusterLayout desiredLayout
+    ) {
+        var fn = "createAllocators";
+        _logger.trace("Entering %s with inventory=%s desiredLayout=%s", fn, inventory, desiredLayout);
 
-        for (var node : _k8sClient.getNodes()) {
-            var annos = getLiqidAnnotations(node);
-            if (!annos.isEmpty()) {
+        var result = new HashMap<ResourceModel, Collection<Allocator>>();
 
+        // iterate over the machine profiles in the desired layout.
+        for (var machineProfile : desiredLayout.getMachineProfiles()) {
+            var machineName = machineProfile.getMachineName();
+            var resModels = machineProfile.getResourceModels();
+
+            // Find restrictive resource models (those with a value of zero)
+            var restrictions = new HashSet<ResourceModel>();
+            for (var rm : resModels) {
+                var devCount = machineProfile.getCount(rm);
+                if (devCount == 0) {
+                    restrictions.add(rm);
+                }
+            }
+
+            for (var rm : resModels) {
+                var devCount = machineProfile.getCount(rm);
+                if (devCount > 0) {
+                    var devIds = getOrderedDeviceIdentifiers(inventory, rm, restrictions, machineName);
+                    result.computeIfAbsent(rm, k -> new LinkedList<>());
+                    result.get(rm).add(new Allocator(machineProfile.getMachineName(), devCount, devIds));
+                }
             }
         }
 
-        _logger.trace("%s returning with plan=%s", plan);
+        _logger.trace("%s returning %s", fn, result);
+        return result;
+    }
+
+    /**
+     * Creates a map of allocations based on the given allocators.
+     * --[ This is the point where we convert types/vendors/models/counts into actual device identifiers. ]--
+     * The allocators describe, in order of ResourceModel specificity, a number of allocators which describe, per resModel
+     * per machine, the number of requested devices (which could be zero) which are described by the resModel for that machine,
+     * along with a list of all the potential candidate identifiers in order of preference, for satisfying that request.
+     * Our job is to choose the best device identifiers based on the preference, for each allocator, producing an allocation
+     * of device identifiers per machine. At this point, order of preference or resource model is no longer relevant, so we
+     * simply return a map of machine name to an Allocation object for that machine.
+     * @param allocators ordered map of allocators
+     * @return unordered map of machines -> allocations
+     */
+    protected Collection<Allocation> createAllocations(
+        final Map<ResourceModel, Collection<Allocator>> allocators
+    ) {
+        var fn = "createAllocations";
+        _logger.trace("Entering %s with allocators=%s", fn, allocators);
+
+        var errors = false;
+        var errPrefix = getErrorPrefix();
+
+        // key is machine name
+        var allocations = new HashMap<String, Allocation>();
+        var chosenIds = new HashSet<Integer>();
+        for (var entry : allocators.entrySet()) {
+            // per res model
+            var resModel = entry.getKey();
+            var allocs = entry.getValue();
+            for (var alloc : allocs) {
+                // per machine
+                var newDeviceIds = new HashSet<Integer>();
+                var machineName = alloc.getMachineName();
+                var count = alloc.getCount();
+                var selectionSet = alloc.getDeviceIdentifiers();
+                while (count > 0) {
+                    if (selectionSet.isEmpty()) {
+                        System.out.printf("%s:Out of potential device identifiers for machine %s resmodel %s\n",
+                                          errPrefix, machineName, resModel);
+                        errors = true;
+                        break;
+                    }
+
+                    var id = selectionSet.removeFirst();
+                    if (!chosenIds.contains(id)) {
+                        newDeviceIds.add(id);
+                        chosenIds.add(id);
+                        count--;
+                    }
+                }
+
+                if (!allocations.containsKey(machineName)) {
+                    allocations.put(machineName, new Allocation(machineName));
+                }
+                allocations.get(machineName).appendDeviceIdentifiers(newDeviceIds);
+            }
+        }
+
+        var result = (errors && !_force) ? null : allocations;
+        _logger.trace("%s returning with %s", fn, result);
+        return result.values();
     }
 
     /**
@@ -134,11 +225,11 @@ public abstract class Command {
         final ResourceModel resourceModel,
         final Integer count
     ) throws InternalErrorException {
-        if (resourceModel instanceof SpecificResourceModel srm) {
+        if (resourceModel instanceof SpecificResourceModel) {
             return String.format("%s:%s:%d", resourceModel.getVendorName(), resourceModel.getModelName(), count);
-        } else if (resourceModel instanceof VendorResourceModel vrm) {
+        } else if (resourceModel instanceof VendorResourceModel) {
             return String.format("%s:%d", resourceModel.getVendorName(), count);
-        } else if (resourceModel instanceof GenericResourceModel grm) {
+        } else if (resourceModel instanceof GenericResourceModel) {
             return String.format("%d", count);
         } else {
             throw new InternalErrorException("Unrecognized resource model");
@@ -345,7 +436,6 @@ public abstract class Command {
             var node = entry.getValue();
             var machineName = createMachineName(entry.getKey().getDeviceStatus(), node);
             var machineProfile = new MachineProfile(machineName);
-            var annoAction = new AnnotateNodeAction().setNodeName(node.getName());
 
             //  loop over each type of device - for each type we have all the still-to-be-assigned
             //  devices of that type.
@@ -657,12 +747,82 @@ public abstract class Command {
         _logger.trace("Exiting %s", fn);
     }
 
-    protected boolean hasAnnotations() throws K8SHTTPError, K8SJSONError, K8SRequestError {
-        var fn = "hasAnnotations";
-        _logger.trace("Entering %s", fn);
+    /**
+     * Creates a list of device identifiers from the inventory which are accepted by the given ResourceModel
+     * object (i.e., match the general type, and the vendor (if relevant) and model (if relevant).
+     * The ordering of the resulting list is important to the caller, and is as follows:
+     *  Firstly, the devices owned by the given machine
+     *  Secondly, the devices which are not owned by any machine
+     *  Finally, the devices which are owned by other machines
+     * Each segregated category is segregated to facility unit tests.
+     * Protected to facilitate unit tests.
+     * @param inventory LiqidInventory from which we get the list of devices
+     * @param resourceModel ResourceModel limiting the devices which we are allowed to consider
+     * @param disallowedModels a possibly empty collection of ResourceModel objects which we are *not* allowed to
+     *                         consider - the caller might want all GPUs (for example) *excepting* those from ACME,
+     *                         or models T1 and T2 from SKY-NET.
+     * @param machineName machine name of the machine to which this list applies
+     * @return sorted list of device identifiers
+     */
+    protected LinkedList<Integer> getOrderedDeviceIdentifiers(
+        final LiqidInventory inventory,
+        final ResourceModel resourceModel,
+        final Collection<ResourceModel> disallowedModels,
+        final String machineName
+    ) {
+        var fn = "getOrderedDeviceIdentifiers";
+        _logger.trace("Entering %s with inventory=%s resModel=%s disallowedModesl=%s machName=%s",
+                      fn, inventory, resourceModel, disallowedModels, machineName);
 
-        var nodeEntities = _k8sClient.getNodes();
-        for (var node : nodeEntities) {
+        var thisMachineList = new TreeSet<Integer>();
+        var otherMachineList = new TreeSet<Integer>();
+        var freeList = new TreeSet<Integer>();
+
+        for (var devItem : inventory.getDeviceItems()) {
+            if (resourceModel.accepts(devItem.getDeviceInfo())) {
+                var ignore = false;
+                for (var rm : disallowedModels) {
+                    if (rm.accepts(devItem.getDeviceInfo())) {
+                        ignore = true;
+                        break;
+                    }
+                }
+
+                if (!ignore) {
+                    var devId = devItem.getDeviceId();
+                    if (devItem.isAssignedToMachine()) {
+                        var attachedMachine = inventory.getMachine(devItem.getMachineId());
+                        if (attachedMachine.getMachineName().equals(machineName)) {
+                            thisMachineList.add(devId);
+                        } else {
+                            otherMachineList.add(devId);
+                        }
+                    } else {
+                        freeList.add(devId);
+                    }
+                }
+            }
+        }
+
+        var result = new LinkedList<>(thisMachineList);
+        result.addAll(freeList);
+        result.addAll(otherMachineList);
+
+        _logger.trace("%s returning %s", fn, result);
+        return result;
+    }
+
+    /**
+     * Checks the indicated collection of nodes to see whether any of them are annotated
+     * with Liqid annotations
+     */
+    protected boolean hasAnnotations(
+        final Collection<Node> nodes
+    ) {
+        var fn = "hasAnnotations";
+        _logger.trace("Entering %s with nodes=%s", fn, nodes);
+
+        for (var node : nodes) {
             var annos = node.metadata.annotations;
             for (var key : annos.keySet()) {
                 if (key.startsWith(K8S_ANNOTATION_PREFIX)) {
