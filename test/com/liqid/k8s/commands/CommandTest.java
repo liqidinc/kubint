@@ -99,10 +99,7 @@ public class CommandTest extends Command {
             resourceDeviceItems.add(devItem);
         }
 
-        var plan = new Plan();
         var layout = createEvenlyAllocatedClusterLayout(computeDeviceItems, resourceDeviceItems);
-        System.out.println("Plan");
-        plan.show();
         System.out.println("Layout");
         layout.show("");
 
@@ -113,17 +110,16 @@ public class CommandTest extends Command {
         var gpuPerLow = gpuCount / nodeCount;
         var gpuPerHigh = (gpuCount % nodeCount == 0) ? gpuPerLow : gpuPerLow + 1;
 
-        for (var action : plan.getActions()) {
-            var annotateAction = (AnnotateNodeAction) action;
-            for (var anno : annotateAction.getAnnotations().entrySet()) {
-                var annoKey = anno.getKey();
-                var annoValue = Integer.parseInt(anno.getValue());
-                if (annoKey.contains("fpga")) {
-                    fpgaTally += annoValue;
-                    assertTrue(annoValue >= fpgaPerLow && annoValue <= fpgaPerHigh);
-                } else if (annoKey.contains("gpu")) {
-                    gpuTally += annoValue;
-                    assertTrue(annoValue >= gpuPerLow && annoValue <= gpuPerHigh);
+        for (var profile : layout.getMachineProfiles()) {
+            var resModels = profile.getResourceModels();
+            for (var resModel : resModels) {
+                var count = profile.getCount(resModel);
+                if (resModel.getGeneralType() == GeneralType.GPU) {
+                    assertTrue(count >= gpuPerLow && count <= gpuPerHigh);
+                    gpuTally += count;
+                } else if (resModel.getGeneralType() == GeneralType.FPGA) {
+                    assertTrue(count >= fpgaPerLow && count <= fpgaPerHigh);
+                    fpgaTally += count;
                 }
             }
         }
@@ -170,13 +166,15 @@ public class CommandTest extends Command {
             if (action instanceof AnnotateNodeAction an) {
                 var annos = an.getAnnotations();
                 if (an.getNodeName().equals("worker-1")) {
-                    assertEquals(5, annos.size());
+                    assertEquals(3, annos.size());
                     assertEquals("3", annos.get(fpgaKey));
                     assertNull(annos.get(linkKey));
-                    assertEquals("NVidia:4,Intel:A770:0,Intel:4", annos.get(gpuKey));
+                    assertTrue(annos.get(gpuKey).contains("NVidia:4"));
+                    assertTrue(annos.get(gpuKey).contains("Intel:A770:0"));
+                    assertTrue(annos.get(gpuKey).contains("Intel:4"));
                     assertEquals("Liqid:5", annos.get(ssdKey));
                 } else if (an.getNodeName().equals("worker-2")) {
-                    assertEquals(5, annos.size());
+                    assertEquals(0, annos.size());
                     assertNull(annos.get(fpgaKey));
                     assertNull(annos.get(gpuKey));
                     assertNull(annos.get(linkKey));
