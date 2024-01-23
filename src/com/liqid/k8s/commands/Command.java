@@ -93,55 +93,6 @@ public abstract class Command {
     public LiqidClient getLiqidClient() { return _liqidClient; }
 
     /**
-     * Given an inventory of the current Liqid configuration and a desired layout, we populate our allocations list
-     * with Allocation objects describing the potential devices for each ResourceModel entry indicated in the
-     * desired layout.
-     * This is auto-magically sorted such that the most specific resource models are first in line, followed
-     * by the less-restrictive, and finishing with the least-restrictive. (Auto-magically, because our content
-     * is sorted by ResourceModel, which has a compareTo() method implementing this sorting).
-     * @param inventory LiqidInventory which sources the devices we consider
-     * @param desiredLayout ClusterLayout which describes the layout wanted by the user
-     * @return ordered map (ordered by ResourceModel ordering, which prioritizes specific allocations, then vendor, then generic)
-     * which, for each unique ResourceModel, presents a set of Allocator objects relevant to that model, for a particular machine.
-     */
-    public Map<ResourceModel, Collection<Allocator>> createAllocators(
-        final LiqidInventory inventory,
-        final ClusterLayout desiredLayout
-    ) {
-        var fn = "createAllocators";
-        _logger.trace("Entering %s with inventory=%s desiredLayout=%s", fn, inventory, desiredLayout);
-
-        var result = new HashMap<ResourceModel, Collection<Allocator>>();
-
-        // iterate over the machine profiles in the desired layout.
-        for (var machineProfile : desiredLayout.getMachineProfiles()) {
-            var machineName = machineProfile.getMachineName();
-            var resModels = machineProfile.getResourceModels();
-
-            // Find restrictive resource models (those with a value of zero)
-            var restrictions = new HashSet<ResourceModel>();
-            for (var rm : resModels) {
-                var devCount = machineProfile.getCount(rm);
-                if (devCount == 0) {
-                    restrictions.add(rm);
-                }
-            }
-
-            for (var rm : resModels) {
-                var devCount = machineProfile.getCount(rm);
-                if (devCount > 0) {
-                    var devIds = getOrderedDeviceIdentifiers(inventory, rm, restrictions, machineName);
-                    result.computeIfAbsent(rm, k -> new LinkedList<>());
-                    result.get(rm).add(new Allocator(machineProfile.getMachineName(), devCount, devIds));
-                }
-            }
-        }
-
-        _logger.trace("%s returning %s", fn, result);
-        return result;
-    }
-
-    /**
      * Creates a map of allocations based on the given allocators.
      * --[ This is the point where we convert types/vendors/models/counts into actual device identifiers. ]--
      * The allocators describe, in order of ResourceModel specificity, a number of allocators which describe, per resModel
@@ -151,7 +102,7 @@ public abstract class Command {
      * of device identifiers per machine. At this point, order of preference or resource model is no longer relevant, so we
      * simply return a map of machine name to an Allocation object for that machine.
      * @param allocators ordered map of allocators
-     * @return unordered map of machines -> allocations
+     * @return unordered map of machines -> allocations if successful, null if errors are detected and we are not forcing
      */
     protected Collection<Allocation> createAllocations(
         final Map<ResourceModel, Collection<Allocator>> allocators
@@ -201,6 +152,55 @@ public abstract class Command {
         var result = (errors && !_force) ? null : allocations;
         _logger.trace("%s returning with %s", fn, result);
         return result.values();
+    }
+
+    /**
+     * Given an inventory of the current Liqid configuration and a desired layout, we populate our allocations list
+     * with Allocation objects describing the potential devices for each ResourceModel entry indicated in the
+     * desired layout.
+     * This is auto-magically sorted such that the most specific resource models are first in line, followed
+     * by the less-restrictive, and finishing with the least-restrictive. (Auto-magically, because our content
+     * is sorted by ResourceModel, which has a compareTo() method implementing this sorting).
+     * @param inventory LiqidInventory which sources the devices we consider
+     * @param desiredLayout ClusterLayout which describes the layout wanted by the user
+     * @return ordered map (ordered by ResourceModel ordering, which prioritizes specific allocations, then vendor, then generic)
+     * which, for each unique ResourceModel, presents a set of Allocator objects relevant to that model, for a particular machine.
+     */
+    public Map<ResourceModel, Collection<Allocator>> createAllocators(
+        final LiqidInventory inventory,
+        final ClusterLayout desiredLayout
+    ) {
+        var fn = "createAllocators";
+        _logger.trace("Entering %s with inventory=%s desiredLayout=%s", fn, inventory, desiredLayout);
+
+        var result = new HashMap<ResourceModel, Collection<Allocator>>();
+
+        // iterate over the machine profiles in the desired layout.
+        for (var machineProfile : desiredLayout.getMachineProfiles()) {
+            var machineName = machineProfile.getMachineName();
+            var resModels = machineProfile.getResourceModels();
+
+            // Find restrictive resource models (those with a value of zero)
+            var restrictions = new HashSet<ResourceModel>();
+            for (var rm : resModels) {
+                var devCount = machineProfile.getCount(rm);
+                if (devCount == 0) {
+                    restrictions.add(rm);
+                }
+            }
+
+            for (var rm : resModels) {
+                var devCount = machineProfile.getCount(rm);
+                if (devCount > 0) {
+                    var devIds = getOrderedDeviceIdentifiers(inventory, rm, restrictions, machineName);
+                    result.computeIfAbsent(rm, k -> new LinkedList<>());
+                    result.get(rm).add(new Allocator(machineProfile.getMachineName(), devCount, devIds));
+                }
+            }
+        }
+
+        _logger.trace("%s returning %s", fn, result);
+        return result;
     }
 
     /**
@@ -921,6 +921,30 @@ public abstract class Command {
 
         _liqidInventory = LiqidInventory.createLiqidInventory(_liqidClient);
         _logger.trace("Exiting %s", fn);
+    }
+
+    /**
+     * Processes a VarianceSet against the content of the given LiqidInventory, populating the given Plan object
+     * with actions which will effect the changes required to do so.
+     * @param varianceSet the variance set to be processed
+     * @param plan the plan to be updated
+     * @throws InternalErrorException if something goes quite wrong
+     */
+    protected void processVarianceSet(
+        final Set<Integer> unassignedDeviceIds,
+        final VarianceSet varianceSet,
+        final Plan plan
+    ) throws InternalErrorException {
+        var fn = "processVarianceSet";
+        _logger.trace("Entering %s with varSet=%s plan=%s", fn, varianceSet, plan);
+
+        var working = new HashSet<>(unassignedDeviceIds);
+        while (!varianceSet.isEmpty()) {
+            var action = varianceSet.getAction(_liqidInventory, working);
+            plan.addAction(action);
+        }
+
+        _logger.trace("%s returning with plan=%s", fn, plan);
     }
 
     /**

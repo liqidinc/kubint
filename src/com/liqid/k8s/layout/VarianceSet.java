@@ -11,12 +11,13 @@ import com.liqid.k8s.plan.actions.NoOperationAction;
 import com.liqid.sdk.Machine;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-// TODO do we need this?
 /**
  * Does things that involve a set of variances.
  * This represents a complete picture of devices which are not where we want them to be,
@@ -34,37 +35,44 @@ public class VarianceSet {
      * Given a populated inventory and a map of desired assignments,
      * we create a VarianceSet representing the variances between the reality and what is desired.
      * @param inventory the state of the configuration as it currently exists
-     * @param assignments a map describing, per machine, where we want devices to be
+     * @param allocations a map describing, per machine, where we want devices to be
      * @return a VarianceSet which describes how to get from the inventory to the assignments
      */
     public static VarianceSet createVarianceSet(
         final LiqidInventory inventory,
-        final Map<Machine, Collection<DeviceItem>> assignments
+        final Collection<Allocation> allocations
     ) {
         var vs = new VarianceSet();
 
+        var allocMap = new HashMap<Machine, Allocation>();
+        for (var alloc : allocations) {
+            var machine = inventory.getMachine(alloc.getMachineName());
+            allocMap.put(machine, alloc);
+        }
+
         for (var mach : inventory.getMachines()) {
-            if (assignments.containsKey(mach)) {
-                var machWantedResources = assignments.get(mach);
-                var machHasResources = inventory.getDeviceItemsForMachine(mach.getMachineId());
+            if (allocMap.containsKey(mach)) {
+                var devItems = inventory.getDeviceItemsForMachine(mach.getMachineId());
+                LiqidInventory.removeDeviceItemsOfType(devItems, GeneralType.CPU);
+                var machHasResourceIds = LiqidInventory.getDeviceIdsFromItems(devItems);
+                var machWantsResourceIds = allocMap.get(mach).getDeviceIdentifiers();
 
-                var gainingIds = new LinkedList<Integer>();
-                var losingIds = new LinkedList<Integer>();
+                var gainingIds = machWantsResourceIds.stream()
+                                                      .filter(devId -> !machHasResourceIds.contains(devId))
+                                                      .collect(Collectors.toCollection(LinkedList::new));
 
-                for (var devItem : machWantedResources) {
-                    if (!machHasResources.contains(devItem)) {
-                        gainingIds.add(devItem.getDeviceId());
-                    }
-                }
-
-                for (var devItem : machHasResources) {
-                    if (!machWantedResources.contains(devItem)) {
-                        losingIds.add(devItem.getDeviceId());
-                    }
-                }
+                var losingIds = machHasResourceIds.stream()
+                                                  .filter(devId -> !machWantsResourceIds.contains(devId))
+                                                  .collect(Collectors.toCollection(LinkedList::new));
 
                 if (!gainingIds.isEmpty() || !losingIds.isEmpty()) {
                     vs._content.add(new Variance(mach, gainingIds, losingIds));
+                }
+            } else {
+                var devItems = inventory.getDeviceItemsForMachine(mach.getMachineId());
+                LiqidInventory.removeDeviceItemsOfType(devItems, GeneralType.CPU);
+                if (!devItems.isEmpty()) {
+                    vs._content.add(new Variance(mach, Collections.emptyList(), LiqidInventory.getDeviceIdsFromItems(devItems)));
                 }
             }
         }
@@ -129,4 +137,9 @@ public class VarianceSet {
     }
 
     public boolean isEmpty() { return _content.isEmpty(); }
+
+    @Override
+    public String toString() {
+        return _content.toString();
+    }
 }

@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-// TODO do we need this?
 public class Variance {
 
     private final Machine _machine;

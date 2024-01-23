@@ -12,14 +12,101 @@ import com.liqid.sdk.LiqidException;
 import com.liqid.sdk.mock.MockLiqidClient;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.TreeSet;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class VarianceSetTest {
+
+    @Test
+    public void createVarianceSet() throws LiqidException {
+        var mock = new MockLiqidClient.Builder().build();
+        var group = mock.createGroup("Group");
+        var machine1 = mock.createMachine(group.getGroupId(), "Machine1");
+        var machine2 = mock.createMachine(group.getGroupId(), "Machine2");
+        var machine3 = mock.createMachine(group.getGroupId(), "Machine3");
+        var machine4 = mock.createMachine(group.getGroupId(), "Machine4");
+
+        var ids1 = mock.createDevices(DeviceType.GPU, (short)0x0010, (short)0x03, "NVidia", "A100", 4);
+        var ids2 = mock.createDevices(DeviceType.GPU, (short)0x0010, (short)0x05, "NVidia", "L40", 4);
+        var ids3 = mock.createDevices(DeviceType.GPU, (short)0x0015, (short)0x77, "Intel", "A770", 4);
+
+        var allIds = new LinkedList<>(ids1);
+        allIds.addAll(ids2);
+        allIds.addAll(ids3);
+        
+        mock.groupPoolEdit(group.getGroupId());
+        for (var id : allIds) {
+            mock.addDeviceToGroup(id, group.getGroupId());
+        }
+        mock.groupPoolDone(group.getGroupId());
+
+        mock.editFabric(machine1.getMachineId());
+        mock.addDeviceToMachine(allIds.get(0), group.getGroupId(), machine1.getMachineId());
+        mock.addDeviceToMachine(allIds.get(1), group.getGroupId(), machine1.getMachineId());
+        mock.reprogramFabric(machine1.getMachineId());
+
+        mock.editFabric(machine2.getMachineId());
+        mock.addDeviceToMachine(allIds.get(4), group.getGroupId(), machine2.getMachineId());
+        mock.addDeviceToMachine(allIds.get(5), group.getGroupId(), machine2.getMachineId());
+        mock.reprogramFabric(machine2.getMachineId());
+
+        mock.editFabric(machine3.getMachineId());
+        mock.addDeviceToMachine(allIds.get(8), group.getGroupId(), machine3.getMachineId());
+        mock.addDeviceToMachine(allIds.get(9), group.getGroupId(), machine3.getMachineId());
+        mock.reprogramFabric(machine3.getMachineId());
+
+        var inv = LiqidInventory.createLiqidInventory(mock);
+        {
+            var map = new HashMap<String, Collection<Integer>>();
+            for (var m : inv.getMachines()) {
+                var items = inv.getDeviceItemsForMachine(m.getMachineId());
+                map.put(m.getMachineName(), LiqidInventory.getDeviceIdsFromItems(items));
+            }
+            System.out.println(map);
+        }
+        var alloc1 = new Allocation(machine1.getMachineName(),
+                                    Arrays.asList(new Integer[]{ allIds.get(0), allIds.get(4), allIds.get(8) }));
+        var alloc2 = new Allocation(machine2.getMachineName(),
+                                    Arrays.asList(new Integer[]{ allIds.get(1), allIds.get(5), allIds.get(9) }));
+        var alloc4 = new Allocation(machine4.getMachineName(),
+                                    Arrays.asList(new Integer[]{ allIds.get(2), allIds.get(6), allIds.get(10) }));
+        var allocations = Arrays.asList(new Allocation[]{ alloc1, alloc2, alloc4 });
+        System.out.println(allocations);
+
+        var vs = VarianceSet.createVarianceSet(inv, allocations);
+        for (var v : vs.getVariances()) {
+            if (v.getMachine().equals(machine1)) {
+                var addExpected = Arrays.asList(new Integer[]{ allIds.get(4), allIds.get(8) });
+                var removeExpected = Arrays.asList(new Integer[]{ allIds.get(1) });
+                assertEquals(new TreeSet<>(addExpected), new TreeSet<>(v.getDeviceIdsToAdd()));
+                assertEquals(new TreeSet<>(removeExpected), new TreeSet<>(v.getDeviceIdsToRemove()));
+            } else if (v.getMachine().equals(machine2)) {
+                var addExpected = Arrays.asList(new Integer[]{ allIds.get(1), allIds.get(9) });
+                var removeExpected = Arrays.asList(new Integer[]{ allIds.get(4) });
+                assertEquals(new TreeSet<>(addExpected), new TreeSet<>(v.getDeviceIdsToAdd()));
+                assertEquals(new TreeSet<>(removeExpected), new TreeSet<>(v.getDeviceIdsToRemove()));
+            } else if (v.getMachine().equals(machine3)) {
+                var addExpected = Arrays.asList(new Integer[]{ });
+                var removeExpected = Arrays.asList(new Integer[]{ allIds.get(8), allIds.get(9) });
+                assertEquals(new TreeSet<>(addExpected), new TreeSet<>(v.getDeviceIdsToAdd()));
+                assertEquals(new TreeSet<>(removeExpected), new TreeSet<>(v.getDeviceIdsToRemove()));
+            } else if (v.getMachine().equals(machine4)) {
+                var addExpected = Arrays.asList(new Integer[]{ allIds.get(2), allIds.get(6), allIds.get(10) });
+                var removeExpected = Arrays.asList(new Integer[]{ });
+                assertEquals(new TreeSet<>(addExpected), new TreeSet<>(v.getDeviceIdsToAdd()));
+                assertEquals(new TreeSet<>(removeExpected), new TreeSet<>(v.getDeviceIdsToRemove()));
+            }
+        }
+    }
 
     @Test
     public void emptyVarianceSet() throws InternalErrorException, LiqidException {

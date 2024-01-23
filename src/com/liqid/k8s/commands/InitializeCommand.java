@@ -11,6 +11,7 @@ import com.liqid.k8s.exceptions.*;
 import com.liqid.k8s.layout.ClusterLayout;
 import com.liqid.k8s.layout.DeviceItem;
 import com.liqid.k8s.layout.LiqidInventory;
+import com.liqid.k8s.layout.VarianceSet;
 import com.liqid.k8s.plan.*;
 import com.liqid.k8s.plan.actions.AssignToGroupAction;
 import com.liqid.k8s.plan.actions.CreateGroupAction;
@@ -18,7 +19,9 @@ import com.liqid.k8s.plan.actions.CreateLinkageAction;
 import com.liqid.k8s.plan.actions.DeleteGroupAction;
 import com.liqid.k8s.plan.actions.RemoveAllAnnotationsAction;
 import com.liqid.k8s.plan.actions.RemoveLinkageAction;
+import com.liqid.sdk.Group;
 import com.liqid.sdk.LiqidException;
+import com.liqid.sdk.Machine;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -181,10 +184,45 @@ public class InitializeCommand extends Command {
         // Allocate, if requested
         if (_allocate) {
             ClusterLayout layout = createEvenlyAllocatedClusterLayout(computeDevices, resourceDevices);
-            createAnnotationsFromClusterLayout(computeDevices.values(), layout, plan);
-//            var allocator = new Allocator();
-//            allocator.populateAllocations(_liqidInventory, layout);
-//            compose(plan);
+            if (!createAnnotationsFromClusterLayout(computeDevices.values(), layout, plan)) {
+                _logger.trace("Exiting %s with null", fn);
+                return null;
+            }
+
+            //  Build a proposed LiqidInventory based on the given devices, group, etc.
+            var proposedGroup = new Group().setGroupName(_liqidGroupName).setGroupId(1);
+            var proposedInventory = new LiqidInventory();
+            proposedInventory.notifyGroupCreated(new Group().setGroupName(_liqidGroupName).setGroupId(1));
+            var machId = 1;
+            for (var compEntry : computeDevices.entrySet()) {
+                var devItem = compEntry.getKey();
+                var node = compEntry.getValue();
+                var machineName = createMachineName(devItem.getDeviceStatus(), node);
+
+                proposedInventory.notifyDeviceCreated(devItem.getDeviceStatus(), devItem.getDeviceInfo());
+                proposedInventory.notifyDeviceAssignedToGroup(devItem.getDeviceId(), proposedGroup.getGroupId());
+
+                var machine = new Machine().setMachineName(machineName).setMachineId(machId++);
+                proposedInventory.notifyMachineCreated(machine);
+                proposedInventory.notifyDeviceAssignedToMachine(devItem.getDeviceId(), machine.getMachineId());
+            }
+            for (var devItem : resourceDevices) {
+                proposedInventory.notifyDeviceCreated(devItem.getDeviceStatus(), devItem.getDeviceInfo());
+                proposedInventory.notifyDeviceAssignedToGroup(devItem.getDeviceId(), proposedGroup.getGroupId());
+            }
+
+            var allocators = createAllocators(proposedInventory, layout);
+            var allocations = createAllocations(allocators);
+            System.out.println("================" + allocations);//TODO remove
+            if (allocations == null) {
+                _logger.trace("Exiting %s with null", fn);
+                return null;
+            }
+
+            var varSet = VarianceSet.createVarianceSet(proposedInventory, allocations);
+            System.out.println("================" + varSet);//TODO remove
+            var deviceIds = LiqidInventory.getDeviceIdsFromItems(resourceDevices);
+            processVarianceSet(deviceIds, varSet, plan);
         }
 
         _logger.trace("Exiting %s with %s", fn, plan);
@@ -228,6 +266,9 @@ public class InitializeCommand extends Command {
         }
 
         var plan = createPlan(computeResources, otherResources);
+        if (plan == null) {
+            throw new ConfigurationException("Various configuration problems exist - processing will not continue.");
+        }
 
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;

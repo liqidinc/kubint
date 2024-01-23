@@ -133,6 +133,19 @@ public class LiqidInventory {
     }
 
     /**
+     * Given a collection of device items, we construct a collection if identifiers
+     * @param deviceItems collection of DeviceItem objects
+     * @return collection of device identifiers
+     */
+    public static Set<Integer> getDeviceIdsFromItems(
+        final Collection<DeviceItem> deviceItems
+    ) {
+        return deviceItems.stream()
+                          .map(DeviceItem::getDeviceId)
+                          .collect(Collectors.toCollection(HashSet::new));
+    }
+
+    /**
      * Retrieves the DeviceItem object for a particular device
      * @param deviceId device identifier
      * @return DeviceItem object if the device exists, else null
