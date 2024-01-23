@@ -7,7 +7,6 @@ package com.liqid.k8s.commands;
 
 import com.bearsnake.k8sclient.*;
 import com.bearsnake.klog.*;
-import com.liqid.k8s.Constants;
 import com.liqid.k8s.CredentialMangler;
 import com.liqid.k8s.exceptions.*;
 import com.liqid.k8s.layout.*;
@@ -93,110 +92,6 @@ public abstract class Command {
     public LiqidClient getLiqidClient() { return _liqidClient; }
 
     /**
-     * Creates steps to create annotations which will allocate resources as equally as possible
-     * among the k8s worker nodes.
-     * @param computeDeviceItems container which indicates the compute devices of interest, along with their nodes
-     * @param resourceDeviceItems container which indicates the resource devices of interest
-     * @param plan where we store Action objects to implement our plan
-     */
-    protected void allocateEqually(
-        final Map<DeviceItem, Node> computeDeviceItems,
-        final Collection<DeviceItem> resourceDeviceItems,
-        final Plan plan
-    ) {
-        var fn = "allocateEqually";
-        _logger.trace("Entering %s with inv=%s compDevs=%s resDevs=%s",
-                      fn, _liqidInventory, computeDeviceItems, resourceDeviceItems);
-
-        var devsByType = LiqidInventory.segregateDeviceItemsByType(resourceDeviceItems);
-        if (computeDeviceItems.isEmpty() || resourceDeviceItems.isEmpty()) {
-            _logger.trace("Exiting %s with nothing to do", fn);
-            return;
-        }
-
-        //  We do this by machine, because it is much more efficient to attach all the devices for the machine
-        //  in one step. We need to iterate over the computeDeviceItems to get there, though.
-        var remainingMachineCount = computeDeviceItems.size();
-        for (var entry : computeDeviceItems.entrySet()) {
-            var node = entry.getValue();
-            var annoAction = new AnnotateNodeAction().setNodeName(node.getName());
-
-            //  loop over each type of device - for each type we have all the still-to-be-assigned
-            //  devices of that type.
-            for (var subEntry : devsByType.entrySet()) {
-                var genType = subEntry.getKey();
-                var devItems = subEntry.getValue();
-
-                //  how many for this machine?
-                var resCount = devItems.size() / remainingMachineCount;
-                if (devItems.size() % remainingMachineCount > 0) {
-                    resCount++;
-                }
-
-                //  Create annotation for the indicated count
-                var annoKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType);
-                var annoValue = String.format("%d", resCount);
-                annoAction.addAnnotation(annoKey, annoValue);
-
-                for (int rx = 0; rx < resCount; rx++) {
-                    devItems.removeFirst();
-                }
-            }
-
-            plan.addAction(annoAction);
-            remainingMachineCount--;
-        }
-
-        _logger.trace("Exiting %s", fn);
-    }
-
-//    /**
-//     * Checks the current Liqid and Kubernetes configuration to see if there is anything which would prevent
-//     * us from executing the requested command. Some problems can be warnings if _force is set.
-//     * This is a check for contradictions, not existence.
-//     * It is okay for a node to not have a user description
-//     * This is common code for the Initialize and Adopt commands.
-//     * @param computeDevices a map of DeviceItem objects representing compute resources, to the corresponding
-//     *                       Node objects representing k8s worker nodes.
-//     * @return true if no errors were detected
-//     */
-//    protected boolean checkConfiguration(
-//        final Map<DeviceItem, Node> computeDevices
-//    ) {
-//        var fn = "checkConfiguration";
-//        _logger.trace("Entering %s", fn);
-//
-//        // Are there any compute device descriptions which contradict the node names?
-//        var errors = false;
-//        var errPrefix = getErrorPrefix();
-//        for (var entry : computeDevices.entrySet()) {
-//            var devItem = entry.getKey();
-//            var node = entry.getValue();
-//            var desc = devItem.getDeviceInfo().getUserDescription();
-//            if ((desc == null) || !desc.equals(node.getName())) {
-//                System.err.printf("%s:User description for device '%s' is not set to the corresponding node name '%s'",
-//                                  errPrefix,
-//                                  devItem.getDeviceName(),
-//                                  node.getName());
-//            }
-//
-//            var machineAnnoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
-//            var machineAnnotation = node.metadata.annotations.get(machineAnnoKey);
-//            if ((machineAnnotation == null) || ()) {
-//                System.err.printf("%s:Description for resource %s conflicts with node name %s",
-//                                  errPrefix,
-//                                  devItem.getDeviceName(),
-//                                  node.getName());
-//                errors = true;
-//            }
-//        }
-//
-//        var result = !errors;
-//        _logger.trace("Exiting %s with %s", fn, result);
-//        return result;
-//    }
-
-    /**
      * Compares the annotations on the k8s worker nodes to the existing liqid configuration,
      * and creates an efficient plan for getting to the former from the latter.
      * @param plan the plan we populate
@@ -229,14 +124,95 @@ public abstract class Command {
     }
 
     /**
+     * Creates a string used as an annotation for a particular resource model and a count of resources
+     * for that model.
+     * @param resourceModel model of interest
+     * @param count number of resources
+     * @return string to be used in a specification annotation value
+     */
+    protected String createAnnotationForModelAndCount(
+        final ResourceModel resourceModel,
+        final Integer count
+    ) throws InternalErrorException {
+        if (resourceModel instanceof SpecificResourceModel srm) {
+            return String.format("%s:%s:%d", resourceModel.getVendorName(), resourceModel.getModelName(), count);
+        } else if (resourceModel instanceof VendorResourceModel vrm) {
+            return String.format("%s:%d", resourceModel.getVendorName(), count);
+        } else if (resourceModel instanceof GenericResourceModel grm) {
+            return String.format("%d", count);
+        } else {
+            throw new InternalErrorException("Unrecognized resource model");
+        }
+    }
+
+    /**
+     * Creates actions to clear out all resource annotations from all known nodes,
+     * then repopulate the annotations of the nodes based on the given ClusterLayout.
+     * All the nodes referenced in the layout must be in the nodes collection, but the nodes collection
+     * may contain nodes which are not in the layout.
+     * We do expect each node's machine name annotation to be in place.
+     * @param nodes collection of all the nodes of interest
+     * @param layout ClusterLayout containing the desired resource layout
+     * @param plan plan which will be populated with actions
+     */
+    protected void createAnnotationsFromClusterLayout(
+        final Collection<Node> nodes,
+        final ClusterLayout layout,
+        final Plan plan
+    ) throws InternalErrorException {
+        var fn = "createAnnotationsFromClusterLayout";
+        _logger.trace("Entering %s with nodes=%s layout=%s plan=%s", fn, nodes, layout, plan);
+
+        // This is done by establishing removal annotations for all general types, for all nodes,
+        // then overwriting the appopropriate removals with replacements per the cluster layout.
+        for (var node : nodes) {
+            var annotations = new HashMap<GeneralType, String>();
+            for (var genType : GeneralType.values()) {
+                if (genType != GeneralType.CPU) {
+                    annotations.put(genType, null);
+                }
+            }
+
+            var annoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
+            var machineName = node.metadata.annotations.get(annoKey);
+            var profile = layout.getMachineProfile(machineName);
+            if (profile != null) {
+                for (var resModel : profile.getResourceModels()) {
+                    var genType = resModel.getGeneralType();
+                    var count = profile.getCount(resModel);
+                    var spec = createAnnotationForModelAndCount(resModel, count);
+                    if (annotations.get(genType) != null) {
+                        var sb = new StringBuilder();
+                        sb.append(annotations.get(genType)).append(",").append(spec);
+                        annotations.put(genType, sb.toString());
+                    } else {
+                        annotations.put(genType, spec);
+                    }
+                }
+            }
+
+            var action = new AnnotateNodeAction().setNodeName(node.getName());
+            for (var entry : annotations.entrySet()) {
+                var genType = entry.getKey();
+                var spec = entry.getValue();
+                action.addAnnotation(ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType), spec);
+            }
+
+            plan.addAction(action);
+        }
+
+        _logger.trace("%s returning with plan=%s", fn, plan);
+    }
+
+    /**
      * Creates a populates a ClusterLayout based on the Liqid annotations for the given worker nodes
      * @param nodes collection of worker nodes
      * @return populated ClusterLayout if successful, or null if errors exist and _force is not set
      */
-    protected ClusterLayout createClusterLayout(
+    protected ClusterLayout createClusterLayoutFromAnnotations(
         final Collection<Node> nodes
     ) {
-        var fn = "createClusterLayout";
+        var fn = "createClusterLayoutFromAnnotations";
         _logger.trace("Entering %s", fn);
 
         var errors = false;
@@ -274,8 +250,8 @@ public abstract class Command {
                         split = spec.split(":");
                         try {
                             ResourceModel resModel = null;
-                            String vendor = null;
-                            String model = null;
+                            String vendor;
+                            String model;
                             Integer count = null;
                             switch (split.length) {
                                 case 1:
@@ -319,6 +295,73 @@ public abstract class Command {
     }
 
     /**
+     * Creates steps to create annotations which will allocate resources as equally as possible
+     * among the k8s worker nodes. Does NOT require anything from the existing _liqidClient nor from _k8sClient.
+     * This logic is here because we really need to tie nodes to machines (sometimes in the context of NOT
+     * having the annotation for the node->machine name in place), and we need to know how many devices of each
+     * generic type we have, which we could get many places... but all of that in one place is best provided
+     * in the .commands package, which is where we are at.
+     * @param computeDeviceItems container which indicates the compute devices of interest, along with their nodes
+     * @param resourceDeviceItems container which indicates the resource devices of interest
+     * @return ClusterLayout object corresponding to the actions added to the given Plan
+     */
+    protected ClusterLayout createEvenlyAllocatedClusterLayout(
+        final Map<DeviceItem, Node> computeDeviceItems,
+        final Collection<DeviceItem> resourceDeviceItems
+    ) {
+        var fn = "allocateEqually";
+        _logger.trace("Entering %s with compDevs=%s resDevs=%s",
+                      fn, computeDeviceItems, resourceDeviceItems);
+
+        var layout = new ClusterLayout();
+        var devsByType = LiqidInventory.segregateDeviceItemsByType(resourceDeviceItems);
+        if (computeDeviceItems.isEmpty() || resourceDeviceItems.isEmpty()) {
+            _logger.trace("Exiting %s with nothing to do", fn);
+            return layout;
+        }
+
+        //  We do this by machine, because it is much more efficient to attach all the devices for the machine
+        //  in one step. We need to iterate over the computeDeviceItems to get there, though.
+        var remainingMachineCount = computeDeviceItems.size();
+        for (var entry : computeDeviceItems.entrySet()) {
+            var node = entry.getValue();
+            var machineName = createMachineName(entry.getKey().getDeviceStatus(), node);
+            var machineProfile = new MachineProfile(machineName);
+            var annoAction = new AnnotateNodeAction().setNodeName(node.getName());
+
+            //  loop over each type of device - for each type we have all the still-to-be-assigned
+            //  devices of that type.
+            for (var subEntry : devsByType.entrySet()) {
+                var genType = subEntry.getKey();
+                var devItems = subEntry.getValue();
+
+                //  how many for this machine?
+                var resCount = devItems.size() / remainingMachineCount;
+                if (devItems.size() % remainingMachineCount > 0) {
+                    resCount++;
+                }
+
+                //  Create resource profile and add it to machine profile with the resource count
+                var resModel = new GenericResourceModel(genType);
+                machineProfile.injectCount(resModel, resCount);
+
+                for (int rx = 0; rx < resCount; rx++) {
+                    devItems.removeFirst();
+                }
+            }
+
+            remainingMachineCount--;
+
+            if (!machineProfile.getResourceModels().isEmpty()) {
+                layout.addMachineProfile(machineProfile);
+            }
+        }
+
+        _logger.trace("%s returning %s", fn, layout);
+        return layout;
+    }
+
+    /**
      * Creates a machine name for a combination of the compute device name and the k8s node name.
      * This is somewhat arbitrary, but it should be used whenever a machine name needs to be associated with
      * a particular compute device and worker node combination.
@@ -346,6 +389,11 @@ public abstract class Command {
      * These actions create the machine, add the appropriate compute device to the machine,
      * and set the compute device user description to the appropriate k8s worker node name.
      * We assume the compute devices have already been added to the targeted group.
+     * One side-effect which might be useful to the caller, is that we do the following link-up in the
+     * computeDevices parameter:
+     *  Each DeviceItem will be updated so that the user description field contains the corresponding node name
+     *  Each Node item will be updated to contain an annotation tying the node to the corresponding Liqid machine
+     * These changes are not persisted, but they may be used by the caller for any subsequent necessary processing.
      * @param computeDevices a map of DeviceItem objects representing compute resources, to the corresponding
      *                       Node objects representing k8s worker nodes.
      * @param plan the plan which we populate
@@ -372,7 +420,14 @@ public abstract class Command {
             plan.addAction(new AssignToMachineAction().setMachineName(machineName).addDeviceName(devName));
             plan.addAction(new SetUserDescriptionAction().setDeviceName(devName).setDescription(nodeName));
             plan.addAction(new AnnotateNodeAction().setNodeName(nodeName)
-                                                   .addAnnotation(Constants.K8S_ANNOTATION_MACHINE_NAME, machineName));
+                                                   .addAnnotation(K8S_ANNOTATION_MACHINE_NAME, machineName));
+
+            devItem.getDeviceInfo().setUserDescription(nodeName);
+            if (computeDevices.get(devItem).metadata.annotations == null) {
+                computeDevices.get(devItem).metadata.annotations = new HashMap<>();
+            }
+            computeDevices.get(devItem).metadata.annotations.put(createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME),
+                                                                 machineName);
         }
     }
 

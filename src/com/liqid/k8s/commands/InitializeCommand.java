@@ -8,6 +8,7 @@ package com.liqid.k8s.commands;
 import com.bearsnake.k8sclient.*;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.exceptions.*;
+import com.liqid.k8s.layout.ClusterLayout;
 import com.liqid.k8s.layout.DeviceItem;
 import com.liqid.k8s.layout.LiqidInventory;
 import com.liqid.k8s.plan.*;
@@ -133,7 +134,7 @@ public class InitializeCommand extends Command {
     private Plan createPlan(
         final Map<DeviceItem, Node> computeDevices,
         final Collection<DeviceItem> resourceDevices
-    ) {
+    ) throws InternalErrorException {
         var fn = "createPlan";
         _logger.trace("Entering %s with computeDevices=%s, resourceDevices=%s",
                       fn, computeDevices, resourceDevices);
@@ -172,12 +173,15 @@ public class InitializeCommand extends Command {
 
         // Create machines for all the called-out compute resources and move the compute resources into those machines.
         // Set the device descriptions to refer to the k8s node names while we're here.
+        // Note that the in-memory DeviceInfo objects' userDescription fields are updated to contain the corresponding
+        // node names, and the in-memory Node objects' annotations are updated to refer to the nodes corresponding
+        // Liqid Cluster machine names.
         createMachines(computeDevices, plan);
 
         // Allocate, if requested
         if (_allocate) {
-            allocateEqually(computeDevices, resourceDevices, plan);
-
+            ClusterLayout layout = createEvenlyAllocatedClusterLayout(computeDevices, resourceDevices);
+            createAnnotationsFromClusterLayout(computeDevices.values(), layout, plan);
 //            compose(plan);
         }
 

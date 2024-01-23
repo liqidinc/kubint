@@ -13,6 +13,10 @@ import com.liqid.k8s.plan.ExecutionContext;
 
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 
+/**
+ * An action which removes ALL Liqid annotations from the k8s database.
+ * This removes all resource AND machine name annotations.
+ */
 public class RemoveAllAnnotationsAction extends Action {
 
     public RemoveAllAnnotationsAction() {

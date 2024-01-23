@@ -17,6 +17,10 @@ import java.util.TreeSet;
 
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_PREFIX;
 
+/**
+ * This action removes all Liqid annotations from a (or several) particular k8s node(s).
+ * This includes both resource and machine name annotations.
+ */
 public class RemoveAnnotationsAction extends Action {
 
     private Set<String> _nodeNames = new TreeSet<>();

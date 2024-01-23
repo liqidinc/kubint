@@ -11,10 +11,13 @@ import com.bearsnake.k8sclient.NodeSpec;
 import com.bearsnake.k8sclient.NodeStatus;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.Constants;
+import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.k8s.layout.ClusterLayout;
 import com.liqid.k8s.layout.DeviceItem;
 import com.liqid.k8s.layout.GeneralType;
 import com.liqid.k8s.layout.GenericResourceModel;
 import com.liqid.k8s.layout.LiqidInventory;
+import com.liqid.k8s.layout.MachineProfile;
 import com.liqid.k8s.layout.ResourceModel;
 import com.liqid.k8s.layout.SpecificResourceModel;
 import com.liqid.k8s.layout.VendorResourceModel;
@@ -24,9 +27,7 @@ import com.liqid.sdk.DeviceInfo;
 import com.liqid.sdk.DeviceStatus;
 import com.liqid.sdk.DeviceType;
 import com.liqid.sdk.LiqidException;
-import com.liqid.sdk.Machine;
 import com.liqid.sdk.mock.MockLiqidClient;
-import com.liqid.sdk.mock.MockMachine;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -99,8 +100,11 @@ public class CommandTest extends Command {
         }
 
         var plan = new Plan();
-        allocateEqually(computeDeviceItems, resourceDeviceItems, plan);
+        var layout = createEvenlyAllocatedClusterLayout(computeDeviceItems, resourceDeviceItems);
+        System.out.println("Plan");
         plan.show();
+        System.out.println("Layout");
+        layout.show("");
 
         var fpgaTally = 0;
         var fpgaPerLow = fpgaCount / nodeCount;
@@ -129,7 +133,62 @@ public class CommandTest extends Command {
     }
 
     @Test
-    public void createClusterLayout_test() throws LiqidException {
+    public void createAnnotationsFromClusterLayout_test() throws InternalErrorException {
+        var nodes = new LinkedList<Node>();
+        var layout = new ClusterLayout();
+        var plan = new Plan();
+
+        var annos1 = new HashMap<String, String>();
+        annos1.put(createAnnotationKeyFor(Constants.K8S_ANNOTATION_MACHINE_NAME), "Machine1");
+        var node1 = new Node(new NodeMetadata().setAnnotations(annos1).setName("worker-1"), new NodeSpec(), new NodeStatus());
+        nodes.add(node1);
+
+        var annos2 = new HashMap<String, String>();
+        annos2.put(createAnnotationKeyFor(Constants.K8S_ANNOTATION_MACHINE_NAME), "Machine2");
+        var node2 = new Node(new NodeMetadata().setAnnotations(annos2).setName("worker-2"), new NodeSpec(), new NodeStatus());
+        nodes.add(node2);
+
+        var profile1 = new MachineProfile("Machine1");
+        profile1.injectCount(new GenericResourceModel(GeneralType.FPGA), 3);
+        profile1.injectCount(new VendorResourceModel(GeneralType.SSD, "Liqid"), 5);
+        profile1.injectCount(new VendorResourceModel(GeneralType.GPU, "NVidia"), 4);
+        profile1.injectCount(new VendorResourceModel(GeneralType.GPU, "Intel"), 4);
+        profile1.injectCount(new SpecificResourceModel(GeneralType.GPU, "Intel", "A770"), 0);
+        layout.addMachineProfile(profile1);
+
+        createAnnotationsFromClusterLayout(nodes, layout, plan);
+        plan.show();
+
+        var fpgaKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(GeneralType.FPGA);
+        var gpuKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(GeneralType.GPU);
+        var linkKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(GeneralType.LINK);
+        var memKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(GeneralType.MEMORY);
+        var ssdKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(GeneralType.SSD);
+
+        for (var action : plan.getActions()) {
+            assertTrue(action instanceof AnnotateNodeAction an);
+            if (action instanceof AnnotateNodeAction an) {
+                var annos = an.getAnnotations();
+                if (an.getNodeName().equals("worker-1")) {
+                    assertEquals(5, annos.size());
+                    assertEquals("3", annos.get(fpgaKey));
+                    assertNull(annos.get(linkKey));
+                    assertEquals("NVidia:4,Intel:A770:0,Intel:4", annos.get(gpuKey));
+                    assertEquals("Liqid:5", annos.get(ssdKey));
+                } else if (an.getNodeName().equals("worker-2")) {
+                    assertEquals(5, annos.size());
+                    assertNull(annos.get(fpgaKey));
+                    assertNull(annos.get(gpuKey));
+                    assertNull(annos.get(linkKey));
+                    assertNull(annos.get(memKey));
+                    assertNull(annos.get(ssdKey));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void createClusterLayoutFromAnnotations_test() throws LiqidException {
         _force = true;
 
         var liqidClient = new MockLiqidClient.Builder().build();
@@ -158,7 +217,7 @@ public class CommandTest extends Command {
         nodes.get(2).metadata.annotations.put(createAnnotationKeyFor(Constants.K8S_ANNOTATION_MACHINE_NAME), "machine3");
 
         _liqidInventory = LiqidInventory.createLiqidInventory(liqidClient);
-        var layout = createClusterLayout(nodes);
+        var layout = createClusterLayoutFromAnnotations(nodes);
         assertNotNull(layout);
         layout.show("");
 
@@ -234,6 +293,14 @@ public class CommandTest extends Command {
         plan.show();
 
         assertEquals(12, plan.getActions().size());
+        for (var entry : map.entrySet()) {
+            var devItem = entry.getKey();
+            var node = entry.getValue();
+            assertEquals(node.getName(), devItem.getDeviceInfo().getUserDescription());
+            var machName = createMachineName(devItem.getDeviceStatus(), node);
+            var annoKey = createAnnotationKeyFor(Constants.K8S_ANNOTATION_MACHINE_NAME);
+            assertEquals(machName, node.metadata.annotations.get(annoKey));
+        }
     }
 
     @Test
