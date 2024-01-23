@@ -78,11 +78,11 @@ public class InitializeCommand extends Command {
         _hasLinkage = hasLinkage();
         _hasAnnotations = hasAnnotations(computeDevices.values());
         if (_hasLinkage) {
-            System.err.printf("%s:Linkage already exists between the Kubernetes Cluster and the Liqid Cluster", errPrefix);
+            System.err.printf("%s:Linkage already exists between the Kubernetes Cluster and the Liqid Cluster\n", errPrefix);
             errors = true;
         }
         if (_hasAnnotations) {
-            System.err.printf("%s:One or more nodes in the Kubernetes Cluster has Liqid annotations", errPrefix);
+            System.err.printf("%s:One or more nodes in the Kubernetes Cluster has Liqid annotations\n", errPrefix);
             errors = true;
         }
 
@@ -99,14 +99,33 @@ public class InitializeCommand extends Command {
             }
 
             var machineAnnoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
-            var machineAnnotation = node.metadata.annotations.get(machineAnnoKey);
-            if ((machineAnnotation != null) &&
-                (!_liqidInventory.getMachine(machineAnnotation).getComputeName().equals(devItem.getDeviceName()))) {
-                System.err.printf("%s:node name '%s' has an incorrect annotation referencing machine name '%s'\n",
-                                  errPrefix,
-                                  node.getName(),
-                                  machineAnnotation);
-                errors = true;
+            var machineName = node.metadata.annotations.get(machineAnnoKey);
+            if (machineName != null) {
+                var machine = _liqidInventory.getMachine(machineName);
+                if (machine == null) {
+                    System.err.printf("%s:node name '%s' has an incorrect annotation referencing non-existant machine name '%s'\n",
+                                      errPrefix,
+                                      node.getName(),
+                                      machineName);
+                    errors = true;
+                } else {
+                    var computeName = machine.getComputeName();
+                    if (computeName == null) {
+                        System.err.printf("%s:node name '%s' refers to machine '%s' which has no compute resource\n",
+                                          errPrefix,
+                                          node.getName(),
+                                          machine);
+                        errors = true;
+                    } else if (!computeName.equals(devItem.getDeviceName())) {
+                        System.err.printf("%s:node name '%s' refers to machine '%s' which has compute resource '%s instead of '%s'\n",
+                                          errPrefix,
+                                          node.getName(),
+                                          machine,
+                                          computeName,
+                                          devItem.getDeviceName());
+                        errors = true;
+                    }
+                }
             }
         }
 
