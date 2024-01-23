@@ -602,6 +602,13 @@ public class LiqidInventory {
         deviceItems.removeIf(di -> di.getGeneralType() != generalType);
     }
 
+    public static void removeDeviceItemsInGroup(
+        final Collection<DeviceItem> deviceItems,
+        final Integer groupId
+    ) {
+        deviceItems.removeIf(di -> Objects.equals(di.getGroupId(), groupId));
+    }
+
     /**
      * Removes all of the DeviceItem objects for devices which are not in a particular group.
      * @param deviceItems collection to be pruned

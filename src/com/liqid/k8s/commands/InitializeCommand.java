@@ -86,47 +86,8 @@ public class InitializeCommand extends Command {
             errors = true;
         }
 
-        // Are there any compute device descriptions which contradict the node names?
-        for (var entry : computeDevices.entrySet()) {
-            var devItem = entry.getKey();
-            var node = entry.getValue();
-            var desc = devItem.getDeviceInfo().getUserDescription();
-            if ((desc != null) && (!desc.equals("n/a")) && !desc.equals(node.getName())) {
-                System.err.printf("%s:User description for device '%s' is not set to the corresponding node name '%s'\n",
-                                  errPrefix,
-                                  devItem.getDeviceName(),
-                                  node.getName());
-            }
-
-            var machineAnnoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
-            var machineName = node.metadata.annotations.get(machineAnnoKey);
-            if (machineName != null) {
-                var machine = _liqidInventory.getMachine(machineName);
-                if (machine == null) {
-                    System.err.printf("%s:node name '%s' has an incorrect annotation referencing non-existant machine name '%s'\n",
-                                      errPrefix,
-                                      node.getName(),
-                                      machineName);
-                    errors = true;
-                } else {
-                    var computeName = machine.getComputeName();
-                    if (computeName == null) {
-                        System.err.printf("%s:node name '%s' refers to machine '%s' which has no compute resource\n",
-                                          errPrefix,
-                                          node.getName(),
-                                          machine);
-                        errors = true;
-                    } else if (!computeName.equals(devItem.getDeviceName())) {
-                        System.err.printf("%s:node name '%s' refers to machine '%s' which has compute resource '%s instead of '%s'\n",
-                                          errPrefix,
-                                          node.getName(),
-                                          machine,
-                                          computeName,
-                                          devItem.getDeviceName());
-                        errors = true;
-                    }
-                }
-            }
+        if (!checkForContradictions(computeDevices, resourceDevices)) {
+            errors = true;
         }
 
         // Are there any resources assigned to groups?
@@ -168,7 +129,10 @@ public class InitializeCommand extends Command {
         if (_hasAnnotations) {
             plan.addAction(new RemoveAllAnnotationsAction());
         }
+
+        Group deletingGroup = null;
         if (_hasGroup) {
+            deletingGroup = _liqidInventory.getGroup(_liqidGroupName);
             plan.addAction(new DeleteGroupAction().setGroupName(_liqidGroupName));
         }
 
@@ -183,9 +147,14 @@ public class InitializeCommand extends Command {
         var allDevItems = new LinkedList<>(computeDevices.keySet());
         allDevItems.addAll(resourceDevices);
 
-        // Any called-out resources assigned to machines or groups? If so, release them.
-        releaseDevicesFromMachines(allDevItems, plan);
-        releaseDevicesFromGroups(allDevItems, plan);
+        // Any called-out resources assigned to machines or groups?
+        // I mean, other than the configured group? If so, release them.
+        var subsetDevItems = new LinkedList<>(allDevItems);
+        if (deletingGroup != null) {
+            LiqidInventory.removeDeviceItemsInGroup(subsetDevItems, deletingGroup.getGroupId());
+        }
+        releaseDevicesFromMachines(subsetDevItems, plan);
+        releaseDevicesFromGroups(subsetDevItems, plan);
 
         // Move all called-out resources to the newly-created group.
         var names = LiqidInventory.getDeviceNamesFromItems(allDevItems);
@@ -232,14 +201,12 @@ public class InitializeCommand extends Command {
 
             var allocators = createAllocators(proposedInventory, layout);
             var allocations = createAllocations(allocators);
-            System.out.println("================" + allocations);//TODO remove
             if (allocations == null) {
                 _logger.trace("Exiting %s with null", fn);
                 return null;
             }
 
             var varSet = VarianceSet.createVarianceSet(proposedInventory, allocations);
-            System.out.println("================" + varSet);//TODO remove
             var deviceIds = LiqidInventory.getDeviceIdsFromItems(resourceDevices);
             processVarianceSet(deviceIds, varSet, plan);
         }
@@ -280,11 +247,11 @@ public class InitializeCommand extends Command {
             errors = true;
         }
 
-        if (errors && !_force) {
-            throw new ConfigurationException("Various configuration problems exist - processing will not continue.");
+        Plan plan = null;
+        if (!errors || _force) {
+            plan = createPlan(computeResources, otherResources);
         }
 
-        var plan = createPlan(computeResources, otherResources);
         if (plan == null) {
             throw new ConfigurationException("Various configuration problems exist - processing will not continue.");
         }

@@ -93,6 +93,68 @@ public abstract class Command {
     public LiqidClient getLiqidClient() { return _liqidClient; }
 
     /**
+     * Check for conflicts in the current Liqid / K8S configurations
+     * @return true if we are okay, false if errors exist
+     */
+    protected boolean checkForContradictions(
+        final Map<DeviceItem, Node> computeDevices,
+        final Collection<DeviceItem> resourceDevices
+    ) {
+        var fn = "checkForContradictions";
+        _logger.trace("Entering %s compDevs=%s resDevs=%s", fn, computeDevices, resourceDevices);
+
+        var errors = false;
+        var errPrefix = getErrorPrefix();
+
+        // Are there any compute device descriptions which contradict the node names?
+        for (var entry : computeDevices.entrySet()) {
+            var devItem = entry.getKey();
+            var node = entry.getValue();
+            var desc = devItem.getDeviceInfo().getUserDescription();
+            if ((desc != null) && (!desc.equals("n/a")) && !desc.equals(node.getName())) {
+                System.err.printf("%s:User description for device '%s' is not set to the corresponding node name '%s'\n",
+                                  errPrefix,
+                                  devItem.getDeviceName(),
+                                  node.getName());
+            }
+
+            var machineAnnoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
+            var machineName = node.metadata.annotations.get(machineAnnoKey);
+            if (machineName != null) {
+                var machine = _liqidInventory.getMachine(machineName);
+                if (machine == null) {
+                    System.err.printf("%s:node name '%s' has an incorrect annotation referencing non-existant machine name '%s'\n",
+                                      errPrefix,
+                                      node.getName(),
+                                      machineName);
+                    errors = true;
+                } else {
+                    var computeName = machine.getComputeName();
+                    if (computeName == null) {
+                        System.err.printf("%s:node name '%s' refers to machine '%s' which has no compute resource\n",
+                                          errPrefix,
+                                          node.getName(),
+                                          machine);
+                        errors = true;
+                    } else if (!computeName.equals(devItem.getDeviceName())) {
+                        System.err.printf("%s:node name '%s' refers to machine '%s' which has compute resource '%s instead of '%s'\n",
+                                          errPrefix,
+                                          node.getName(),
+                                          machine,
+                                          computeName,
+                                          devItem.getDeviceName());
+                        errors = true;
+                    }
+                }
+            }
+        }
+
+        var result = !errors;
+        _logger.trace("%s returning %s", fn, result);
+        return result;
+    }
+
+    /**
      * Creates a map of allocations based on the given allocators.
      * --[ This is the point where we convert types/vendors/models/counts into actual device identifiers. ]--
      * The allocators describe, in order of ResourceModel specificity, a number of allocators which describe, per resModel
