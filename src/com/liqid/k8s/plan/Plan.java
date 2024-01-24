@@ -60,4 +60,9 @@ public class Plan {
         }
         System.out.println("--------------------------------------");
     }
+
+    @Override
+    public String toString() {
+        return _actions.toString();
+    }
 }

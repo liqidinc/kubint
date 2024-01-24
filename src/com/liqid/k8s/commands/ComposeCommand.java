@@ -73,6 +73,7 @@ public class ComposeCommand extends Command {
         var varSet = VarianceSet.createVarianceSet(_liqidInventory, allocations);
         var devItems = _liqidInventory.getDeviceItems();
         LiqidInventory.removeDeviceItemsOfType(devItems, GeneralType.CPU);
+        LiqidInventory.removeDeviceItemsInAnyMachine(devItems);
         var deviceIds = LiqidInventory.getDeviceIdsFromItems(devItems);
 
         var plan = new Plan();
