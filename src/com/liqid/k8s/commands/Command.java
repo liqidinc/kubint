@@ -328,7 +328,7 @@ public abstract class Command {
 
             if (node.metadata.annotations != null) {
                 for (var genType : GeneralType.values()) {
-                    var annoKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType);
+                    var annoKey = createAnnotationKeyFor(ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType));
                     if (node.metadata.annotations.containsKey(annoKey)) {
                         newAnnos.put(genType, null);
                     }
