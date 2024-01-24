@@ -8,10 +8,22 @@ package com.liqid.k8s.commands;
 import com.bearsnake.k8sclient.*;
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.exceptions.*;
+import com.liqid.k8s.layout.ClusterLayout;
+import com.liqid.k8s.layout.GeneralType;
+import com.liqid.k8s.layout.GenericResourceModel;
+import com.liqid.k8s.layout.ResourceModel;
+import com.liqid.k8s.layout.SpecificResourceModel;
+import com.liqid.k8s.layout.VendorResourceModel;
 import com.liqid.k8s.plan.Plan;
+import com.liqid.k8s.plan.actions.AnnotateNodeAction;
 import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+
+import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
 
 public class AnnotateCommand extends Command {
 
@@ -44,319 +56,277 @@ public class AnnotateCommand extends Command {
     public AnnotateCommand setProxyURL(final String value) { _proxyURL = value; return this; }
     public AnnotateCommand setSSDSpecifications(final Collection<String> list) { _ssdSpecs = list; return this; }
 
-    //TODO
-//    /**
-//     * Creates plan actions to annotate the worker nodes.
-//     * We assume linkage already exists - so we can rely on the machine annotation in the k8s worker nodes
-//     * (if necessary) being correct, as well as the user descriptions in the compute devices in the Liqid Cluster
-//     * being correct also (again, if necessary).
-//     * ..
-//     * The plan does NOT move devices around - it only (re)annotates resource cluster counters.
-//     */
-//    private boolean processAutomatic(
-//        final Plan plan
-//    ) throws K8SHTTPError, K8SJSONError, K8SRequestError, ProcessingException {
-//        var fn = "processAutomatic";
-//        _logger.trace("Entering %s");
-//
-//        var errPrefix = getErrorPrefix();
-//        var errors = false;
-//
-//        //  We are making a plan to annotate, which *could* include doing something different than what is
-//        //  already in play. We are going to invoke allocateEqually() to do the majority of the work,
-//        //  so we need to build a LiqidInventory which has all the relevant resources attached to the group,
-//        //  but not to any machines.
-//        var tempInventory = _liqidInventory.copy();
-//        tempInventory.getDevices()
-//                     .stream()
-//                     .filter(DeviceItem::isAssignedToMachine)
-//                     .map(DeviceItem::getDeviceId)
-//                     .forEach(tempInventory::notifyDeviceRemovedFromMachine);
-//
-//        var computeResources = new HashMap<DeviceItem, Node>();
-//        for (var node : _k8sClient.getNodes()) {
-//            var machineName = node.metadata.annotations.get(createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME));
-//            if (machineName != null) {
-//                var machine = _liqidInventory.getMachine(machineName);
-//                if (machine == null) {
-//                    System.err.printf("%s:Node '%s' refers to Liqid machine '%s' which is not in the Liqid Cluster\n",
-//                                      errPrefix, node.getName(), machineName);
-//                    errors = true;
-//                } else {
-//                    var machDevs = _liqidInventory.getDevicesInMachine(machine.getMachineId());
-//                    DeviceItem compDevItem = null;
-//                    for (var devItem : machDevs) {
-//                        if (devItem.getStatus().getDeviceType() == DeviceType.COMPUTE) {
-//                            compDevItem = devItem.asdfadsfasdf
-//                            break;
-//                        }
-//                    }
-//                    if (compDevItem == null) {
-//                        System.err.printf("%s:Machine '%s' referenced by node '%s' does not contain a compute node\n",
-//                                          errPrefix, machineName, node.getName());
-//                    } else {
-//                        computeResources.put(compDevItem, node);
-//                    }
-//                }
-//            }
-//        }
-//
-//        var group = _liqidInventory.getGroup(_liqidGroupName);
-//        var resDevices = _liqidInventory.getDevices();
-//        LiqidInventory.removeComputeDevices(_liqidInventory.getDevices());
-//
-//        allocateEqually(plan, computeResources, resDevices);
-//
-//        var result = !errors;
-//        _logger.trace("Exiting %s with %s", fn, result);
-//        return result;
-//    }
-//
-//    private boolean processClear(
-//        final Plan plan
-//    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
-//        var fn = "processClear";
-//        _logger.trace("Entering %s");
-//
-//        var errors = false;
-//
-//        try {
-//            _k8sClient.getNode(_nodeName);
-//        } catch (K8SHTTPError kex) {
-//            if (kex.getResponseCode() == 404) {
-//                System.err.printf("ERROR:Node '%s' does not exist in the Kubernetes Cluster\n", _nodeName);
-//                errors = true;
-//            } else {
-//                throw kex;
-//            }
-//        }
-//
-//        var action = new AnnotateNode().setNodeName(_nodeName);
-//        for (var genType : LiqidGeneralType.values()) {
-//            if (genType != LiqidGeneralType.CPU) {
-//                var annoKey = createAnnotationKeyForDeviceType(genType);
-//                action.addAnnotation(annoKey, null);
-//            }
-//        }
-//        plan.addAction(action);
-//
-//        var result = !errors;
-//        _logger.trace("Exiting %s with %s", fn, result);
-//        return result;
-//    }
-//
-//    private boolean processManual(
-//        final Plan plan
-//    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
-//        var fn = "processManual";
-//        _logger.trace("Entering %s", fn);
-//
-//        var errPrefix = getErrorPrefix();
-//        var errors = false;
-//
-//        try {
-//            _k8sClient.getNode(_nodeName);
-//        } catch (K8SHTTPError kex) {
-//            if (kex.getResponseCode() == 404) {
-//                System.err.printf("ERROR:Node '%s' does not exist in the Kubernetes Cluster\n", _nodeName);
-//                errors = true;
-//            } else {
-//                _logger.throwing(kex);
-//                throw kex;
-//            }
-//        }
-//
-//        var group = _liqidInventory._groupsByName.get(_liqidGroupName);
-//        if (group == null) {
-//            System.err.printf("%s:Group '%s' does not exist in the Liqid Cluster\n", errPrefix, _liqidGroupName);
-//            if (!_force) {
-//                errors = true;
-//            }
-//        }
-//
-//        var mach = _liqidInventory._machinesByName.get(_machineName);
-//        if (mach == null) {
-//            System.err.printf("%s:Machine '%s' does not exist in the Liqid Cluster\n", errPrefix, _machineName);
-//            if (!_force) {
-//                errors = true;
-//            }
-//        } else if ((group != null) && (!mach.getGroupId().equals(group.getGroupId()))) {
-//            System.err.printf("%s:Machine '%s' is not in group '%s'\n", errPrefix, _machineName, _liqidGroupName);
-//            if (!_force) {
-//                errors = true;
-//            }
-//        }
-//
-//        var annoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
-//        plan.addAction(new AnnotateNode().setNodeName(_nodeName).addAnnotation(annoKey, _machineName));
-//
-//        if (_fpgaSpecs != null) {
-//            if (!processManualType(LiqidGeneralType.FPGA, _fpgaSpecs, plan)) {
-//                errors = true;
-//            }
-//        }
-//
-//        if (_gpuSpecs != null) {
-//            if (!processManualType(LiqidGeneralType.GPU, _gpuSpecs, plan)) {
-//                errors = true;
-//            }
-//        }
-//
-//        if (_linkSpecs != null) {
-//            if (!processManualType(LiqidGeneralType.LINK, _linkSpecs, plan)) {
-//                errors = true;
-//            }
-//        }
-//
-//        if (_memorySpecs != null) {
-//            if (!processManualType(LiqidGeneralType.MEMORY, _memorySpecs, plan)) {
-//                errors = true;
-//            }
-//        }
-//
-//        if (_ssdSpecs != null) {
-//            if (!processManualType(LiqidGeneralType.SSD, _ssdSpecs, plan)) {
-//                errors = true;
-//            }
-//        }
-//
-//        var result = !errors;
-//        _logger.trace("Exiting %s with %s", fn, result);
-//        return result;
-//    }
-//
-//    private boolean processManualType(
-//        final LiqidGeneralType genType,
-//        final Collection<String> specifications,
-//        final Plan plan
-//    ) {
-//        var fn = "processType";
-//        _logger.trace("Entering %s genType=%s specifications=%s annotations=%s",
-//                      fn,
-//                      genType,
-//                      specifications);
-//
-//        var errors = false;
-//        var errPrefix = getErrorPrefix();
-//
-//        var vendorAndModel = new LinkedHashMap<String, Integer>();
-//        var modelOnly = new LinkedHashMap<String, Integer>();
-//        Integer noSpecificity = null;
-//
-//        for (var spec : specifications) {
-//            String vendor;
-//            String model;
-//            int resCount;
-//
-//            var split = spec.split(":");
-//            if (split.length > 3) {
-//                System.err.printf("ERROR:Spec '%s' is invalid\n", spec);
-//                errors = true;
-//                continue;
-//            }
-//
-//            try {
-//                resCount = Integer.parseInt(split[split.length - 1]);
-//                if (resCount < 0) {
-//                    throw new NumberFormatException("");
-//                }
-//            } catch (NumberFormatException ex) {
-//                System.err.printf("ERROR:Spec '%s' contains an invalid resource count\n", spec);
-//                errors = true;
-//                continue;
-//            }
-//
-//            if (split.length == 3) {
-//                vendor = split[0];
-//                model = split[1];
-//
-//                if (!_liqidInventory.hasDevice(split[0], split[1])) {
-//                    System.err.printf("%s:Spec '%s' refers to a vendor/model which is not present in the Liqid Cluster\n",
-//                                      errPrefix, spec);
-//                    if (!_force) {
-//                        errors = true;
-//                    }
-//                }
-//
-//                var key = vendor + ":" + model;
-//                if (vendorAndModel.containsKey(key)) {
-//                    System.err.printf("ERROR:Spec '%s' overlays a previous specification\n", spec);
-//                    errors = true;
-//                } else {
-//                    vendorAndModel.put(key, resCount);
-//                }
-//            } else if (split.length == 2) {
-//                model = split[0];
-//
-//                if (!_liqidInventory.hasDevice(split[0])) {
-//                    System.err.printf("%s:Spec '%s' refers to a model which is not present in the Liqid Cluster\n",
-//                                      errPrefix, spec);
-//                    if (!_force) {
-//                        errors = true;
-//                    }
-//                }
-//
-//                if (modelOnly.containsKey(model)) {
-//                    System.err.printf("ERROR:Spec '%s' overlays a previous specification\n", spec);
-//                    errors = true;
-//                } else {
-//                    modelOnly.put(model, resCount);
-//                }
-//            } else {
-//                if (noSpecificity != null) {
-//                    System.err.printf("ERROR:Spec '%s' overlays a previous specification\n", spec);
-//                    errors = true;
-//                } else {
-//                    noSpecificity = resCount;
-//                }
-//            }
-//        }
-//
-//        if (errors) {
-//            _logger.trace("Exiting %s with false", fn);
-//            return false;
-//        }
-//
-//        var annoKey = createAnnotationKeyForDeviceType(genType);
-//        if (vendorAndModel.isEmpty() && modelOnly.isEmpty() && (noSpecificity != null) && (noSpecificity == 0)) {
-//            System.out.printf("Any existing annotation for type %s will be removed\n", genType);
-//            plan.addAction(new AnnotateNode().setNodeName(_nodeName).addAnnotation(annoKey, null));
-//        } else {
-//            var newSpecStrings = new LinkedList<String>();
-//            for (var entry : vendorAndModel.entrySet()) {
-//                if (entry.getValue() > 0) {
-//                    System.out.printf("Will allocate %d %s devices from vendor:model %s\n",
-//                                      entry.getValue(), genType, entry.getKey());
-//                    newSpecStrings.add(String.format("%s:%d", entry.getKey(), entry.getValue()));
-//                }
-//            }
-//
-//            for (var entry : modelOnly.entrySet()) {
-//                if (entry.getValue() > 0) {
-//                    System.out.printf("Will allocate %s%d %s devices of model %s from any vendor\n",
-//                                      vendorAndModel.isEmpty() ? "" : "an additional ",
-//                                      entry.getValue(),
-//                                      genType,
-//                                      entry.getKey());
-//                    newSpecStrings.add(String.format("%s:%d", entry.getKey(), entry.getValue()));
-//                }
-//            }
-//
-//            if ((noSpecificity != null) && (noSpecificity != 0)) {
-//                System.out.printf("Will allocate %s%d %s devices of any model from any vendor\n",
-//                                  vendorAndModel.isEmpty() ? "" : "an additional ",
-//                                  noSpecificity,
-//                                  genType);
-//                newSpecStrings.add(String.format("%d", noSpecificity));
-//            }
-//
-//            var newSpecString = String.join(",", newSpecStrings);
-//            plan.addAction(new AnnotateNode().setNodeName(_nodeName).addAnnotation(annoKey, newSpecString));
-//        }
-//
-//        _logger.trace("Exiting %s with true", fn);
-//        return true;
-//    }
+    /**
+     * Creates plan actions to annotate the worker nodes.
+     * We assume linkage already exists - so we can rely on the machine annotation in the k8s worker nodes
+     * (if necessary) being correct, as well as the user descriptions in the compute devices in the Liqid Cluster
+     * being correct also (again, if necessary).
+     * ..
+     * The plan does NOT move devices around - it only (re)annotates resource cluster counters.
+     */
+    private boolean processAutomatic(
+        final Plan plan
+    ) throws K8SHTTPError, K8SJSONError, K8SRequestError, ProcessingException, InternalErrorException {
+        var fn = "processAutomatic";
+        _logger.trace("Entering %s with plan=%s", fn, plan);
+
+        var errors = false;
+
+        var nodes = _k8sClient.getNodes();
+        ClusterLayout layout = createEvenlyAllocatedClusterLayout(nodes);
+        if (!createAnnotationsFromClusterLayout(nodes, layout, plan)) {
+            errors = true;
+        }
+
+        var result = !errors;
+        _logger.trace("%s returning %s", fn, result);
+        return result;
+    }
+
+    /**
+     * Creates plan actions to clear the resource annotations for a particular worker node.
+     */
+    private boolean processClear(
+        final Plan plan
+    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
+        var fn = "processClear";
+        _logger.trace("Entering %s with plan=%s", fn, plan);
+
+        var errors = false;
+
+        try {
+            _k8sClient.getNode(_nodeName);
+        } catch (K8SHTTPError kex) {
+            if (kex.getResponseCode() == 404) {
+                System.err.printf("ERROR:Node '%s' does not exist in the Kubernetes Cluster\n", _nodeName);
+                errors = true;
+            } else {
+                throw kex;
+            }
+        }
+
+        var action = new AnnotateNodeAction().setNodeName(_nodeName);
+        for (var genType : GeneralType.values()) {
+            if (genType != GeneralType.CPU) {
+                var annoKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType);
+                action.addAnnotation(annoKey, null);
+            }
+        }
+        plan.addAction(action);
+
+        var result = !errors;
+        _logger.trace("%s returning %s", fn, result);
+        return result;
+    }
+
+    /**
+     * Creates plan actions to annotate a particular worker node according to user-supplied specifications.
+     * This *will* include a machine name annotation, so be prepared for that.
+     */
+    private boolean processManual(
+        final Plan plan
+    ) throws K8SHTTPError, K8SJSONError, K8SRequestError {
+        var fn = "processManual";
+        _logger.trace("Entering %s", fn);
+
+        var errPrefix = getErrorPrefix();
+        var errors = false;
+
+        try {
+            _k8sClient.getNode(_nodeName);
+        } catch (K8SHTTPError kex) {
+            if (kex.getResponseCode() == 404) {
+                System.err.printf("ERROR:Node '%s' does not exist in the Kubernetes Cluster\n", _nodeName);
+                errors = true;
+            } else {
+                _logger.throwing(kex);
+                throw kex;
+            }
+        }
+
+        var group = _liqidInventory.getGroup(_liqidGroupName);
+        if (group == null) {
+            System.err.printf("%s:Group '%s' does not exist in the Liqid Cluster\n", errPrefix, _liqidGroupName);
+            if (!_force) {
+                errors = true;
+            }
+        }
+
+        var mach = _liqidInventory.getMachine(_machineName);
+        if (mach == null) {
+            System.err.printf("%s:Machine '%s' does not exist in the Liqid Cluster\n", errPrefix, _machineName);
+            if (!_force) {
+                errors = true;
+            }
+        } else if ((group != null) && (!mach.getGroupId().equals(group.getGroupId()))) {
+            System.err.printf("%s:Machine '%s' is not in group '%s'\n", errPrefix, _machineName, _liqidGroupName);
+            if (!_force) {
+                errors = true;
+            }
+        }
+
+        var annoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
+        plan.addAction(new AnnotateNodeAction().setNodeName(_nodeName).addAnnotation(annoKey, _machineName));
+
+        if (_fpgaSpecs != null) {
+            if (!processManualType(GeneralType.FPGA, _fpgaSpecs, plan)) {
+                errors = true;
+            }
+        }
+
+        if (_gpuSpecs != null) {
+            if (!processManualType(GeneralType.GPU, _gpuSpecs, plan)) {
+                errors = true;
+            }
+        }
+
+        if (_linkSpecs != null) {
+            if (!processManualType(GeneralType.LINK, _linkSpecs, plan)) {
+                errors = true;
+            }
+        }
+
+        if (_memorySpecs != null) {
+            if (!processManualType(GeneralType.MEMORY, _memorySpecs, plan)) {
+                errors = true;
+            }
+        }
+
+        if (_ssdSpecs != null) {
+            if (!processManualType(GeneralType.SSD, _ssdSpecs, plan)) {
+                errors = true;
+            }
+        }
+
+        var result = !errors;
+        _logger.trace("%s returning %s", fn, result);
+        return result;
+    }
+
+    private boolean processManualType(
+        final GeneralType genType,
+        final Collection<String> specifications,
+        final Plan plan
+    ) {
+        var fn = "processType";
+        _logger.trace("Entering %s genType=%s specifications=%s annotations=%s",
+                      fn,
+                      genType,
+                      specifications);
+
+        var errors = false;
+        var errPrefix = getErrorPrefix();
+        var clear = false;
+        var resModelSpecs = new HashMap<ResourceModel, Integer>();
+
+        for (var spec : specifications) {
+            String vendor;
+            String model;
+            int resCount;
+
+            var split = spec.split(":");
+            if (split.length > 3) {
+                System.err.printf("ERROR:Spec '%s' is invalid\n", spec);
+                errors = true;
+                continue;
+            }
+
+            try {
+                resCount = Integer.parseInt(split[split.length - 1]);
+                if (resCount < 0) {
+                    throw new NumberFormatException("");
+                }
+            } catch (NumberFormatException ex) {
+                System.err.printf("ERROR:Spec '%s' contains an invalid resource count\n", spec);
+                errors = true;
+                continue;
+            }
+
+            ResourceModel resModel;
+            if (split.length == 3) {
+                vendor = split[0];
+                model = split[1];
+
+                if (!_liqidInventory.hasDevice(vendor, model)) {
+                    System.err.printf("%s:Spec '%s' refers to a vendor/model which is not present in the Liqid Cluster\n",
+                                      errPrefix, spec);
+                    if (!_force) {
+                        errors = true;
+                    }
+                }
+
+                resModel = new SpecificResourceModel(genType, vendor, model);
+            } else if (split.length == 2) {
+                vendor = split[0];
+
+                if (!_liqidInventory.hasDevice(vendor)) {
+                    System.err.printf("%s:Spec '%s' refers to a vendor which is not present in the Liqid Cluster\n",
+                                      errPrefix, spec);
+                    if (!_force) {
+                        errors = true;
+                    }
+                }
+
+                resModel = new VendorResourceModel(genType, vendor);
+            } else {
+                resModel = new GenericResourceModel(genType);
+                if (resCount == 0) {
+                    clear = true;
+                }
+            }
+
+            if (resModelSpecs.containsKey(resModel)) {
+                System.err.printf("ERROR:Spec '%s' overlays a previous specification\n", spec);
+                errors = true;
+            }
+
+            resModelSpecs.put(resModel, resCount);
+        }
+
+        //  now that we have a map of resource models -> resource count, look for conflicts
+        for (var entry : resModelSpecs.entrySet()) {
+            var resModel = entry.getKey();
+            var count = entry.getValue();
+            if (count == 0) {
+                for (var entry2 : resModelSpecs.entrySet()) {
+                    var resModel2 = entry2.getKey();
+                    var count2 = entry2.getValue();
+                    if (!entry.equals(entry2) && (resModel.overlaps(resModel2))) {
+                        System.err.printf("%s:Conflict between specifications %s:%d and %s:%d",
+                                          errPrefix, resModel, count, resModel2, count2);
+                        errors = true;
+                    }
+                }
+            }
+        }
+
+        if (errors) {
+            _logger.trace("Exiting %s with false", fn);
+            return false;
+        }
+
+        var parts = new String[resModelSpecs.size()];
+        var px = 0;
+        for (var entry : resModelSpecs.entrySet()) {
+            var resModel = entry.getKey();
+            var count = entry.getValue();
+            if (resModel instanceof GenericResourceModel) {
+                parts[px] = String.format("%d", count);
+            } else if (resModel instanceof VendorResourceModel) {
+                parts[px] = String.format("%s:%d", resModel.getVendorName(), count);
+            } else if (resModel instanceof SpecificResourceModel) {
+                parts[px] = String.format("%s:%s:%d", resModel.getVendorName(), resModel.getModelName(), count);
+            }
+            px++;
+        }
+
+        var annoKey = ANNOTATION_KEY_FOR_DEVICE_TYPE.get(genType);
+        var annoValue = clear ? null : String.join(",", parts);
+        plan.addAction(new AnnotateNodeAction().setNodeName(_nodeName).addAnnotation(annoKey, annoValue));
+
+        _logger.trace("Exiting %s with true", fn);
+        return true;
+    }
 
     @Override
     public Plan process(
@@ -369,31 +339,31 @@ public class AnnotateCommand extends Command {
         var fn = this.getClass().getName() + ":process";
         _logger.trace("Entering %s", fn);
 
-//        initK8sClient();
-//
-//        // If there is no linkage, tell the user and stop
-//        if (!hasLinkage()) {
-//            throw new ConfigurationException("No linkage exists from this Kubernetes Cluster to the Liqid Cluster.");
-//        }
-//
-//        getLiqidLinkage();
-//        initLiqidClient();
+        initK8sClient();
+
+        // If there is no linkage, tell the user and stop
+        if (!hasLinkage()) {
+            throw new ConfigurationException("No linkage exists from this Kubernetes Cluster to the Liqid Cluster.");
+        }
+
+        getLiqidLinkage();
+        initLiqidClient();
 
         var plan = new Plan();
-//        var success = false;
-//        if (_automatic) {
-//            success = processAutomatic(plan);
-//        } else if (_clear) {
-//            success = processClear(plan);
-//        } else {
-//            success = processManual(plan);
-//        }
-//
-//        if (!success) {
-//            System.err.println("Errors prevent further processing.");
-//            _logger.trace("Exiting %s with null", fn);
-//            return null;
-//        }
+        var success = false;
+        if (_automatic) {
+            success = processAutomatic(plan);
+        } else if (_clear) {
+            success = processClear(plan);
+        } else {
+            success = processManual(plan);
+        }
+
+        if (!success) {
+            System.err.println("Errors prevent further processing.");
+            _logger.trace("Exiting %s with null", fn);
+            return null;
+        }
 
         // All done
         _logger.trace("Exiting %s with %s", fn, plan);

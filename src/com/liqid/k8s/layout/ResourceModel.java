@@ -24,6 +24,16 @@ public abstract class ResourceModel implements Comparable<ResourceModel> {
      */
     public abstract boolean accepts(final DeviceInfo deviceInfo);
 
+    /**
+     * Tests whether this object and a similar object overlap...
+     * We overlap if whichever data items this object has in common with the other, are equivalent.
+     * Thus, a Generic would overlap a specific if the general types were equivalent,
+     * while two specific objects would only overlap if the type, vendor, and model were all equivalent.
+     * @param resourceModel other object to be tested
+     * @return true if this object overlaps the other
+     */
+    public abstract boolean overlaps(final ResourceModel resourceModel);
+
     @Override
     public final boolean equals(final Object obj) {
         return (obj instanceof ResourceModel rm)

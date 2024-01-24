@@ -227,4 +227,46 @@ public class ResourceModelTest {
         assertTrue(GPU.accepts(intelGPUInfo));
         assertFalse(GPU.accepts(liqidSSDInfo));
     }
+
+    @Test
+    public void overlaps() {
+        var gpuGeneral = new GenericResourceModel(GeneralType.GPU);
+        var gpuLiqid = new VendorResourceModel(GeneralType.GPU, "Liqid");
+        var gpuNVidia = new VendorResourceModel(GeneralType.GPU, "NVidia");
+
+        var fpgaGeneral = new GenericResourceModel(GeneralType.FPGA);
+
+        var gpuIntelA770 = new SpecificResourceModel(GeneralType.GPU, "Intel", "A770");
+        var gpuNVidiaL40 = new SpecificResourceModel(GeneralType.GPU, "NVidia", "L40");
+
+        // general <-> general
+        assertTrue(gpuGeneral.overlaps(gpuGeneral));
+        assertFalse(gpuGeneral.overlaps(fpgaGeneral));
+
+        // vendor <-> vendor
+        assertTrue(gpuLiqid.overlaps(gpuLiqid));
+        assertFalse(gpuLiqid.overlaps(gpuNVidia));
+
+        // specific <-> specific
+        assertTrue(gpuIntelA770.overlaps(gpuIntelA770));
+        assertFalse(gpuIntelA770.overlaps(gpuNVidiaL40));
+
+        // general <-> vendor
+        assertTrue(gpuGeneral.overlaps(gpuLiqid));
+        assertTrue(gpuLiqid.overlaps(gpuGeneral));
+        assertFalse(fpgaGeneral.overlaps(gpuLiqid));
+        assertFalse(gpuLiqid.overlaps(fpgaGeneral));
+
+        // vendor <-> specific
+        assertTrue(gpuNVidia.overlaps(gpuNVidiaL40));
+        assertTrue(gpuNVidiaL40.overlaps(gpuNVidia));
+        assertFalse(gpuNVidia.overlaps(gpuIntelA770));
+        assertFalse(gpuIntelA770.overlaps(gpuNVidia));
+
+        // general <-> specific
+        assertTrue(gpuGeneral.overlaps(gpuNVidiaL40));
+        assertTrue(gpuNVidiaL40.overlaps(gpuGeneral));
+        assertFalse(fpgaGeneral.overlaps(gpuIntelA770));
+        assertFalse(gpuIntelA770.overlaps(fpgaGeneral));
+    }
 }

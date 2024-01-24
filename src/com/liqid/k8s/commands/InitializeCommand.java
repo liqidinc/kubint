@@ -29,8 +29,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
 
-import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
-
 public class InitializeCommand extends Command {
 
     private boolean _allocate;

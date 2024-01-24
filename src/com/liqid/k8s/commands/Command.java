@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import static com.liqid.k8s.Constants.*;
 
@@ -304,7 +305,7 @@ public abstract class Command {
      * All the nodes referenced in the layout must be in the nodes collection, but the nodes collection
      * may contain nodes which are not in the layout.
      * We do expect each node's machine name annotation to be in place.
-     * @param nodes collection of all the nodes of interest
+     * @param nodes collection of all the non-compute nodes of interest
      * @param layout ClusterLayout containing the desired resource layout
      * @param plan plan which will be populated with actions
      * @return true if no errors were detected along the way
@@ -466,6 +467,37 @@ public abstract class Command {
     }
 
     /**
+     * As below, but using the current _liqidInventory for sourcing the configuration
+     * @param nodes collection of worker nodes
+     * @return ClusterLayout object corresponding to the actions added to the given Plan
+     */
+    protected ClusterLayout createEvenlyAllocatedClusterLayout(
+        final Collection<Node> nodes
+    ) throws K8SRequestError, K8SJSONError, K8SHTTPError {
+        var fn = "allocateEqually";
+        _logger.trace("Entering %s", fn);
+
+        var computeDeviceItems = new HashMap<DeviceItem, Node>();
+        var resourceDeviceItems = new LinkedList<DeviceItem>();
+
+        var nodeLookup = nodes.stream()
+                              .collect(Collectors.toMap(Node::getName, node -> node, (a, b) -> b, HashMap::new));
+        for (var devItem : _liqidInventory.getDeviceItems()) {
+            if (devItem.getGeneralType() == GeneralType.CPU) {
+                var nodeName = devItem.getDeviceInfo().getUserDescription();
+                computeDeviceItems.put(devItem, nodeLookup.get(nodeName));
+            } else {
+                resourceDeviceItems.add(devItem);
+            }
+        }
+
+        var layout = createEvenlyAllocatedClusterLayout(computeDeviceItems, resourceDeviceItems);
+
+        _logger.trace("%s returning %s", fn, layout);
+        return layout;
+    }
+
+    /**
      * Creates steps to create annotations which will allocate resources as equally as possible
      * among the k8s worker nodes. Does NOT require anything from the existing _liqidClient nor from _k8sClient.
      * This logic is here because we really need to tie nodes to machines (sometimes in the context of NOT
@@ -574,6 +606,9 @@ public abstract class Command {
         final Map<DeviceItem, Node> computeDevices,
         final Plan plan
     ) {
+        var fn = "createMachines";
+        _logger.trace("Entering %s with compDevs=%s plan=%s", fn, computeDevices, plan);
+
         // We're going to do it in order by pcpu{n} name, just because it is cleaner.
         var orderedMap = new TreeMap<Integer, DeviceItem>();
         for (var devItem : computeDevices.keySet()) {
@@ -601,6 +636,8 @@ public abstract class Command {
             computeDevices.get(devItem).metadata.annotations.put(createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME),
                                                                  machineName);
         }
+
+        _logger.trace("%s returning with plan=%s", fn, plan);
     }
 
     /**

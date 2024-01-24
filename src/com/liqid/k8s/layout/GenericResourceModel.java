@@ -47,4 +47,11 @@ public class GenericResourceModel extends ResourceModel {
     public String getVendorName() {
         return null;
     }
+
+    @Override
+    public boolean overlaps(
+        final ResourceModel other
+    ) {
+        return this._generalType.equals(other.getGeneralType());
+    }
 }

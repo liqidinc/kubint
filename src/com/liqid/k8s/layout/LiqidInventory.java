@@ -442,12 +442,12 @@ public class LiqidInventory {
     }
 
     /**
-     * Returns true if the inventory has at least one device matching the given model name.
+     * Returns true if the inventory has at least one device matching the given vendor name.
      */
     public boolean hasDevice(
-        final String model
+        final String vendor
     ) {
-        return _deviceItems.values().stream().anyMatch(di -> di.getDeviceInfo().getModel().equals(model));
+        return _deviceItems.values().stream().anyMatch(di -> di.getDeviceInfo().getVendor().equals(vendor));
     }
 
     /**

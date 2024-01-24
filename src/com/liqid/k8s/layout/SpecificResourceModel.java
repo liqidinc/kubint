@@ -42,4 +42,16 @@ public final class SpecificResourceModel extends VendorResourceModel {
     public ResourceModelType getResourceModelType() {
         return ResourceModelType.A_SPECIFIC;
     }
+
+    @Override
+    public boolean overlaps(
+        final ResourceModel other
+    ) {
+        return switch (other.getResourceModelType()) {
+            case A_SPECIFIC -> this.getGeneralType().equals(other.getGeneralType())
+                               && this.getVendorName().equals(other.getVendorName())
+                               && this.getModelName().equals(other.getModelName());
+            case B_VENDOR, C_GENERIC -> super.overlaps(other);
+        };
+    }
 }
