@@ -20,7 +20,6 @@ import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedList;
 
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
 

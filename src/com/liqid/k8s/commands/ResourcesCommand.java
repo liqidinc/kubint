@@ -7,6 +7,7 @@ package com.liqid.k8s.commands;
 
 import com.bearsnake.klog.Logger;
 import com.liqid.k8s.exceptions.InternalErrorException;
+import com.liqid.k8s.layout.LiqidInventory;
 import com.liqid.k8s.plan.Plan;
 import com.liqid.sdk.LiqidException;
 
@@ -74,7 +75,7 @@ public class ResourcesCommand extends Command {
 
         for (var mach : _liqidInventory.getMachines()) {
             var machDevs = _liqidInventory.getDeviceItemsForMachine(mach.getMachineId());
-            var devNames = _liqidInventory.getDeviceNamesFromItems(machDevs);
+            var devNames = LiqidInventory.getDeviceNamesFromItems(machDevs);
             var devNamesStr = String.join(" ", devNames);
             var grp = _liqidInventory.getGroup(mach.getGroupId());
             System.out.printf("  %-32s  %-22s  0x%08x  %s\n",

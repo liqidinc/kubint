@@ -24,7 +24,17 @@ public abstract class ResourceModel implements Comparable<ResourceModel> {
      */
     public abstract boolean accepts(final DeviceInfo deviceInfo);
 
-    public abstract boolean isMoreSpecificThan(final ResourceModel resModel);
+    /**
+     * Tests whether this ResourceModel is more specific than a given other ResourceModel.
+     * The ResourceModelType enumerator is ordered from most to least specific, so test the ordinal.
+     * @param resModel other ReseourceModel
+     * @return true if this model is more specific than the other
+     */
+    public boolean isMoreSpecificThan(
+        final ResourceModel resModel
+    ) {
+        return getResourceModelType().ordinal() < resModel.getResourceModelType().ordinal();
+    }
 
     /**
      * Tests whether this object and a similar object overlap...

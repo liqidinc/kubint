@@ -49,13 +49,6 @@ public class GenericResourceModel extends ResourceModel {
     }
 
     @Override
-    public boolean isMoreSpecificThan(
-        final ResourceModel resModel
-    ) {
-        return false;
-    }
-
-    @Override
     public boolean overlaps(
         final ResourceModel other
     ) {

@@ -229,6 +229,23 @@ public class ResourceModelTest {
     }
 
     @Test
+    public void isMoreSpecifcThan() {
+        var gpuGeneral = new GenericResourceModel(GeneralType.GPU);
+        var gpuNVidia = new VendorResourceModel(GeneralType.GPU, "NVidia");
+        var gpuNVidiaL40 = new SpecificResourceModel(GeneralType.GPU, "NVidia", "L40");
+
+        assertFalse(gpuGeneral.isMoreSpecificThan(gpuGeneral));
+        assertFalse(gpuGeneral.isMoreSpecificThan(gpuNVidia));
+        assertFalse(gpuGeneral.isMoreSpecificThan(gpuNVidiaL40));
+        assertTrue(gpuNVidia.isMoreSpecificThan(gpuGeneral));
+        assertFalse(gpuNVidia.isMoreSpecificThan(gpuNVidia));
+        assertFalse(gpuNVidia.isMoreSpecificThan(gpuNVidiaL40));
+        assertTrue(gpuNVidiaL40.isMoreSpecificThan(gpuGeneral));
+        assertTrue(gpuNVidiaL40.isMoreSpecificThan(gpuNVidia));
+        assertFalse(gpuNVidiaL40.isMoreSpecificThan(gpuNVidiaL40));
+    }
+
+    @Test
     public void overlaps() {
         var gpuGeneral = new GenericResourceModel(GeneralType.GPU);
         var gpuLiqid = new VendorResourceModel(GeneralType.GPU, "Liqid");
