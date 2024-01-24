@@ -24,6 +24,8 @@ public abstract class ResourceModel implements Comparable<ResourceModel> {
      */
     public abstract boolean accepts(final DeviceInfo deviceInfo);
 
+    public abstract boolean isMoreSpecificThan(final ResourceModel resModel);
+
     /**
      * Tests whether this object and a similar object overlap...
      * We overlap if whichever data items this object has in common with the other, are equivalent.

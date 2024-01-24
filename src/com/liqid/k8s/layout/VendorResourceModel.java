@@ -41,6 +41,13 @@ public class VendorResourceModel extends GenericResourceModel {
     }
 
     @Override
+    public boolean isMoreSpecificThan(
+        final ResourceModel resModel
+    ) {
+        return resModel instanceof GenericResourceModel;
+    }
+
+    @Override
     public boolean overlaps(
         final ResourceModel other
     ) {

@@ -39,6 +39,13 @@ public final class SpecificResourceModel extends VendorResourceModel {
     }
 
     @Override
+    public boolean isMoreSpecificThan(
+        final ResourceModel resModel
+    ) {
+        return !(resModel instanceof SpecificResourceModel);
+    }
+
+    @Override
     public ResourceModelType getResourceModelType() {
         return ResourceModelType.A_SPECIFIC;
     }

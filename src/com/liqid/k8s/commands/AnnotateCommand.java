@@ -20,7 +20,6 @@ import com.liqid.sdk.LiqidException;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 
 import static com.liqid.k8s.Constants.K8S_ANNOTATION_MACHINE_NAME;
@@ -152,21 +151,23 @@ public class AnnotateCommand extends Command {
             }
         }
 
-        var mach = _liqidInventory.getMachine(_machineName);
-        if (mach == null) {
-            System.err.printf("%s:Machine '%s' does not exist in the Liqid Cluster\n", errPrefix, _machineName);
-            if (!_force) {
-                errors = true;
+        if (_machineName != null) {
+            var mach = _liqidInventory.getMachine(_machineName);
+            if (mach == null) {
+                System.err.printf("%s:Machine '%s' does not exist in the Liqid Cluster\n", errPrefix, _machineName);
+                if (!_force) {
+                    errors = true;
+                }
+            } else if ((group != null) && (!mach.getGroupId().equals(group.getGroupId()))) {
+                System.err.printf("%s:Machine '%s' is not in group '%s'\n", errPrefix, _machineName, _liqidGroupName);
+                if (!_force) {
+                    errors = true;
+                }
             }
-        } else if ((group != null) && (!mach.getGroupId().equals(group.getGroupId()))) {
-            System.err.printf("%s:Machine '%s' is not in group '%s'\n", errPrefix, _machineName, _liqidGroupName);
-            if (!_force) {
-                errors = true;
-            }
-        }
 
-        var annoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
-        plan.addAction(new AnnotateNodeAction().setNodeName(_nodeName).addAnnotation(annoKey, _machineName));
+            var annoKey = createAnnotationKeyFor(K8S_ANNOTATION_MACHINE_NAME);
+            plan.addAction(new AnnotateNodeAction().setNodeName(_nodeName).addAnnotation(annoKey, _machineName));
+        }
 
         if (_fpgaSpecs != null) {
             if (!processManualType(GeneralType.FPGA, _fpgaSpecs, plan)) {
@@ -276,7 +277,7 @@ public class AnnotateCommand extends Command {
             }
 
             if (resModelSpecs.containsKey(resModel)) {
-                System.err.printf("ERROR:Spec '%s' overlays a previous specification\n", spec);
+                System.err.printf("%s:Spec '%s' overlays a previous specification\n", errPrefix, spec);
                 errors = true;
             }
 
@@ -285,22 +286,26 @@ public class AnnotateCommand extends Command {
 
         //  now that we have a map of resource models -> resource count, look for conflicts
         for (var entry : resModelSpecs.entrySet()) {
-            var resModel = entry.getKey();
-            var count = entry.getValue();
-            if (count == 0) {
+            var resModel1 = entry.getKey();
+            var count1 = entry.getValue();
+            if (count1 == 0) {
                 for (var entry2 : resModelSpecs.entrySet()) {
-                    var resModel2 = entry2.getKey();
-                    var count2 = entry2.getValue();
-                    if (!entry.equals(entry2) && (resModel.overlaps(resModel2))) {
-                        System.err.printf("%s:Conflict between specifications %s:%d and %s:%d",
-                                          errPrefix, resModel, count, resModel2, count2);
-                        errors = true;
+                    if (!entry.equals(entry2)) {
+                        var resModel2 = entry2.getKey();
+                        var count2 = entry2.getValue();
+                        if ((count2 > 0)
+                            && resModel1.overlaps(resModel2)
+                            && resModel2.isMoreSpecificThan(resModel1)) {
+                            System.out.printf("%s:Conflict between specifications %s:%d and %s:%d\n",
+                                              errPrefix, resModel1, count1, resModel2, count2);
+                            errors = true;
+                        }
                     }
                 }
             }
         }
 
-        if (errors) {
+        if (errors && !_force) {
             _logger.trace("Exiting %s with false", fn);
             return false;
         }
