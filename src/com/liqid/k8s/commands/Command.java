@@ -798,7 +798,7 @@ public abstract class Command {
             }
         }
 
-        _logger.trace("%s returning %s", result);
+        _logger.trace("%s returning %s", fn, result);
         return result;
     }
 
