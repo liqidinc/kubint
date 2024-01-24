@@ -212,9 +212,9 @@ public abstract class Command {
             }
         }
 
-        var result = (errors && !_force) ? null : allocations;
+        var result = (errors && !_force) ? null : allocations.values();
         _logger.trace("%s returning with %s", fn, result);
-        return result.values();
+        return result;
     }
 
     /**
