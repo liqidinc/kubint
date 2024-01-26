@@ -27,7 +27,7 @@ import static com.liqid.k8s.commands.CommandType.*;
 /*
     adopt
         -px,--proxy-url={proxy_url}
-        [ -pr,--processors={pcpu_name=worker_node_name}[,...] ]
+        [ -pr,--processors={pcpu_name:worker_node_name}[,...] ]
         [ -r,--resources={name}[,...] ]
         [ -f,--force ]
         [ -no,--no-update ]

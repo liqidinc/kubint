@@ -119,7 +119,7 @@ public class AnnotateCommand extends Command {
 
     /**
      * Creates plan actions to annotate a particular worker node according to user-supplied specifications.
-     * This *will* include a machine name annotation, so be prepared for that.
+     * This *may* include a machine name annotation, so be prepared for that.
      */
     private boolean processManual(
         final Plan plan
