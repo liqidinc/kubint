@@ -22,6 +22,8 @@ import java.util.LinkedList;
 
 public class ComposeCommand extends Command {
 
+    public Boolean _p2pOverride = false;
+
     public ComposeCommand(
         final Logger logger,
         final Boolean force,
@@ -30,7 +32,8 @@ public class ComposeCommand extends Command {
         super(logger, force, timeoutInSeconds);
     }
 
-    public ComposeCommand setProxyURL(final String value) {_proxyURL = value; return this; }
+    public ComposeCommand setEnableP2POverride(final Boolean value) { _p2pOverride = value; return this; }
+    public ComposeCommand setProxyURL(final String value) { _proxyURL = value; return this; }
 
     @Override
     public Plan process(
@@ -75,13 +78,15 @@ public class ComposeCommand extends Command {
 
         // Create list of machines for which we want to enable P2P
         var p2pMachines = new LinkedList<String>();
-        for (var alloc : allocations) {
-            var devIds = alloc.getDeviceIdentifiers();
-            var gpuCount = (int) devIds.stream()
-                                       .filter(devId -> _liqidInventory.getDeviceItem(devId).getGeneralType() == GeneralType.GPU)
-                                       .count();
-            if (gpuCount > 1) {
-                p2pMachines.add(alloc.getMachineName());
+        if (_liqidEnableP2P || _p2pOverride) {
+            for (var alloc : allocations) {
+                var devIds = alloc.getDeviceIdentifiers();
+                var gpuCount = (int) devIds.stream()
+                                           .filter(devId -> _liqidInventory.getDeviceItem(devId).getGeneralType() == GeneralType.GPU)
+                                           .count();
+                if (gpuCount > 1) {
+                    p2pMachines.add(alloc.getMachineName());
+                }
             }
         }
 

@@ -78,6 +78,7 @@ public class Constants {
     public static final String K8S_CONFIG_NAMESPACE = "default";
     public static final String K8S_CONFIG_MAP_IP_ADDRESS_KEY = "address";
     public static final String K8S_CONFIG_MAP_GROUP_NAME_KEY = "group";
+    public static final String K8S_CONFIG_MAP_ENABLE_P2P_KEY = "enableP2P";
 
     public static final String K8S_SECRET_NAME = "kubint.liqid.com";
     public static final String K8S_SECRET_NAMESPACE = "default";

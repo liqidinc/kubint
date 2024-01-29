@@ -18,6 +18,8 @@ import com.liqid.sdk.LiqidException;
 
 public class LinkCommand extends Command {
 
+    private boolean _enableP2P = false;
+
     public LinkCommand(
         final Logger logger,
         final Boolean force,
@@ -26,6 +28,7 @@ public class LinkCommand extends Command {
         super(logger, force, timeoutInSeconds);
     }
 
+    public LinkCommand setEnableP2P(final Boolean value) { _enableP2P = value; return this; }
     public LinkCommand setLiqidAddress(final String value) { _liqidAddress = value; return this; }
     public LinkCommand setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
     public LinkCommand setLiqidPassword(final String value) { _liqidPassword = value; return this; }
@@ -107,6 +110,7 @@ public class LinkCommand extends Command {
         }
 
         plan.addAction(new CreateLinkageAction().setLiqidAddress(_liqidAddress)
+                                                .setEnableP2P(_enableP2P)
                                                 .setLiqidGroupName(_liqidGroupName)
                                                 .setLiqidUsername(_liqidUsername)
                                                 .setLiqidPassword(_liqidPassword));

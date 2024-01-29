@@ -48,6 +48,7 @@ public abstract class Command {
     protected final Integer _timeoutInSeconds;
 
     protected String _liqidAddress;
+    protected Boolean _liqidEnableP2P;
     protected String _liqidGroupName;
     protected String _liqidPassword;
     protected String _liqidUsername;
@@ -828,6 +829,7 @@ public abstract class Command {
         var cfgMap = _k8sClient.getConfigMap(K8S_CONFIG_NAMESPACE, K8S_CONFIG_NAME);
         _liqidAddress = cfgMap.data.get(K8S_CONFIG_MAP_IP_ADDRESS_KEY);
         _liqidGroupName = cfgMap.data.get(K8S_CONFIG_MAP_GROUP_NAME_KEY);
+        _liqidEnableP2P = Boolean.parseBoolean(cfgMap.data.get(K8S_CONFIG_MAP_ENABLE_P2P_KEY));
 
         _liqidUsername = null;
         _liqidPassword = null;

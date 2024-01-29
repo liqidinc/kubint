@@ -52,6 +52,7 @@ import static com.liqid.k8s.commands.CommandType.*;
 
     compose
         -px,--proxy-url={proxy_url}
+        -p2p
         [ -f,--force ]
         [ -no,--no-update ]
 
@@ -63,6 +64,7 @@ import static com.liqid.k8s.commands.CommandType.*;
         -g,--liqid-group={group_name}
         -pr,--processors={pcpu_name:worker_node_name}[,...]
         -r,--resources={name}[,...]
+        -p2p
         [ -al,--allocate ]
         [ -f,--force ]
         [ -no,--no-update ]
@@ -73,6 +75,7 @@ import static com.liqid.k8s.commands.CommandType.*;
         [ -u,--liqid-username={user_name} ]
         [ -p,--liqid-password={password} ]
         -g,--liqid-group={group_name}
+        -p2p
         [ -f,--force ]
         [ -no,--no-update ]
 
@@ -137,6 +140,7 @@ public class Main {
     private static final Switch MEM_SPEC_SWITCH;
     private static final Switch NODE_NAME_SWITCH;
     private static final Switch NO_UPDATE_SWITCH;
+    private static final Switch ENABLE_P2P_SWITCH;
     private static final Switch PROCESSORS_SWITCH;
     private static final Switch PROXY_URL_SWITCH;
     private static final Switch RESOURCES_SWITCH;
@@ -167,6 +171,15 @@ public class Main {
                                           .setLongName("clear")
                                           .addAffinity(CV_ANNOTATE)
                                           .addDescription("Clears all the resource annotations for the given node.")
+                                          .build();
+            ENABLE_P2P_SWITCH =
+                new SimpleSwitch.Builder().setShortName("p2p")
+                                          .addAffinity(CV_COMPOSE)
+                                          .addAffinity(CV_INITIALIZE)
+                                          .addAffinity(CV_LINK)
+                                          .addDescription("Indicates that the utility should enable P2P for any Liqid Machines")
+                                          .addDescription("which have two or more GPUs allocated to them, at the time of allocation.")
+                                          .addDescription("For the " + COMPOSE.getToken() + " command, this will override the linkage setting.")
                                           .build();
             FORCE_SWITCH =
                 new SimpleSwitch.Builder().setShortName("f")
@@ -422,6 +435,7 @@ public class Main {
                                              .addDescription("    Username credential for the Liqid Cluster Directory")
                                              .addDescription("    Password credential for the Liqid Cluster Directory")
                                              .addDescription("    Liqid Cluster resource group name identifying the resource group which is assigned to this Kubernetes cluster")
+                                             .addDescription("    Whether P2P should be enabled for appropriately-composed machines")
                                              .addDescription(NODES.getToken())
                                              .addDescription("  Displays existing Liqid-related configMap information and node annotations.")
                                              .addDescription(RELEASE.getToken())
@@ -501,6 +515,7 @@ public class Main {
                                    .setAllocate(result._switchSpecifications.containsKey(ALLOCATE_SWITCH))
                                    .setAutomatic(result._switchSpecifications.containsKey(AUTO_SWITCH))
                                    .setClear(result._switchSpecifications.containsKey(CLEAR_SWITCH))
+                                   .setEnableP2P(result._switchSpecifications.containsKey(ENABLE_P2P_SWITCH))
                                    .setForce(result._switchSpecifications.containsKey(FORCE_SWITCH))
                                    .setFPGASpecs(getStringCollection(result._switchSpecifications.get(FPGA_SPEC_SWITCH)))
                                    .setGPUSpecs(getStringCollection(result._switchSpecifications.get(GPU_SPEC_SWITCH)))
@@ -564,6 +579,7 @@ public class Main {
            .addSwitch(ALLOCATE_SWITCH)
            .addSwitch(AUTO_SWITCH)
            .addSwitch(CLEAR_SWITCH)
+           .addSwitch(ENABLE_P2P_SWITCH)
            .addSwitch(FORCE_SWITCH)
            .addSwitch(FPGA_SPEC_SWITCH)
            .addSwitch(GPU_SPEC_SWITCH)

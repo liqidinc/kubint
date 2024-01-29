@@ -754,6 +754,9 @@ public class CommandTest extends Command {
 
         // finally <whew> we do the allocator thing.
         var allocators = createAllocators(inventory, layout);
+        for (var es : allocators.entrySet()) {//TODO remove
+            System.out.println("...." + es.getKey() + " ::: " + es.getValue());
+        }
 
         assertEquals(4, allocators.values().size());
 

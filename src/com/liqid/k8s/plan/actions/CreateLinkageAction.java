@@ -17,6 +17,7 @@ import com.liqid.k8s.plan.ExecutionContext;
 import java.util.Collections;
 import java.util.HashMap;
 
+import static com.liqid.k8s.Constants.K8S_CONFIG_MAP_ENABLE_P2P_KEY;
 import static com.liqid.k8s.Constants.K8S_CONFIG_MAP_GROUP_NAME_KEY;
 import static com.liqid.k8s.Constants.K8S_CONFIG_MAP_IP_ADDRESS_KEY;
 import static com.liqid.k8s.Constants.K8S_CONFIG_NAME;
@@ -31,15 +32,17 @@ public class CreateLinkageAction extends Action {
     private String _liqidGroupName;
     private String _liqidPassword;
     private String _liqidUsername;
+    private Boolean _enableP2P;
 
     public CreateLinkageAction() {
         super(ActionType.CREATE_LINKAGE);
     }
 
-    public CreateLinkageAction setLiqidAddress(final String value) {_liqidAddress = value; return this; }
-    public CreateLinkageAction setLiqidGroupName(final String value) {_liqidGroupName = value; return this; }
-    public CreateLinkageAction setLiqidPassword(final String value) {_liqidPassword = value; return this; }
-    public CreateLinkageAction setLiqidUsername(final String value) {_liqidUsername = value; return this; }
+    public CreateLinkageAction setEnableP2P(final Boolean value) { _enableP2P = value; return this; }
+    public CreateLinkageAction setLiqidAddress(final String value) { _liqidAddress = value; return this; }
+    public CreateLinkageAction setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
+    public CreateLinkageAction setLiqidPassword(final String value) { _liqidPassword = value; return this; }
+    public CreateLinkageAction setLiqidUsername(final String value) { _liqidUsername = value; return this; }
 
     @Override
     public void checkParameters() throws InternalErrorException {
@@ -61,6 +64,7 @@ public class CreateLinkageAction extends Action {
         var cfgMapData = new HashMap<String, String>();
         cfgMapData.put(K8S_CONFIG_MAP_IP_ADDRESS_KEY, _liqidAddress);
         cfgMapData.put(K8S_CONFIG_MAP_GROUP_NAME_KEY, _liqidGroupName);
+        cfgMapData.put(K8S_CONFIG_MAP_ENABLE_P2P_KEY, _enableP2P.toString());
         var cmMetadata = new NamespacedMetadata().setNamespace(K8S_CONFIG_NAMESPACE).setName(K8S_CONFIG_NAME);
         var newCfgMap = new ConfigMapPayload().setMetadata(cmMetadata).setData(cfgMapData);
         context.getK8SClient().createConfigMap(newCfgMap);

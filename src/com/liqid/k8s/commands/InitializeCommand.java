@@ -34,6 +34,7 @@ import java.util.Map;
 public class InitializeCommand extends Command {
 
     private boolean _allocate;
+    private boolean _enableP2P = false;
     private boolean _hasAnnotations = false;
     private boolean _hasGroup = false;
     private boolean _hasLinkage = false;
@@ -49,6 +50,7 @@ public class InitializeCommand extends Command {
     }
 
     public InitializeCommand setAllocate(final Boolean value) { _allocate = value; return this; }
+    public InitializeCommand setEnableP2P(final Boolean value) { _enableP2P = value; return this; }
     public InitializeCommand setLiqidAddress(final String value) { _liqidAddress = value; return this; }
     public InitializeCommand setLiqidGroupName(final String value) { _liqidGroupName = value; return this; }
     public InitializeCommand setLiqidPassword(final String value) { _liqidPassword = value; return this; }
@@ -137,6 +139,7 @@ public class InitializeCommand extends Command {
         }
 
         plan.addAction(new CreateLinkageAction().setLiqidAddress(_liqidAddress)
+                                                .setEnableP2P(_enableP2P)
                                                 .setLiqidGroupName(_liqidGroupName)
                                                 .setLiqidUsername(_liqidUsername)
                                                 .setLiqidPassword(_liqidPassword));
@@ -208,13 +211,15 @@ public class InitializeCommand extends Command {
 
             // Create list of machines for which we want to enable P2P
             var p2pMachines = new LinkedList<String>();
-            for (var alloc : allocations) {
-                var devIds = alloc.getDeviceIdentifiers();
-                var gpuCount = (int) devIds.stream()
-                                           .filter(devId -> _liqidInventory.getDeviceItem(devId).getGeneralType() == GeneralType.GPU)
-                                           .count();
-                if (gpuCount > 1) {
-                    p2pMachines.add(alloc.getMachineName());
+            if (_enableP2P) {
+                for (var alloc : allocations) {
+                    var devIds = alloc.getDeviceIdentifiers();
+                    var gpuCount = (int) devIds.stream()
+                                               .filter(devId -> _liqidInventory.getDeviceItem(devId).getGeneralType() == GeneralType.GPU)
+                                               .count();
+                    if (gpuCount > 1) {
+                        p2pMachines.add(alloc.getMachineName());
+                    }
                 }
             }
 

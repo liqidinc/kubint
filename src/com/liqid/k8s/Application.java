@@ -21,6 +21,7 @@ public class Application {
     private Boolean _allocate;
     private Boolean _automatic;
     private Boolean _clear;
+    private Boolean _enableP2P;
     private Boolean _force;
     private Collection<String> _fpgaSpecs;
     private Collection<String> _gpuSpecs;
@@ -43,6 +44,7 @@ public class Application {
     Application setAutomatic(final Boolean value) { _automatic = value; return this; }
     Application setClear(final Boolean value) { _clear = value; return this; }
     Application setCommandType(final CommandType value) { _commandType = value; return this; }
+    Application setEnableP2P(final Boolean value) { _enableP2P = value; return this; }
     Application setForce(final Boolean value) { _force = value; return this; }
     Application setFPGASpecs(final Collection<String> list) { _fpgaSpecs = list; return this; }
     Application setGPUSpecs(final Collection<String> list) { _gpuSpecs = list; return this; }
@@ -86,10 +88,12 @@ public class Application {
                     .setProxyURL(_proxyURL);
             case COMPOSE ->
                 new ComposeCommand(_logger, _force, _timeoutInSeconds)
+                    .setEnableP2POverride(_enableP2P)
                     .setProxyURL(_proxyURL);
             case INITIALIZE ->
                 new InitializeCommand(_logger, _force, _timeoutInSeconds)
                     .setAllocate(_allocate)
+                    .setEnableP2P(_enableP2P)
                     .setLiqidAddress(_liqidAddress)
                     .setLiqidGroupName(_liqidGroupName)
                     .setLiqidPassword(_liqidPassword)
@@ -99,6 +103,7 @@ public class Application {
                     .setResourceSpecs(_resourceSpecs);
             case LINK ->
                 new LinkCommand(_logger, _force, _timeoutInSeconds)
+                    .setEnableP2P(_enableP2P)
                     .setLiqidAddress(_liqidAddress)
                     .setLiqidGroupName(_liqidGroupName)
                     .setLiqidPassword(_liqidPassword)
