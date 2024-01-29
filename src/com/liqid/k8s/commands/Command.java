@@ -236,7 +236,7 @@ public abstract class Command {
         var fn = "createAllocators";
         _logger.trace("Entering %s with inventory=%s desiredLayout=%s", fn, inventory, desiredLayout);
 
-        var result = new HashMap<ResourceModel, Collection<Allocator>>();
+        var result = new TreeMap<ResourceModel, Collection<Allocator>>();
 
         // iterate over the machine profiles in the desired layout.
         for (var machineProfile : desiredLayout.getMachineProfiles()) {
