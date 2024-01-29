@@ -15,7 +15,10 @@ import com.liqid.k8s.layout.GeneralType;
 import com.liqid.k8s.layout.LiqidInventory;
 import com.liqid.k8s.layout.VarianceSet;
 import com.liqid.k8s.plan.Plan;
+import com.liqid.k8s.plan.actions.EnableP2PForMachineAction;
 import com.liqid.sdk.LiqidException;
+
+import java.util.LinkedList;
 
 public class ComposeCommand extends Command {
 
@@ -70,6 +73,18 @@ public class ComposeCommand extends Command {
             return null;
         }
 
+        // Create list of machines for which we want to enable P2P
+        var p2pMachines = new LinkedList<String>();
+        for (var alloc : allocations) {
+            var devIds = alloc.getDeviceIdentifiers();
+            var gpuCount = (int) devIds.stream()
+                                       .filter(devId -> _liqidInventory.getDeviceItem(devId).getGeneralType() == GeneralType.GPU)
+                                       .count();
+            if (gpuCount > 1) {
+                p2pMachines.add(alloc.getMachineName());
+            }
+        }
+
         var varSet = VarianceSet.createVarianceSet(_liqidInventory, allocations);
         var devItems = _liqidInventory.getDeviceItems();
         LiqidInventory.removeDeviceItemsOfType(devItems, GeneralType.CPU);
@@ -78,6 +93,9 @@ public class ComposeCommand extends Command {
 
         var plan = new Plan();
         processVarianceSet(deviceIds, varSet, plan);
+        for (var machName : p2pMachines) {
+            plan.addAction(new EnableP2PForMachineAction().setMachineName(machName));
+        }
 
         _logger.trace("Exiting %s with %s", fn, plan);
         return plan;

@@ -10,6 +10,7 @@ import com.bearsnake.klog.Logger;
 import com.liqid.k8s.exceptions.*;
 import com.liqid.k8s.layout.ClusterLayout;
 import com.liqid.k8s.layout.DeviceItem;
+import com.liqid.k8s.layout.GeneralType;
 import com.liqid.k8s.layout.LiqidInventory;
 import com.liqid.k8s.layout.VarianceSet;
 import com.liqid.k8s.plan.*;
@@ -17,6 +18,7 @@ import com.liqid.k8s.plan.actions.AssignToGroupAction;
 import com.liqid.k8s.plan.actions.CreateGroupAction;
 import com.liqid.k8s.plan.actions.CreateLinkageAction;
 import com.liqid.k8s.plan.actions.DeleteGroupAction;
+import com.liqid.k8s.plan.actions.EnableP2PForMachineAction;
 import com.liqid.k8s.plan.actions.RemoveAllAnnotationsAction;
 import com.liqid.k8s.plan.actions.RemoveLinkageAction;
 import com.liqid.sdk.Group;
@@ -204,9 +206,24 @@ public class InitializeCommand extends Command {
                 return null;
             }
 
+            // Create list of machines for which we want to enable P2P
+            var p2pMachines = new LinkedList<String>();
+            for (var alloc : allocations) {
+                var devIds = alloc.getDeviceIdentifiers();
+                var gpuCount = (int) devIds.stream()
+                                           .filter(devId -> _liqidInventory.getDeviceItem(devId).getGeneralType() == GeneralType.GPU)
+                                           .count();
+                if (gpuCount > 1) {
+                    p2pMachines.add(alloc.getMachineName());
+                }
+            }
+
             var varSet = VarianceSet.createVarianceSet(proposedInventory, allocations);
             var deviceIds = LiqidInventory.getDeviceIdsFromItems(resourceDevices);
             processVarianceSet(deviceIds, varSet, plan);
+            for (var machName : p2pMachines) {
+                plan.addAction(new EnableP2PForMachineAction().setMachineName(machName));
+            }
         }
 
         _logger.trace("Exiting %s with %s", fn, plan);
