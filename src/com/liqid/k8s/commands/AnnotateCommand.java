@@ -209,7 +209,7 @@ public class AnnotateCommand extends Command {
         final Plan plan
     ) {
         var fn = "processType";
-        _logger.trace("Entering %s genType=%s specifications=%s annotations=%s",
+        _logger.trace("Entering %s genType=%s specifications=%s",
                       fn,
                       genType,
                       specifications);
