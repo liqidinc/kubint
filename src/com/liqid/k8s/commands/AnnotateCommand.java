@@ -314,12 +314,12 @@ public class AnnotateCommand extends Command {
         for (var entry : resModelSpecs.entrySet()) {
             var resModel = entry.getKey();
             var count = entry.getValue();
-            if (resModel instanceof GenericResourceModel) {
-                parts[px] = String.format("%d", count);
+            if (resModel instanceof SpecificResourceModel) {
+                parts[px] = String.format("%s:%s:%d", resModel.getVendorName(), resModel.getModelName(), count);
             } else if (resModel instanceof VendorResourceModel) {
                 parts[px] = String.format("%s:%d", resModel.getVendorName(), count);
-            } else if (resModel instanceof SpecificResourceModel) {
-                parts[px] = String.format("%s:%s:%d", resModel.getVendorName(), resModel.getModelName(), count);
+            } else if (resModel instanceof GenericResourceModel) {
+                parts[px] = String.format("%d", count);
             }
             px++;
         }
