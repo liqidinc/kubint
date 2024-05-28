@@ -63,7 +63,7 @@ public class DeviceItem {
         final Object obj
     ) {
         if (obj instanceof DeviceItem di) {
-            return Objects.equals(di.getMachineId(), getMachineId());
+            return Objects.equals(di.getDeviceId(), getDeviceId());
         } else {
             return false;
         }
